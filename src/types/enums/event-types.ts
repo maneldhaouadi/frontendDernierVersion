@@ -67,5 +67,12 @@ export enum EVENT_TYPE {
 
   TAX_CREATED = 'tax_created',
   TAX_UPDATED = 'tax_updated',
-  TAX_DELETED = 'tax_deleted'
+  TAX_DELETED = 'tax_deleted',
+
+  //Buying Invoice
+  BUYING_INVOICE_CREATED = 'invoice_created',
+  BUYING_INVOICE_UPDATED = 'invoice_updated',
+  BUYING_INVOICE_DELETED = 'invoice_deleted',
+  BUYING_INVOICE_PRINTED = 'invoice_printed',
+  BUYING_INVOICE_DUPLICATED = 'invoice_duplicated',
 }

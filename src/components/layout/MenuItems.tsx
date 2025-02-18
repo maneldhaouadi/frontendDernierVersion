@@ -89,7 +89,7 @@ const baseMenuItems = [
       {
         code: 'invoices',
         title: 'Invoices',
-        href: '/buying/invoice',
+        href: '/buying/expense_invoices',
         icon: <FileText className="h-5 w-5" />
       },
       {

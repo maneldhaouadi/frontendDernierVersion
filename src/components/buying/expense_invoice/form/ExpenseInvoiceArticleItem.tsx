@@ -2,7 +2,6 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ArticleInvoiceEntry, Currency, InvoiceTaxEntry, Tax } from '@/types';
 import {
   Select,
   SelectTrigger,
@@ -14,20 +13,22 @@ import { DISCOUNT_TYPE } from '@/types/enums/discount-types';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Textarea } from '@/components/ui/textarea';
-import { InvoiceTaxEntries } from './InvoiceTaxEntries';
 import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
+import { ExpenseArticleInvoiceEntry, ExpenseInvoiceTaxEntry } from '@/types/expense_invoices';
+import { ArticleInvoiceEntry, Currency, Tax } from '@/types';
+import { ExpenseInvoiceTaxEntries } from './ExpenseInvoiceTaxEntries';
 
-interface InvoiceArticleItemProps {
+interface ExpenseInvoiceArticleItemProps {
   className?: string;
-  article: ArticleInvoiceEntry;
-  onChange: (item: ArticleInvoiceEntry) => void;
+  article: ExpenseArticleInvoiceEntry;
+  onChange: (item: ExpenseArticleInvoiceEntry) => void;
   showDescription?: boolean;
   currency?: Currency;
   taxes: Tax[];
   edit?: boolean;
 }
 
-export const InvoiceArticleItem: React.FC<InvoiceArticleItemProps> = ({
+export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps> = ({
   className,
   article,
   onChange,
@@ -114,32 +115,32 @@ export const InvoiceArticleItem: React.FC<InvoiceArticleItemProps> = ({
 
   const handleTaxChange = (value: string, index: number) => {
     const selectedTax = taxes.find((tax) => tax.id === parseInt(value));
-    const updatedTaxes = [...(article.articleInvoiceEntryTaxes || [])];
+    const updatedTaxes = [...(article.expenseArticleInvoiceEntryTaxes || [])];
     if (selectedTax) {
       updatedTaxes[index] = { tax: selectedTax };
     } else {
       updatedTaxes.splice(index, 1);
     }
-    onChange({ ...article, articleInvoiceEntryTaxes: updatedTaxes });
+    onChange({ ...article, expenseArticleInvoiceEntryTaxes: updatedTaxes });
   };
 
   const handleTaxDelete = (index: number) => {
-    const updatedTaxes = article.articleInvoiceEntryTaxes?.filter((_, i) => i !== index);
-    onChange({ ...article, articleInvoiceEntryTaxes: updatedTaxes });
+    const updatedTaxes = article.expenseArticleInvoiceEntryTaxes?.filter((_, i) => i !== index);
+    onChange({ ...article, expenseArticleInvoiceEntryTaxes: updatedTaxes });
   };
 
   const handleAddTax = () => {
-    if ((article.articleInvoiceEntryTaxes?.length || 0) >= taxes.length) {
-      toast.warning(tInvoicing('invoice.errors.surpassed_tax_limit'));
+    if ((article.expenseArticleInvoiceEntryTaxes?.length || 0) >= taxes.length) {
+      toast.warning(tInvoicing('expense_invoice.errors.surpassed_tax_limit'));
       return;
     }
     onChange({
       ...article,
-      articleInvoiceEntryTaxes: [...(article.articleInvoiceEntryTaxes || []), {} as InvoiceTaxEntry]
+      expenseArticleInvoiceEntryTaxes: [...(article.expenseArticleInvoiceEntryTaxes || []), {} as ExpenseInvoiceTaxEntry]
     });
   };
 
-  const selectedTaxIds = article.articleInvoiceEntryTaxes?.map((t) => t.tax?.id) || [];
+  const selectedTaxIds = article.expenseArticleInvoiceEntryTaxes?.map((t) => t.tax?.id) || [];
 
   return (
     <div className={cn('flex flex-row items-center gap-6 h-full', className)}>
@@ -147,7 +148,7 @@ export const InvoiceArticleItem: React.FC<InvoiceArticleItemProps> = ({
         <div className="flex flex-row gap-2 my-1">
           {/* Title */}
           <div className="w-3/5">
-            <Label className="mx-1">{tInvoicing('article.attributes.title')}</Label>
+           <Label className="mx-1">{tInvoicing('article.attributes.title')}</Label>
             {edit ? (
               <Input
                 placeholder="Title"
@@ -213,7 +214,7 @@ export const InvoiceArticleItem: React.FC<InvoiceArticleItemProps> = ({
                       value={article.article?.description}
                       className="resize-none"
                       onClick={() => {}}
-                      rows={3 + (article?.articleInvoiceEntryTaxes?.length || 0)}
+                      rows={3 + (article?.expenseArticleInvoiceEntryTaxes?.length || 0)}
                     />
                   </>
                 )
@@ -226,7 +227,7 @@ export const InvoiceArticleItem: React.FC<InvoiceArticleItemProps> = ({
         {/* Taxes */}
         <div className="my-auto">
           <Label className="block my-3">{tInvoicing('article.attributes.taxes')}</Label>
-          <InvoiceTaxEntries
+          <ExpenseInvoiceTaxEntries
             article={article}
             taxes={taxes}
             selectedTaxIds={selectedTaxIds}
