@@ -46,7 +46,7 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
           router.push('/buying/expense-new-invoice');
         }}>
         <PackagePlus className="h-6 w-6" />
-        {tInvoicing('expense_invoice.add_button_label')}
+        {tInvoicing('invoice.add_button_label')}
       </Button>
       <DataTableViewOptions table={table} />
     </div>

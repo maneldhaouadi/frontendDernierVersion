@@ -96,7 +96,7 @@ export const ExpenseInvoiceGeneralInformation = ({
           )}
         </div>
         <div className="w-2/6">
-          <Label>{tInvoicing('expense_invoice.singular')} N°</Label>
+          <Label>{tInvoicing('invoice.singular')} N°</Label>
           <SequenceInput
             prefix={invoiceManager.sequentialNumber?.prefix}
             dateFormat={invoiceManager.sequentialNumber?.dynamicSequence}
@@ -120,7 +120,7 @@ export const ExpenseInvoiceGeneralInformation = ({
                     }}
                     value={invoiceManager.firm?.id?.toString()}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder={tInvoicing('expense_invoice.associate_firm')} />
+                      <SelectValue placeholder={tInvoicing('invoice.associate_firm')} />
                     </SelectTrigger>
                     <SelectContent>
                       {firms?.map((firm: Partial<Firm>) => (
@@ -159,7 +159,7 @@ export const ExpenseInvoiceGeneralInformation = ({
                   }}
                   value={invoiceManager.interlocutor?.id?.toString()}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder={tInvoicing('expense_invoice.associate_interlocutor')} />
+                    <SelectValue placeholder={tInvoicing('invoice.associate_interlocutor')} />
                   </SelectTrigger>
                   <SelectContent>
                     {invoiceManager.firm?.interlocutorsToFirm?.map((entry: any) => (

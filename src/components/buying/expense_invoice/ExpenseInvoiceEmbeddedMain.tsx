@@ -162,8 +162,8 @@ export const ExpenseInvoiceEmbeddedMain: React.FC<ExpenseInvoiceEmbeddedMainProp
   if (error) return 'An error has occurred: ' + error.message;
   return (
     <ContentSection
-      title={tInvoicing('expense_invoice.singular')}
-      desc={tInvoicing('expense_invoice.card_description')}
+      title={tInvoicing('invoice.singular')}
+      desc={tInvoicing('invoice.card_description')}
       className="w-full"
       childrenClassName={cn('overflow-hidden', className)}>
       <>

@@ -126,7 +126,7 @@ export const ExpenseInvoiceControlSection = ({
   //Duplicate Invoice
   const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({
     mutationFn: (duplicateInvoiceDto: ExpenseDuplicateInvoiceDto) =>
-      api.invoice.duplicate(duplicateInvoiceDto),
+      api.expense_invoice.duplicate(duplicateInvoiceDto),
     onSuccess: async (data) => {
       toast.success(tInvoicing('expense_invoice.action_duplicate_success'));
       await router.push('/buying/expense_invoice/' + data.id);
@@ -144,7 +144,7 @@ export const ExpenseInvoiceControlSection = ({
 
   //Delete Invoice
   const { mutate: removeInvoice, isPending: isDeletePending } = useMutation({
-    mutationFn: (id: number) => api.invoice.remove(id),
+    mutationFn: (id: number) => api.expense_invoice.remove(id),
     onSuccess: () => {
       toast.success(tInvoicing('expense_invoice.action_remove_success'));
       router.push('/buying/expense_invoices');
@@ -342,6 +342,8 @@ export const ExpenseInvoiceControlSection = ({
                     </SelectTrigger>
                     <SelectContent>
                       {quotations?.map((q: Quotation) => {
+                        console.log('Quotations:', quotations);
+                        console.log('Quotation ID sélectionnée:', invoiceManager?.quotationId);
                         return (
                           <SelectItem key={q.id} value={q?.id?.toString() || ''}>
                             <span className="font-bold">{q?.sequential}</span>

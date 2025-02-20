@@ -25,7 +25,6 @@ import useQuotationChoices from '@/hooks/content/useQuotationChoice';
 import useTaxWithholding from '@/hooks/content/useTaxWitholding';
 import dinero from 'dinero.js';
 import { createDineroAmountFromFloatWithDynamicCurrency } from '@/utils/money.utils';
-import useInvoiceRangeDates from '@/hooks/content/useInvoiceRangeDates';
 import { useExpenseInvoiceManager } from './hooks/useExpenseInvoiceManager';
 import { useExpenseInvoiceArticleManager } from './hooks/useExpenseInvoiceArticleManager';
 import { useExpenseInvoiceControlManager } from './hooks/useExpenseInvoiceControlManager';
@@ -38,6 +37,7 @@ import { ExpenseInvoiceFinancialInformation } from './form/ExpenseInvoiceFinanci
 import { ExpenseInvoiceGeneralConditions } from './form/ExpenseInvoiceGeneralConditions';
 import { ExpenseInvoiceExtraOptions } from './form/ExpenseInvoiceExtraOptions';
 import { ExpenseInvoiceControlSection } from './form/ExpenseInvoiceControlSection';
+import useInvoiceRangeDates from '@/hooks/content/useInvoiceRangeDates';
 
 interface ExpenseInvoiceFormProps {
   className?: string;
@@ -64,8 +64,8 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       !firmId
         ? [
             { title: tCommon('menu.buying'), href: '/buying' },
-            { title: tInvoicing('expense_invoice.plural'), href: '/buying/expense_invoices' },
-            { title: tInvoicing('expense_invoice.new') }
+            { title: tInvoicing('invoice.plural'), href: '/buying/expense_invoices' },
+            { title: tInvoicing('invoice.new') }
           ]
         : [
             { title: tCommon('menu.contacts'), href: '/contacts' },

@@ -187,8 +187,8 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
       <ExpenseInvoiceActionsContext.Provider value={context}>
         <Card className={className}>
           <CardHeader>
-            <CardTitle>{tInvoicing('expense_invoice.singular')}</CardTitle>
-            <CardDescription>{tInvoicing('expense_invoice.card_description')}</CardDescription>
+            <CardTitle>{tInvoicing('invoice.singular')}</CardTitle>
+            <CardDescription>{tInvoicing('invoice.card_description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <DataTable

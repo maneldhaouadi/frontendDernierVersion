@@ -82,8 +82,8 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     if (invoice?.sequential)
       setRoutes([
         { title: tCommon('menu.buying'), href: '/buying' },
-        { title: tInvoicing('expense_invoice.plural'), href: '/buying/expense_invoices' },
-        { title: tInvoicing('expense_invoice.singular') + ' N° ' + invoice?.sequential }
+        { title: tInvoicing('invoice.plural'), href: '/buying/expense_invoices' },
+        { title: tInvoicing('invoice.singular') + ' N° ' + invoice?.sequential }
       ]);
   }, [router.locale, invoice?.sequential]);
 
@@ -211,6 +211,7 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       isTaxWithholdingHidden: !data?.expenseInvoiceMetaData?.hasTaxWithholding
     });
     //invoice article infos
+    //propriete de l'interface
     articleManager.setArticles(data?.articleExpenseEntries || []);
     console.log(data);
     console.log("Avantt Update");

@@ -201,7 +201,6 @@ export const useExpenseInvoiceArticleManager = create<ExpenseInvoiceArticleManag
     return get().articles.map((item) => {
       const { subTotal, total } = calculateForInvoice(item.article);
       return { ...item.article, total, subTotal };
-      console.log("Articless,getArticles");
     });
   },
   removeArticleDescription: () => {
