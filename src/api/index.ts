@@ -46,11 +46,10 @@ import { upload } from './upload';
 export * from './upload';
 import { user } from './user';
 export * from './user';
-import { quotation_achat } from './quotation_achat';
-export * from './quotation_achat'
 import { expense_invoice } from './expense_invoice';
 export * from './expense_invoice'
-
+import { expense_quotation } from './expense-quotation';
+export * from './expense-quotation'
 export * from '../types/response';
 export * from '../types/enums';
 
@@ -79,6 +78,7 @@ export const api = {
   taxWithholding,
   upload,
   user,
-  quotation_achat,
-  expense_invoice
+  expense_invoice,
+  expense_quotation
+
 };
