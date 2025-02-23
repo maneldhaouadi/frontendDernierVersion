@@ -29,6 +29,7 @@
       "created_at": "Date of creation",
       "notes": "Notes",
       "files": "Files",
+      "documents":"Documents Principals",
       "no_date": "Missing Date",
       "no_due_date": "Missing Due Date"
     },

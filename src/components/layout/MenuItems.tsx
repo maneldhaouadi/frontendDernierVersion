@@ -83,7 +83,7 @@ const baseMenuItems = [
       {
         code: 'quotations',
         title: 'Quotations',
-        href: '/buying/expense-quotations',
+        href: '/buying/expense_quotations',
         icon: <File className="h-5 w-5" />
       },
       {

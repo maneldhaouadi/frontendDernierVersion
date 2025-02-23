@@ -8,8 +8,8 @@ import {
   ToastValidation,
   UpdateQuotationSequentialNumber
 } from '@/types';
-import { QUOTATION_FILTER_ATTRIBUTES } from '@/constants/quotation.filter-attributes';
-import { CreateExpensQuotationDto, DuplicateExpensQuotationDto, ExpensQuotation, EXPENSQUOTATION_STATUS, ExpensQuotationUploadedFile, PagedExpensQuotation, UpdateExpensQuotationDto } from '@/types/expensequotation';
+import { CreateExpensQuotationDto, DuplicateExpensQuotationDto,ExpenseQuotation,EXPENSQUOTATION_STATUS, ExpensQuotationUploadedFile, PagedExpensQuotation, UpdateExpensQuotationDto } from '@/types/expensequotation';
+import { EXPENSE_QUOTATION_FILTER_ATTRIBUTES } from '@/constants/expensequotation.filter-attributes';
 
 const factory = (): CreateExpensQuotationDto => {
   return {
@@ -26,7 +26,7 @@ const factory = (): CreateExpensQuotationDto => {
     interlocutorId: 0,
     notes: '',
     articleQuotationEntries: [],
-    expenseQuotationMetaData: {
+    expensequotationMetaData: {
       showDeliveryAddress: true,
       showInvoiceAddress: true,
       hasBankingDetails: true,
@@ -67,7 +67,8 @@ const factory = (): CreateExpensQuotationDto => {
     )
   );
   return response.data;
-};*/const findPaginated = async (
+};*/
+const findPaginated = async (
   page: number = 1,
   size: number = 5,
   order: 'ASC' | 'DESC' = 'ASC',
@@ -78,7 +79,7 @@ const factory = (): CreateExpensQuotationDto => {
   interlocutorId?: number
 ): Promise<PagedExpensQuotation> => {
   const generalFilter = search
-    ? Object.values(QUOTATION_FILTER_ATTRIBUTES)
+    ? Object.values(EXPENSE_QUOTATION_FILTER_ATTRIBUTES)
         .map((key) => `${key}||$cont||${search}`)
         .join('||$or||')
     : '';
@@ -87,13 +88,19 @@ const factory = (): CreateExpensQuotationDto => {
   const filters = [generalFilter, firmCondition, interlocutorCondition].filter(Boolean).join(',');
 
   const response = await axios.get<PagedExpensQuotation>(
-    `public/expensquotation/list?sort=${sortKey},${order}&filter=${filters}&limit=${size}&page=${page}&join=${relations.join(',')}`
+    new String().concat(
+      'public/expensquotation/list?',
+      `sort=${sortKey},${order}&`,
+      `filter=${filters}&`,
+      `limit=${size}&page=${page}&`,
+      `join=${relations.join(',')}`
+    )
   );
   return response.data;
 };
 
-const findChoices = async (status: EXPENSQUOTATION_STATUS): Promise<ExpensQuotation[]> => {
-  const response = await axios.get<ExpensQuotation[]>(
+const findChoices = async (status: EXPENSQUOTATION_STATUS): Promise<ExpenseQuotation[]> => {
+  const response = await axios.get<ExpenseQuotation[]>(
     `public/expensequotation/all?filter=status||$eq||${status}`
   );
   return response.data;
@@ -107,20 +114,20 @@ const findOne = async (
     'bankAccount',
     'interlocutor',
     'firm.currency',
-    'quotationMetaData',
+    'expensequotationMetaData',
     'uploads',
     'invoices',
     'uploads.upload',
     'firm.deliveryAddress',
     'firm.invoicingAddress',
-    'articleQuotationEntries',
+    'expensearticleQuotationEntries',
     'firm.interlocutorsToFirm',
-    'articleQuotationEntries.article',
-    'articleQuotationEntries.articleQuotationEntryTaxes',
-    'articleQuotationEntries.articleQuotationEntryTaxes.tax'
+    'expensearticleQuotationEntries.article',
+    'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes',
+    'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes.tax'
   ]
-): Promise<ExpensQuotation & { files: ExpensQuotationUploadedFile[] }> => {
-  const response = await axios.get<ExpensQuotation>(`public/expensquotation/${id}?join=${relations.join(',')}`);
+): Promise<ExpenseQuotation & { files: ExpensQuotationUploadedFile[] }> => {
+  const response = await axios.get<ExpenseQuotation>(`public/expensquotation/${id}?join=${relations.join(',')}`);
   return { ...response.data, files: await getQuotationUploads(response.data) };
 };
 
@@ -151,14 +158,24 @@ const create = async (quotation: CreateExpenseQuotationDto, files: File[]): Prom
 
 */
 
-const create = async (expense_quotation: CreateExpensQuotationDto): Promise<ExpensQuotation> => {
-  const response = await axios.post<ExpensQuotation>('public/expensquotation/save', expense_quotation);
+const create = async (quotation: CreateExpensQuotationDto, files: File[]): Promise<ExpenseQuotation> => {
+  // Télécharger les fichiers associés au devis
+  const uploadIds = await uploadQuotationFiles(files);
+  
+  // Envoyer la requête POST pour créer la quotation en ajoutant les fichiers
+  const response = await axios.post<ExpenseQuotation>('public/expensquotation/save', {
+    ...quotation,
+    uploads: uploadIds.map((id) => ({
+      uploadId: id
+    }))
+  });
+  
   return response.data;
 };
 
 
 
-const getQuotationUploads = async (quotation: ExpensQuotation): Promise<ExpensQuotationUploadedFile[]> => {
+const getQuotationUploads = async (quotation: ExpenseQuotation): Promise<ExpensQuotationUploadedFile[]> => {
   if (!quotation?.uploads) return [];
 
   const uploads = await Promise.all(
@@ -195,17 +212,17 @@ const download = async (id: number, template: string): Promise<any> => {
   return response;
 };
 
-const duplicate = async (duplicateQuotationDto: DuplicateExpensQuotationDto): Promise<ExpensQuotation> => {
-  const response = await axios.post<ExpensQuotation>(
+const duplicate = async (duplicateQuotationDto: DuplicateExpensQuotationDto): Promise<ExpenseQuotation> => {
+  const response = await axios.post<ExpenseQuotation>(
     '/public/expensquotation/duplicate',
     duplicateQuotationDto
   );
   return response.data;
 };
 
-const update = async (quotation: UpdateExpensQuotationDto, files: File[]): Promise<ExpensQuotation> => {
+const update = async (quotation: UpdateExpensQuotationDto, files: File[]): Promise<ExpenseQuotation> => {
   const uploadIds = await uploadQuotationFiles(files);
-  const response = await axios.put<ExpensQuotation>(`public/expensquotation/${quotation.id}`, {
+  const response = await axios.put<ExpenseQuotation>(`public/expensquotation/${quotation.id}`, {
     ...quotation,
     uploads: [
       ...(quotation.uploads || []),
@@ -217,17 +234,17 @@ const update = async (quotation: UpdateExpensQuotationDto, files: File[]): Promi
   return response.data;
 };
 
-const invoice = async (id?: number, createInvoice?: boolean): Promise<ExpensQuotation> => {
-  const response = await axios.put<ExpensQuotation>(`public/expensequotation/invoice/${id}/${createInvoice}`);
+const invoice = async (id?: number, createInvoice?: boolean): Promise<ExpenseQuotation> => {
+  const response = await axios.put<ExpenseQuotation>(`public/expensequotation/invoice/${id}/${createInvoice}`);
   return response.data;
 };
 
-const remove = async (id: number): Promise<ExpensQuotation> => {
-  const response = await axios.delete<ExpensQuotation>(`public/expensequotation/${id}`);
+const remove = async (id: number): Promise<ExpenseQuotation> => {
+  const response = await axios.delete<ExpenseQuotation>(`expensquotation/delete/${id}`);
   return response.data;
 };
 
-const validate = (quotation: Partial<ExpensQuotation>): ToastValidation => {
+const validate = (quotation: Partial<ExpenseQuotation>): ToastValidation => {
   if (!quotation.date) return { message: 'La date est obligatoire' };
   if (!quotation.dueDate) return { message: "L'échéance est obligatoire" };
   if (!quotation.object) return { message: "L'objet est obligatoire" };
@@ -239,7 +256,7 @@ const validate = (quotation: Partial<ExpensQuotation>): ToastValidation => {
 };
 
 const updateQuotationsSequentials = async (updatedSequenceDto: UpdateQuotationSequentialNumber) => {
-  const response = await axios.put<ExpensQuotation>(
+  const response = await axios.put<ExpenseQuotation>(
     `/public/expensquotation/update-quotation-sequences`,
     updatedSequenceDto
   );

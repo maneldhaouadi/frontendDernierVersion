@@ -1,11 +1,10 @@
 import React from 'react';
-import { useRouter } from 'next/router';
-import { ExpenseQuotationCreateForm } from '@/components/buying/ExpenseQuotationCreateForm';
+import { useSearchParams } from 'next/navigation';
+import { ExpenseQuotationCreateForm } from '@/components/buying/expense_quotation/ExpenseQuotationCreateForm';
 
 export default function Page() {
-  const router = useRouter();
-  const firmId = router.query.firmId ? String(router.query.firmId) : undefined;
-
+  const params = useSearchParams();
+  const firmId = params.get('firmId') || undefined;
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <ExpenseQuotationCreateForm firmId={firmId} />

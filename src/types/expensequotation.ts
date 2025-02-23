@@ -22,7 +22,7 @@ export enum EXPENSQUOTATION_STATUS {
   Invoiced = 'quotation.status.invoiced'
 }
 
-export interface ExpensQuotationMetaData extends DatabaseEntity {
+export interface ExpenseQuotationMetaData extends DatabaseEntity {
   id?: number;
   showInvoiceAddress?: boolean;
   showDeliveryAddress?: boolean;
@@ -33,14 +33,14 @@ export interface ExpensQuotationMetaData extends DatabaseEntity {
   taxSummary?: { taxId: number; amount: number }[];  // corresponds to the `taxSummary` JSON field in the database
 }
 
-export interface ExpensQuotationTaxEntry extends DatabaseEntity {
+export interface ExpenseQuotationTaxEntry extends DatabaseEntity {
   id?: number;
   expenseArticleEntryId?: number;  // Linking to `expense_article_quotation_entry`
   tax?: Tax;
   taxId?: number;
 }
 
-export interface ExpensArticleQuotationEntry extends DatabaseEntity {
+export interface ExpenseArticleQuotationEntry extends DatabaseEntity {
   id?: number;
   expenseQuotationId?: number;  // Linking to `expense_quotation`
   article?: Article;
@@ -49,13 +49,13 @@ export interface ExpensArticleQuotationEntry extends DatabaseEntity {
   quantity?: number;
   discount?: number;
   discount_type?: DISCOUNT_TYPE;
-  articleQuotationEntryTaxes?: ExpensQuotationTaxEntry[];  // Relates to `expense_article_quotation_entry_tax`
+  articleExpensQuotationEntryTaxes?: ExpenseQuotationTaxEntry[];  // Relates to `expense_article_quotation_entry_tax`
   subTotal?: number;
   total?: number;
 }
 
 export interface CreateExpensArticleQuotationEntry extends Omit<
-  ExpensArticleQuotationEntry,
+  ExpenseArticleQuotationEntry,
   | 'id'
   | 'expenseQuotationId'
   | 'subTotal'
@@ -64,20 +64,20 @@ export interface CreateExpensArticleQuotationEntry extends Omit<
   | 'createdAt'
   | 'deletedAt'
   | 'isDeletionRestricted'
-  | 'articleQuotationEntryTaxes'
+  | 'articleExpensQuotationEntryTaxes'
 > {
   taxes?: number[];  // Tax IDs
 }
 
-export interface ExpensQuotationUpload extends DatabaseEntity {
+export interface ExpenseQuotationUpload extends DatabaseEntity {
   id?: number;
   expenseQuotationId?: number;  // Linking to `expense_quotation`
-  expenseQuotation?: ExpensQuotation;
+  expenseQuotation?: ExpenseQuotation;
   uploadId?: number;
   upload?: Upload;
 }
 
-export interface ExpensQuotation extends DatabaseEntity {
+export interface ExpenseQuotation extends DatabaseEntity {
   id?: number;
   sequential?: string;
   object?: string;
@@ -98,17 +98,17 @@ export interface ExpensQuotation extends DatabaseEntity {
   interlocutorId?: number;
   interlocutor?: Interlocutor;
   notes?: string;
-  expenseQuotationMetaData?: ExpensQuotationMetaData;  // Relates to `expense_quotation_meta_data`
+  expensequotationMetaData?: ExpenseQuotationMetaData;  // Relates to `expense_quotation_meta_data`
   bankAccountId?: number | null;
   bankAccount?: BankAccount;
-  articleQuotationEntries?: ExpensArticleQuotationEntry[];
-  uploads?: ExpensQuotationUpload[];
+  expensearticleQuotationEntries?: ExpenseArticleQuotationEntry[];
+  uploads?: ExpenseQuotationUpload[];
   invoices: Invoice[];
 }
 
 export interface CreateExpensQuotationDto
   extends Omit<
-    ExpensQuotation,
+    ExpenseQuotation,
     | 'id'
     | 'createdAt'
     | 'updatedAt'
@@ -135,9 +135,9 @@ export interface DuplicateExpensQuotationDto {
   includeFiles?: boolean;
 }
 
-export interface PagedExpensQuotation extends PagedResponse<ExpensQuotation> {}
+export interface PagedExpensQuotation extends PagedResponse<ExpenseQuotation> {}
 
 export interface ExpensQuotationUploadedFile {
-  upload: ExpensQuotationUpload;
+  upload: ExpenseQuotationUpload;
   file: File;
 }

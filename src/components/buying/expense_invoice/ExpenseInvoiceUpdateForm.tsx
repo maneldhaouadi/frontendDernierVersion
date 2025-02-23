@@ -26,7 +26,6 @@ import { DOCUMENT_TYPE } from '@/types/enums/document-type';
 import { useRouter } from 'next/router';
 import { useBreadcrumb } from '@/components/layout/BreadcrumbContext';
 import useInitializedState from '@/hooks/use-initialized-state';
-import { useQuotationManager } from '../quotation/hooks/useQuotationManager';
 import useQuotationChoices from '@/hooks/content/useQuotationChoice';
 
 import useTaxWithholding from '@/hooks/content/useTaxWitholding';
@@ -43,6 +42,7 @@ import { ExpenseInvoiceGeneralConditions } from './form/ExpenseInvoiceGeneralCon
 import { ExpenseInvoiceExtraOptions } from './form/ExpenseInvoiceExtraOptions';
 import { ExpenseInvoiceArticleManagement } from './form/ExpenseInvoiceArticleManagement';
 import { ExpenseInvoiceGeneralInformation } from './form/ExpenseInvoiceGeneralInformation';
+import { useExpenseQuotationManager } from '../expense_quotation/hooks/useExpenseQuotationManager';
 
 interface ExpenseInvoiceFormProps {
   className?: string;
@@ -59,7 +59,7 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
 
   // Stores
   const invoiceManager = useExpenseInvoiceManager();
-  const quotationManager = useQuotationManager();
+  const quotationManager = useExpenseQuotationManager();
   const controlManager = useExpenseInvoiceControlManager();
   const articleManager = useExpenseInvoiceArticleManager();
 
