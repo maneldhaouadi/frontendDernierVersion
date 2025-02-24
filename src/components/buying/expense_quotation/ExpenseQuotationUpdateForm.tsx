@@ -167,19 +167,31 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
   }, [articleManager.articles, quotationManager.discount, quotationManager.discountType]);
 
   //full quotation setter across multiple stores
-  const setQuotationData = (data: Partial<ExpenseQuotation & { files: ExpensQuotationUploadedFile[] }>) => {
-    //quotation infos
-    data && quotationManager.setQuotation(data, firms, bankAccounts);
+  //full quotation setter across multiple stores
+const setQuotationData = (data: Partial<ExpenseQuotation & { files: ExpensQuotationUploadedFile[] }>) => {
+  if (!data) return;
+  
+  // Mise à jour des infos du devis
+  quotationManager.setQuotation(data, firms, bankAccounts);
 
-    //quotation meta infos
-    controlManager.setControls({
-      isBankAccountDetailsHidden: !data?.expensequotationMetaData?.hasBankingDetails,
-      isArticleDescriptionHidden: !data?.expensequotationMetaData?.showArticleDescription,
-      isGeneralConditionsHidden: !data?.expensequotationMetaData?.hasGeneralConditions
-    });
-    //quotation article infos
-    articleManager.setArticles(data?.expensearticleQuotationEntries || []);
-  };
+  // Mise à jour des infos méta du devis
+  controlManager.setControls({
+    isBankAccountDetailsHidden: !data?.expensequotationMetaData?.hasBankingDetails,
+    isArticleDescriptionHidden: !data?.expensequotationMetaData?.showArticleDescription,
+    isGeneralConditionsHidden: !data?.expensequotationMetaData?.hasGeneralConditions
+  });
+
+  // Vérification de la présence d'articles
+  const articles = data?.expensearticleQuotationEntries || [];
+  if (articles.length === 0) {
+    toast.error("Les données des articles sont vides.", { position: "bottom-right" });
+    // Vous pouvez ici ajouter un traitement supplémentaire si besoin
+  }
+
+  // Mise à jour des articles
+  articleManager.setArticles(articles);
+};
+
 
   //initialized value to detect changement whiie modifying the quotation
   const { isDisabled, globalReset } = useInitializedState({
@@ -201,6 +213,7 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
     },
     loading: fetching
   });
+  console.log("122222",articleManager.getArticles());
 
   //update quotation mutator
   const { mutate: updateQuotation, isPending: isUpdatingPending } = useMutation({
@@ -229,10 +242,10 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
         description: controlManager.isArticleDescriptionHidden ? '' : article?.article?.description
       },
       quantity: article?.quantity || 0,
-      unit_price: article?.unit_price || 0,
+      unit_price: article?.unitPrice || 0,
       discount: article?.discount || 0,
       discount_type:
-        article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+        article?.discountType === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
       taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => entry?.tax?.id) || []
     }));
 console.log("article recupere",articleManager.getArticles())
@@ -266,16 +279,21 @@ console.log("article recupere",articleManager.getArticles())
       },
       uploads: quotationManager.uploadedFiles.filter((u) => !!u.upload).map((u) => u.upload)
     };
-    const validation = api.expense_quotation.validate(quotation);
-    if (validation.message) {
-      toast.error(validation.message, { position: validation.position || 'bottom-right' });
-    } else {
-      updateQuotation({
-        quotation,
-        files: quotationManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
-      });
-    }
+    console.log('Quotation:', quotation.articleQuotationEntries);
+const validation = api.expense_quotation.validate(quotation);
+if (validation.message) {
+  toast.error(validation.message, { position: validation.position || 'bottom-right' });
+} else {
+  console.log('Validation passed');
+  updateQuotation({
+    quotation,
+    files: quotationManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
+  });
+
+}
+console.log('Quotation:', quotation.articleQuotationEntries);
   };
+
 
   //component representation
   if (debounceFetching) return <Spinner className="h-screen" />;

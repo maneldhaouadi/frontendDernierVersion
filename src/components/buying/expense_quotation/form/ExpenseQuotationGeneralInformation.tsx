@@ -44,7 +44,6 @@ export const ExpenseQuotationGeneralInformation = ({
   const mainInterlocutor = quotationManager.firm?.interlocutorsToFirm?.find(
     (entry) => entry?.isMain
   );
-console.log("pleaaaseeeee",quotationManager.firm?.name)
   return (
     <div className={cn(className)}>
       <div className="flex gap-4 pb-5 border-b">

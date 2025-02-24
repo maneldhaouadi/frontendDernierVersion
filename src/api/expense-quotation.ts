@@ -99,12 +99,33 @@ const findPaginated = async (
   return response.data;
 };
 
-const findChoices = async (status: EXPENSQUOTATION_STATUS): Promise<ExpenseQuotation[]> => {
-  const response = await axios.get<ExpenseQuotation[]>(
-    `public/expensequotation/all?filter=status||$eq||${status}`
-  );
-  return response.data;
+const findChoices = async (): Promise<ExpenseQuotation[]> => {
+  try {
+    // Ne pas ajouter de paramètre `status` pour récupérer toutes les quotations
+    const url = `public/expensquotation/all`;
+
+    console.log("Fetching quotations from:", url);
+
+    const response = await axios.get<ExpenseQuotation[]>(url);
+
+    console.log("Fetched Quotations:", response.data); // Vérification des données reçues
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching quotations:", error);
+    return []; // Retourne un tableau vide en cas d'erreur
+  }
 };
+
+
+
+
+
+
+
+
+
+
+
 
 const findOne = async (
   id: number,

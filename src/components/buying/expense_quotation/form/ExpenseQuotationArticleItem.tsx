@@ -78,22 +78,22 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
     if (unitPrice.match(regex)) {
       onChange({
         ...article,
-        unit_price: parseFloat(unitPrice)
+        unitPrice: parseFloat(unitPrice)
       });
     }
   };
 
   const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const discount = e.target.value;
-    const { discount_type } = article;
+    const { discountType } = article;
 
-    if (discount_type === DISCOUNT_TYPE.PERCENTAGE) {
+    if (discountType === DISCOUNT_TYPE.PERCENTAGE) {
       const percentage = parseFloat(discount);
       onChange({
         ...article,
         discount: percentage
       });
-    } else if (discount_type === DISCOUNT_TYPE.AMOUNT) {
+    } else if (discountType === DISCOUNT_TYPE.AMOUNT) {
       const regex = new RegExp(`^\\d*(\\.\\d{0,${3}})?$`);
       if (regex.test(discount)) {
         onChange({
@@ -107,7 +107,7 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
   const handleDiscountTypeChange = (value: string) => {
     onChange({
       ...article,
-      discount_type: value === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+      discountType: value === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
       discount: 0 // Reset discount to 0 when changing the type
     });
   };
@@ -184,11 +184,11 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
                 <Input
                   type="number"
                   placeholder="0"
-                  value={article.unit_price}
+                  value={article.unitPrice}
                   onChange={handleUnitPriceChange}
                 />
               ) : (
-                <UneditableInput value={article.unit_price} />
+                <UneditableInput value={article.unitPrice} />
               )}
               <Label className="font-bold mx-1">{currency?.symbol}</Label>
             </div>
@@ -261,7 +261,7 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
               <Select
                 onValueChange={handleDiscountTypeChange}
                 defaultValue={
-                  article.discount_type === DISCOUNT_TYPE.PERCENTAGE ? 'PERCENTAGE' : 'AMOUNT'
+                  article.discountType === DISCOUNT_TYPE.PERCENTAGE ? 'PERCENTAGE' : 'AMOUNT'
                 }>
                 <SelectTrigger className="w-1/2">
                   <SelectValue />
@@ -275,7 +275,7 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
               <UneditableInput
                 className="w-1/2 font-bold mx-1"
                 value={
-                  article.discount_type === DISCOUNT_TYPE.PERCENTAGE ? '%' : currency?.symbol || '$'
+                  article.discountType === DISCOUNT_TYPE.PERCENTAGE ? '%' : currency?.symbol || '$'
                 }
               />
             )}

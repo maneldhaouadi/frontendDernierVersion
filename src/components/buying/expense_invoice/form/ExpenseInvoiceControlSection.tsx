@@ -22,8 +22,8 @@ import { useRouter } from 'next/router';
 import {
   BankAccount,
   Currency,
+  ExpenseQuotation,
   PaymentInvoiceEntry,
-  Quotation,
   TaxWithholding
 } from '@/types';
 import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
@@ -58,7 +58,7 @@ interface ExpenseInvoiceControlSectionProps {
   isDataAltered?: boolean;
   bankAccounts: BankAccount[];
   currencies: Currency[];
-  quotations: Quotation[];
+  quotations: ExpenseQuotation[];
   payments?: PaymentInvoiceEntry[];
   taxWithholdings?: TaxWithholding[];
   handleSubmit?: () => void;
@@ -94,6 +94,7 @@ export const ExpenseInvoiceControlSection = ({
   const { t: tCurrency } = useTranslation('currency');
 
   const invoiceManager = useExpenseInvoiceManager();
+  
   const controlManager = useExpenseInvoiceControlManager();
   const articleManager = useExpenseInvoiceArticleManager();
 
@@ -244,6 +245,10 @@ export const ExpenseInvoiceControlSection = ({
     }
   ];
   const sequential = fromSequentialObjectToString(invoiceManager.sequentialNumber);
+  console.log("invoiceManager:", invoiceManager);
+  console.log("invoiceManager.quotationId:", invoiceManager?.quotationId);
+  console.log("Quotations:", quotations);
+
   return (
     <>
       <ExpenseInvoiceActionDialog
@@ -320,53 +325,74 @@ export const ExpenseInvoiceControlSection = ({
           })}
         </div>
         {/* associated quotation */}
-        <div>
-          <div className="border-b w-full  mt-5">
-            <h1 className="font-bold">{tInvoicing('controls.associate_quotation')}</h1>
-            <div className="my-4">
-              {edit ? (
-                <SelectShimmer isPending={loading}>
-                  <Select
-                    key={invoiceManager?.quotationId || 'quotationId'}
-                    onValueChange={(e) => {
-                      invoiceManager.set(
-                        'quotationId',
-                        quotations?.find((q) => q.id == parseInt(e))?.id
-                      );
-                    }}
-                    value={invoiceManager?.quotationId?.toString()}>
-                    <SelectTrigger className="my-1 w-full">
-                      <SelectValue
-                        placeholder={tInvoicing('controls.quotation_select_placeholder')}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {quotations?.map((q: Quotation) => {
-                        console.log('Quotations:', quotations);
-                        console.log('Quotation ID sélectionnée:', invoiceManager?.quotationId);
-                        return (
-                          <SelectItem key={q.id} value={q?.id?.toString() || ''}>
-                            <span className="font-bold">{q?.sequential}</span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </SelectShimmer>
-              ) : invoiceManager.quotationId ? (
-                <UneditableInput
-                  className="font-bold my-4"
-                  value={quotations.find((q) => q.id == invoiceManager.quotationId)?.sequential}
-                />
-              ) : (
-                <Label className="flex p-2 items-center justify-center gap-2 underline ">
-                  <AlertCircle />
-                  {tInvoicing('controls.no_associated_quotation')}
-                </Label>
-              )}
-            </div>
-          </div>
-        </div>
+        <div className="border-b w-full mt-5">
+  <h1 className="font-bold">{tInvoicing('controls.associate_quotation')}</h1>
+  <div className="my-4">
+    {edit ? (
+      <SelectShimmer isPending={loading}>
+        <Select
+          key={invoiceManager?.quotationId || 'quotationId'}
+          onValueChange={(e) => {
+            const selectedQuotation = quotations?.find((q) => q.id === parseInt(e));
+            console.log("Selected Quotation:", selectedQuotation);
+            if (selectedQuotation) {
+              invoiceManager.set('quotationId', selectedQuotation.id);
+            }
+          }}
+          value={invoiceManager?.quotationId?.toString() || ''}>
+          
+          <SelectTrigger className="my-1 w-full">
+            <SelectValue placeholder={tInvoicing('controls.quotation_select_placeholder')} />
+          </SelectTrigger>
+
+          <SelectContent>
+          {quotations?.length > 0 ? (
+  quotations.map((q: ExpenseQuotation) => {
+    if (!q.id) return null;  // Si `q.id` est undefined ou null, ne pas afficher l'élément
+    return (
+      <SelectItem key={q.id} value={q.id.toString()}>
+        <span className="font-bold">{q.sequential}</span>
+      </SelectItem>
+    );
+  })
+) : (
+  <SelectItem disabled value="no-selection">
+    {tInvoicing('controls.no_associated_quotation')}
+  </SelectItem>
+)}
+          </SelectContent>
+        </Select>
+      </SelectShimmer>
+    ) : invoiceManager.quotationId ? (
+      <UneditableInput
+        className="font-bold my-4"
+        value={quotations.find((q) => q.id === invoiceManager.quotationId)?.sequential || ''}
+      />
+    ) : (
+      <Label className="flex p-2 items-center justify-center gap-2 underline ">
+        <AlertCircle />
+        {tInvoicing('controls.no_associated_quotation')}
+      </Label>
+    )}
+  </div>
+
+  {/* Afficher la liste des éléments associés à la quotation */}
+  {invoiceManager.quotationId && (
+    <div className="my-4">
+      <h2 className="font-semibold">{tInvoicing('controls.associated_expenses')}</h2>
+      <ul>
+        {quotations
+          .find((q) => q.id === invoiceManager?.quotationId)?.expensearticleQuotationEntries?.map((expense, index) => (
+            <li key={index} className="my-2">
+              <span>{expense.article?.id}</span> - <span>{expense.discount}</span>
+            </li>
+          )) || (
+          <li>{tInvoicing('controls.no_expenses_associated')}</li>
+        )}
+      </ul>
+    </div>
+  )}
+</div>
 
         {/* Payment list */}
         {status &&

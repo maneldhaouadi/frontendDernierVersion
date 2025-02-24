@@ -176,7 +176,6 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
       toast.error(message);
     }
   });
-  console.log("pleaaaseeeee",quotationManager.firm?.name)
 
   const loading =
     isFetchFirmsPending ||
@@ -214,10 +213,10 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
       description: !controlManager.isArticleDescriptionHidden ? article?.article?.description : ''
     },
     quantity: article?.quantity,
-    unit_price: article?.unit_price,
+    unit_price: article?.unitPrice,
     discount: article?.discount,
     discount_type:
-      article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+      article?.discountType === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
     taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => {
       return entry?.tax?.id;
     })

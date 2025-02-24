@@ -57,7 +57,6 @@ export const ExpenseInvoiceGeneralInformation = ({
       invoiceManager.set('uploadedFiles', updatedFiles);
     }
   };
-console.log("invoiceemanager",invoiceManager);
   return (
     <div className={cn(className)}>
       {/* Bloc pour télécharger le fichier avant la date */}
@@ -117,33 +116,42 @@ console.log("invoiceemanager",invoiceManager);
   
       {/* Section Object et Sequence Number */}
       <div className="flex gap-4 pb-5 border-b mt-5">
-        <div className="w-4/6">
-          <Label>{tInvoicing('invoice.attributes.object')} (*)</Label>
-          {edit ? (
-            <Input
-              className="mt-1"
-              placeholder="Ex. Facture pour le 1er trimestre 2024"
-              value={invoiceManager.object || ''}
-              onChange={(e) => {
-                invoiceManager.set('object', e.target.value);
-              }}
-              isPending={loading}
-            />
-          ) : (
-            <UneditableInput value={invoiceManager.object} />
-          )}
-        </div>
-        <div className="w-2/6">
-          <Label>{tInvoicing('invoice.singular')} N°</Label>
-          <SequenceInput
-            prefix={invoiceManager.sequentialNumber?.prefix}
-            dateFormat={invoiceManager.sequentialNumber?.dynamicSequence}
-            value={invoiceManager.sequentialNumber?.next}
-            loading={loading}
-          />
-        </div>
-      </div>
-  
+  <div className="w-4/6">
+    <Label>{tInvoicing('invoice.attributes.object')} (*)</Label>
+    {edit ? (
+      <Input
+        className="mt-1"
+        placeholder="Ex. Facture pour le 1er trimestre 2024"
+        value={invoiceManager.object || ''}
+        onChange={(e) => {
+          invoiceManager.set('object', e.target.value);
+        }}
+        isPending={loading}
+      />
+    ) : (
+      <UneditableInput value={invoiceManager.object} />
+    )}
+  </div>
+  <div className="w-2/6">
+    <Label>{tInvoicing('invoice.singular')} N°</Label>
+    {edit ? (
+      <Input
+        className="mt-1"
+        placeholder="Numéro séquentiel"
+        value={invoiceManager.sequentialNumber?.next || ''}  // Valeur saisie manuellement
+        onChange={(e) => {
+          invoiceManager.set('sequentialNumber', {
+            ...invoiceManager.sequentialNumber,  // Garder les autres propriétés
+            next: e.target.value,  // Mettre à jour le 'next' avec la valeur saisie
+          });
+        }}
+        isPending={loading}
+      />
+    ) : (
+      <UneditableInput value={invoiceManager.sequentialNumber?.next || ''} />
+    )}
+  </div>
+</div>
       {/* Section Firm et Interlocutor */}
       <div className="flex gap-4 pb-5 border-b mt-5">
         <div className="flex flex-col gap-4 w-1/2">

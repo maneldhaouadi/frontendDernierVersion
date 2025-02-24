@@ -3,6 +3,7 @@ import { BankAccount } from './bank-account';
 import { Cabinet } from './cabinet';
 import { Currency } from './currency';
 import { DISCOUNT_TYPE } from './enums/discount-types';
+import { ExpenseInvoice } from './expense_invoices';
 import { Firm } from './firm';
 import { Interlocutor } from './interlocutor';
 import { Invoice } from './invoice';
@@ -45,10 +46,10 @@ export interface ExpenseArticleQuotationEntry extends DatabaseEntity {
   expenseQuotationId?: number;  // Linking to `expense_quotation`
   article?: Article;
   articleId?: number;
-  unit_price?: number;
+  unitPrice?: number;
   quantity?: number;
   discount?: number;
-  discount_type?: DISCOUNT_TYPE;
+  discountType?: DISCOUNT_TYPE;
   articleExpensQuotationEntryTaxes?: ExpenseQuotationTaxEntry[];  // Relates to `expense_article_quotation_entry_tax`
   subTotal?: number;
   total?: number;
@@ -103,7 +104,7 @@ export interface ExpenseQuotation extends DatabaseEntity {
   bankAccount?: BankAccount;
   expensearticleQuotationEntries?: ExpenseArticleQuotationEntry[];
   uploads?: ExpenseQuotationUpload[];
-  invoices: Invoice[];
+  invoices: ExpenseInvoice[];
 }
 
 export interface CreateExpensQuotationDto

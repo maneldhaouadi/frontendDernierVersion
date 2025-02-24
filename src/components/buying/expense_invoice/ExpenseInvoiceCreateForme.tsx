@@ -2,7 +2,6 @@ import React from 'react';
 import { useRouter } from 'next/router';
 import { cn } from '@/lib/utils';
 import { api } from '@/api';
-import {QUOTATION_STATUS } from '@/types';
 import { Spinner } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
 import useTax from '@/hooks/content/useTax';
@@ -38,6 +37,8 @@ import { ExpenseInvoiceGeneralConditions } from './form/ExpenseInvoiceGeneralCon
 import { ExpenseInvoiceExtraOptions } from './form/ExpenseInvoiceExtraOptions';
 import { ExpenseInvoiceControlSection } from './form/ExpenseInvoiceControlSection';
 import useInvoiceRangeDates from '@/hooks/content/useInvoiceRangeDates';
+import { EXPENSQUOTATION_STATUS, QUOTATION_STATUS } from '@/types';
+import useExpenseQuotationChoices from '@/hooks/content/useExpenseQuotationChoice';
 
 interface ExpenseInvoiceFormProps {
   className?: string;
@@ -88,7 +89,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     'deliveryAddress',
     'currency'
   ]);
-  const { quotations, isFetchQuotationPending } = useQuotationChoices(QUOTATION_STATUS.Invoiced);
+  const { quotations, isFetchQuotationPending } = useExpenseQuotationChoices(EXPENSQUOTATION_STATUS.Invoiced);
   const { cabinet, isFetchCabinetPending } = useCabinet();
   const { taxes, isFetchTaxesPending } = useTax();
   const { currencies, isFetchCurrenciesPending } = useCurrency();
@@ -274,7 +275,9 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
         hasTaxWithholding: !controlManager.isTaxWithholdingHidden
       }
     };
-    const validation = api.expense_invoice.validate(invoice, dateRange);
+    console.log("Invoice Manager:", invoiceManager);
+    console.log("Quotation ID:", invoiceManager?.quotationId);
+        const validation = api.expense_invoice.validate(invoice, dateRange);
     if (validation.message) {
       toast.error(validation.message);
     } else {
@@ -344,9 +347,9 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
               <CardContent className="p-5">
                 {/* Control Section */}
                 <ExpenseInvoiceControlSection
+                    quotations={quotations}
                   bankAccounts={bankAccounts}
                   currencies={currencies}
-                  quotations={quotations}
                   taxWithholdings={taxWithholdings}
                   handleSubmitDraft={() => onSubmit(EXPENSE_INVOICE_STATUS.Draft)}
                   handleSubmitValidated={() => onSubmit(EXPENSE_INVOICE_STATUS.Validated)}
@@ -354,6 +357,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
                   reset={globalReset}
                   loading={debounceLoading}
                 />
+                
               </CardContent>
             </Card>
           </ScrollArea>

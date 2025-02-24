@@ -13,12 +13,10 @@ export type ExpenseInvoiceControlManager = {
   setControls: (
     data: Omit<ExpenseInvoiceControlManager, 'toggle' | 'set' | 'getControls' | 'setControls' | 'reset'>
   ) => void;
-  getControls: () => Omit<
-  ExpenseInvoiceControlManager,
-    'toggle' | 'set' | 'getControls' | 'setControls' | 'reset'
-  >;
+  getControls: () => Omit<ExpenseInvoiceControlManager, 'toggle' | 'set' | 'getControls' | 'setControls' | 'reset'>;
   reset: () => void;
 };
+
 
 export const useExpenseInvoiceControlManager = create<ExpenseInvoiceControlManager>()((set, get) => ({
   isBankAccountDetailsHidden: false,
@@ -52,6 +50,6 @@ export const useExpenseInvoiceControlManager = create<ExpenseInvoiceControlManag
       isGeneralConditionsHidden: false,
       isArticleDescriptionHidden: false,
       isTaxStampHidden: false,
-      isTaxWithholdingHidden: true
+      isTaxWithholdingHidden: true,
     })
 }));

@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api';
 import {
+  EXPENSQUOTATION_STATUS,
   InvoiceUploadedFile,
   QUOTATION_STATUS
 } from '@/types';
@@ -43,6 +44,7 @@ import { ExpenseInvoiceExtraOptions } from './form/ExpenseInvoiceExtraOptions';
 import { ExpenseInvoiceArticleManagement } from './form/ExpenseInvoiceArticleManagement';
 import { ExpenseInvoiceGeneralInformation } from './form/ExpenseInvoiceGeneralInformation';
 import { useExpenseQuotationManager } from '../expense_quotation/hooks/useExpenseQuotationManager';
+import useExpenseQuotationChoices from '@/hooks/content/useExpenseQuotationChoice';
 
 interface ExpenseInvoiceFormProps {
   className?: string;
@@ -101,7 +103,7 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     'deliveryAddress',
     'currency'
   ]);
-  const { quotations, isFetchQuotationPending } = useQuotationChoices(QUOTATION_STATUS.Invoiced);
+  const { quotations, isFetchQuotationPending } = useExpenseQuotationChoices(EXPENSQUOTATION_STATUS.Invoiced);
   const { taxes, isFetchTaxesPending } = useTax();
   const { currencies, isFetchCurrenciesPending } = useCurrency();
   const { bankAccounts, isFetchBankAccountsPending } = useBankAccount();
@@ -111,7 +113,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     DOCUMENT_TYPE.INVOICE
   );
   const { dateRange, isFetchInvoiceRangePending } = useInvoiceRangeDates(invoiceManager.id);
-  console.log(dateRange);
   const fetching =
     isFetchPending ||
     isFetchFirmsPending ||
@@ -133,7 +134,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
   React.useEffect(() => {
     const zero = dinero({ amount: 0, precision: digitAfterComma });
     const articles = articleManager.getArticles() || [];
-    console.log("tout les articles",articleManager.getArticles());
     const subTotal = articles?.reduce((acc, article) => {
       return acc.add(
         dinero({
@@ -208,13 +208,13 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       isArticleDescriptionHidden: !data?.expenseInvoiceMetaData?.showArticleDescription,
       isGeneralConditionsHidden: !data?.expenseInvoiceMetaData?.hasGeneralConditions,
       isTaxStampHidden: !data?.expenseInvoiceMetaData?.hasTaxStamp,
-      isTaxWithholdingHidden: !data?.expenseInvoiceMetaData?.hasTaxWithholding
+      isTaxWithholdingHidden: !data?.expenseInvoiceMetaData?.hasTaxWithholding,
+
     });
     //invoice article infos
     //propriete de l'interface
     articleManager.setArticles(data?.articleExpenseEntries || []);
-    console.log(data);
-    console.log("Avantt Update");
+
 
   };
 
@@ -304,7 +304,7 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
         hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
         hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
         hasTaxStamp: !controlManager.isTaxStampHidden,
-        hasTaxWithholding: !controlManager.isTaxWithholdingHidden
+        hasTaxWithholding: !controlManager.isTaxWithholdingHidden,
       },
       uploads: invoiceManager.uploadedFiles.filter((u) => !!u.upload).map((u) => u.upload)
     };
