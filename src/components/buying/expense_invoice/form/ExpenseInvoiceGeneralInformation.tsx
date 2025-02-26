@@ -133,24 +133,29 @@ export const ExpenseInvoiceGeneralInformation = ({
     )}
   </div>
   <div className="w-2/6">
-    <Label>{tInvoicing('invoice.singular')} N°</Label>
-    {edit ? (
-      <Input
-        className="mt-1"
-        placeholder="Numéro séquentiel"
-        value={invoiceManager.sequentialNumber?.next || ''}  // Valeur saisie manuellement
-        onChange={(e) => {
-          invoiceManager.set('sequentialNumber', {
-            ...invoiceManager.sequentialNumber,  // Garder les autres propriétés
-            next: e.target.value,  // Mettre à jour le 'next' avec la valeur saisie
-          });
-        }}
-        isPending={loading}
-      />
-    ) : (
-      <UneditableInput value={invoiceManager.sequentialNumber?.next || ''} />
-    )}
-  </div>
+  <Label>{tInvoicing('invoice.singular')} N°</Label>
+  {edit ? (
+    <Input
+      className="mt-1"
+      placeholder="Numéro séquentiel"
+      value={invoiceManager.sequentialNumbr || ''}
+      onChange={(e) => {
+        const newValue = e.target.value;
+        console.log("Nouvelle valeur du numéro saisi:", newValue);
+        console.log("SEQUENCE:", invoiceManager.sequential);
+
+      
+        // Ne mettre à jour sequentialNumbr que si l'utilisateur veut vraiment le modifier
+        if (invoiceManager.sequential !== newValue) {
+          invoiceManager.set('sequentialNumbr', newValue);
+        }
+      }}             
+      isPending={loading}
+    />
+  ) : (
+    <UneditableInput value={invoiceManager.sequentialNumbr || ''} />
+  )}
+</div>
 </div>
       {/* Section Firm et Interlocutor */}
       <div className="flex gap-4 pb-5 border-b mt-5">

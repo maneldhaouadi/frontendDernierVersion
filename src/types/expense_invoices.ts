@@ -83,6 +83,7 @@ export interface ExpenseInvoiceUpload extends DatabaseEntity {
 export interface ExpenseInvoice extends DatabaseEntity {
   id?: number;
   sequential?: string;
+  sequentialNumbr?: string;
   object?: string;
   date?: string;
   dueDate?: string;
@@ -116,6 +117,7 @@ export interface ExpenseInvoice extends DatabaseEntity {
   taxWithholding?: TaxWithholding;
   taxWithholdingId?: number;
   taxWithholdingAmount?: number;
+
 }
 
 export interface ExpenseCreateInvoiceDto
@@ -132,8 +134,9 @@ export interface ExpenseCreateInvoiceDto
     | 'sequential'
     | 'bankAccount'
   > {
-    articleInvoiceEntries?: ExpenseCreateArticleInvoiceEntry[];
+  articleInvoiceEntries?: ExpenseCreateArticleInvoiceEntry[];
   files?: File[];
+  sequential:string,
 }
 
 export interface ExpenseUpdateInvoiceDto extends ExpenseCreateInvoiceDto {

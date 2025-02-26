@@ -245,6 +245,8 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       date: invoiceManager?.date?.toString(),
       dueDate: invoiceManager?.dueDate?.toString(),
       object: invoiceManager?.object,
+      sequential: invoiceManager?.sequentialNumbr, 
+      sequentialNumbr:invoiceManager.sequential, // Utilisation du manuel ou génération automatique
       cabinetId: invoiceManager?.firm?.cabinetId,
       firmId: invoiceManager?.firm?.id,
       interlocutorId: invoiceManager?.interlocutor?.id,

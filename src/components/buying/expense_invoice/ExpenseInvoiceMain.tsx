@@ -153,7 +153,7 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
     <>
       <ExpenseInvoiceDeleteDialog
         id={invoiceManager?.id}
-        sequential={invoiceManager?.sequential || ''}
+        sequential={invoiceManager?.sequentialNumbr || ''}
         open={deleteDialog}
         deleteInvoice={() => {
           invoiceManager?.id && removeInvoice(invoiceManager?.id);
@@ -162,19 +162,20 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
         onClose={() => setDeleteDialog(false)}
       />
       <ExpenseInvoiceDuplicateDialog
-        id={invoiceManager?.id || 0}
-        sequential={invoiceManager?.sequential || ''}
-        open={duplicateDialog}
-        duplicateInvoice={(includeFiles: boolean) => {
-          invoiceManager?.id &&
-            duplicateInvoice({
-              id: invoiceManager?.id,
-              includeFiles: includeFiles
-            });
-        }}
-        isDuplicationPending={isDuplicationPending}
-        onClose={() => setDuplicateDialog(false)}
-      />
+  id={invoiceManager?.id || 0}
+  sequential={invoiceManager?.sequentialNumbr || ''}  // Correct utilisation de sequentialNumbr
+  open={duplicateDialog}
+  duplicateInvoice={(includeFiles: boolean) => {
+    invoiceManager?.id &&
+      duplicateInvoice({
+        id: invoiceManager?.id,
+        includeFiles: includeFiles
+      });
+  }}
+  isDuplicationPending={isDuplicationPending}
+  onClose={() => setDuplicateDialog(false)}
+/>
+
       <ExpenseInvoiceDownloadDialog
         id={invoiceManager?.id || 0}
         open={downloadDialog}

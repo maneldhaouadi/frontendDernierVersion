@@ -26,7 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface ExpenseInvoiceDuplicateDialogProps {
   className?: string;
   id: number;
-  sequential: string;
+  sequential: string;  // Vérifie que ce nom de prop est bien cohérent
   open: boolean;
   duplicateInvoice: (includeFiles: boolean) => void;
   isDuplicationPending?: boolean;
@@ -36,7 +36,7 @@ interface ExpenseInvoiceDuplicateDialogProps {
 export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDialogProps> = ({
   className,
   id,
-  sequential,
+  sequential,  // Cette prop est utilisée ici
   open,
   duplicateInvoice,
   isDuplicationPending,
@@ -44,30 +44,29 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
 }) => {
   const { t: tCommon } = useTranslation('common');
   const { t: tInvoicing } = useTranslation('invoicing');
-
-  const isDesktop = useMediaQuery('(min-width: 1500px)');
   const [includeFiles, setIncludeFiles] = React.useState(false);
 
   const header = (
     <Label className="leading-5">
       Voulez-vous vraiment dupliquer la facture N°{' '}
-      <span className="font-semibold">{sequential}</span> ?
+      <span className="font-semibold">{sequential}</span>
     </Label>
   );
-
+  
   const content = (
     <div className="flex gap-2 items-center">
       <Checkbox checked={includeFiles} onCheckedChange={() => setIncludeFiles(!includeFiles)} />{' '}
       <Label>{tInvoicing('expense_invoice.file_duplication')}</Label>
     </div>
   );
-
+  
   const footer = (
     <div className="flex gap-2 mt-2 items-center justify-center">
       <Button
         className="w-1/2 flex gap-1"
         onClick={() => {
-          duplicateInvoice(includeFiles);
+          // Utilise la valeur 'sequential' sans modification
+          duplicateInvoice(includeFiles); 
           setIncludeFiles(false);
         }}>
         <Check className="h-4 w-4" />
@@ -84,30 +83,18 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
       </Button>
     </div>
   );
-
-  if (isDesktop)
-    return (
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className={cn('max-w-[30vw] py-5 px-4', className)}>
-          <DialogHeader className="text-left">
-            <DialogTitle>{header}</DialogTitle>
-            <DialogDescription className="flex gap-2 pt-4 items-center px-2">
-              {content}
-            </DialogDescription>
-          </DialogHeader>
-          {footer}
-        </DialogContent>
-      </Dialog>
-    );
   return (
-    <Drawer open={open} onClose={onClose}>
-      <DrawerContent>
-        <DrawerHeader className="text-left">
-          <DrawerTitle>{header}</DrawerTitle>
-          <DrawerDescription className="flex gap-2 items-center p-4">{content}</DrawerDescription>
-        </DrawerHeader>
-        <DrawerFooter className="border-t pt-2">{footer}</DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className={cn('max-w-[30vw] py-5 px-4', className)}>
+        <DialogHeader className="text-left">
+          <DialogTitle>{header}</DialogTitle>
+          <DialogDescription className="flex gap-2 pt-4 items-center px-2">
+            {content}
+          </DialogDescription>
+        </DialogHeader>
+        {footer}
+      </DialogContent>
+    </Dialog>
   );
 };
+

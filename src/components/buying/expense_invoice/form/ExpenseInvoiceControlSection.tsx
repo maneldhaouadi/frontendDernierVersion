@@ -244,10 +244,12 @@ export const ExpenseInvoiceControlSection = ({
       loading: false
     }
   ];
-  const sequential = fromSequentialObjectToString(invoiceManager.sequentialNumber);
-  console.log("invoiceManager:", invoiceManager);
-  console.log("invoiceManager.quotationId:", invoiceManager?.quotationId);
-  console.log("Quotations:", quotations);
+  const sequential = invoiceManager.sequentialNumbr;
+  console.log("sequentialllllll",sequential)
+
+
+
+
 
   return (
     <>
@@ -261,19 +263,20 @@ export const ExpenseInvoiceControlSection = ({
         onClose={() => setActionDialog(false)}
       />
       <ExpenseInvoiceDuplicateDialog
-        id={invoiceManager?.id || 0}
-        sequential={sequential}
-        open={duplicateDialog}
-        duplicateInvoice={(includeFiles: boolean) => {
-          invoiceManager?.id &&
-            duplicateInvoice({
-              id: invoiceManager?.id,
-              includeFiles: includeFiles
-            });
-        }}
-        isDuplicationPending={isDuplicationPending}
-        onClose={() => setDuplicateDialog(false)}
-      />
+  id={invoiceManager?.id || 0}
+  sequential={invoiceManager?.sequentialNumbr || ''}  // Utilisation correcte de sequentialNumbr
+  open={duplicateDialog}
+  duplicateInvoice={(includeFiles: boolean) => {
+    invoiceManager?.id &&
+      duplicateInvoice({
+        id: invoiceManager?.id,
+        includeFiles: includeFiles
+      });
+  }}
+  isDuplicationPending={isDuplicationPending}
+  onClose={() => setDuplicateDialog(false)}
+/>
+
       <ExpenseInvoiceDownloadDialog
         id={invoiceManager?.id || 0}
         open={downloadDialog}

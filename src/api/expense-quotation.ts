@@ -104,14 +104,10 @@ const findChoices = async (): Promise<ExpenseQuotation[]> => {
     // Ne pas ajouter de paramètre `status` pour récupérer toutes les quotations
     const url = `public/expensquotation/all`;
 
-    console.log("Fetching quotations from:", url);
-
     const response = await axios.get<ExpenseQuotation[]>(url);
 
-    console.log("Fetched Quotations:", response.data); // Vérification des données reçues
     return response.data;
   } catch (error) {
-    console.error("Error fetching quotations:", error);
     return []; // Retourne un tableau vide en cas d'erreur
   }
 };

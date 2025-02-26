@@ -21,6 +21,7 @@ type ExpenseInvoiceManager = {
     prefix: string;
   };
   sequential: string;
+  sequentialNumbr:string,
   date: Date | undefined;
   dueDate: Date | undefined;
   object: string;
@@ -87,6 +88,7 @@ const initialState: Omit<
     next: 0
   },
   sequential: '',
+  sequentialNumbr: '',  // Ajoutez cette ligne pour initialiser sequentialNumbr
   date: undefined,
   dueDate: undefined,
   object: '',
@@ -125,7 +127,11 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
           : api?.interlocutor?.factory() || undefined,
       isInterlocutorInFirm: !!firm?.interlocutorsToFirm?.length,
       date: dateRange.date,
-      dueDate: dateRange.dueDate
+      dueDate: dateRange.dueDate,
+      sequentialNumber: {
+        ...state.sequentialNumber,
+        next: state.sequentialNumber.next + 1
+      }
     }));
   },
   setInterlocutor: (interlocutor?: Interlocutor) =>
@@ -134,6 +140,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
       interlocutor,
       isInterlocutorInFirm: true
     })),
+    // Mise à jour de `sequentialNumbr` pour accepter la saisie manuelle
     set: (name: keyof ExpenseInvoiceManager, value: any) => {
       set((state) => {
         const newValue =
@@ -142,12 +149,11 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
               ? new Date(value)
               : value
             : value;
-    
-        // Éviter la boucle infinie en vérifiant si la valeur change réellement
+  
         if (state[name] === newValue) {
-          return state; // Ne rien changer si la valeur est identique
+          return state;
         }
-    
+  
         return {
           ...state,
           [name]: newValue
@@ -158,6 +164,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
     const {
       id,
       sequentialNumber,
+      sequentialNumbr,
       date,
       dueDate,
       object,
@@ -178,6 +185,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
     return {
       id,
       sequentialNumber,
+      sequentialNumbr,
       date,
       dueDate,
       object,
@@ -203,7 +211,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
       const newState = {
         ...state,
         id: invoice?.id,
-        sequentialNumber: fromStringToSequentialObject(invoice?.sequential || ''),
+        sequentialNumbr:invoice.sequential,
         date: invoice?.date ? new Date(invoice?.date) : undefined,
         dueDate: invoice?.dueDate ? new Date(invoice?.dueDate) : undefined,
         object: invoice?.object,
@@ -223,7 +231,11 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
         taxWithholdingId: invoice?.taxWithholdingId,
         taxWithholdingAmount: invoice?.taxWithholdingAmount
       };
-    
+      console.log(invoice); // Vérifie la structure complète de l'objet invoice
+      console.log("sequentielNumbr1111111:", invoice.sequentialNumbr);
+      console.log("sequentiel222222222222:", invoice.sequential);
+
+      
       // Vérification avant mise à jour
       if (JSON.stringify(state) === JSON.stringify(newState)) {
         return state;

@@ -4,15 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { EXPENSQUOTATION_STATUS } from '@/types';
 
 const useExpenseQuotationChoices = (status: EXPENSQUOTATION_STATUS, enabled: boolean = true) => {
-  console.log("Status passed to query:", status);  // Vérifie la valeur de status
   
   const { isLoading: isFetchQuotationPending, data: quotationsResp } = useQuery({
     queryKey: ['quotation-choices', status],
-    queryFn: () => api.expense_quotation.findChoices(status),
+    queryFn: () => api.expense_quotation.findChoices(),
     enabled: enabled
   });
 
-  console.log("Quotations Response:", quotationsResp);  // Vérifie les données de la requête
 
   const quotations = React.useMemo(() => {
     if (!quotationsResp) return [];

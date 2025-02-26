@@ -280,6 +280,9 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       firmId: invoiceManager?.firm?.id,
       interlocutorId: invoiceManager?.interlocutor?.id,
       currencyId: invoiceManager?.currency?.id,
+      sequentialNumbr:invoiceManager.sequential, // Utilisation du manuel ou génération automatique
+      sequential: invoiceManager?.sequentialNumbr,  // Utilisation du manuel ou génération automatique
+
       bankAccountId: !controlManager?.isBankAccountDetailsHidden
         ? invoiceManager?.bankAccount?.id
         : undefined,
