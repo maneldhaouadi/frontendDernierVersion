@@ -57,7 +57,12 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
       setLoading(true);
       setFormError(null);
       try {
+<<<<<<< HEAD
         // Mettez à jour l'état des articles
+=======
+        const response = await api.article.findPaginated(1, 5, 'ASC', 'title');
+        setArticles(response.data); // Mettez à jour l'état des articles
+>>>>>>> 79b3d5bf5f3efa073b84493c3b47e5c886641766
       } catch (error) {
         setFormError('Impossible de récupérer les articles. Veuillez réessayer plus tard.');
         toast.error('Erreur lors de la récupération des articles');
@@ -140,10 +145,14 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
       });
 
     } else if (discount_type === DISCOUNT_TYPE.AMOUNT) {
+<<<<<<< HEAD
       const regex = new RegExp(`^\\d*(\\.\\d{0,${3}})?$`);
     } else if (discount_type === DISCOUNT_TYPE.AMOUNT) {
       const regex = new RegExp(`^\\d*(\\.\\d{0,${digitAfterComma}})?$`);
 
+=======
+      const regex = new RegExp(`^\\d*(\\.\\d{0,${digitAfterComma}})?$`);
+>>>>>>> 79b3d5bf5f3efa073b84493c3b47e5c886641766
       if (regex.test(discount)) {
         onChange({
           ...article,
@@ -158,7 +167,11 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
       ...article,
 
       discount_type: value === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+<<<<<<< HEAD
       discount: 0 // Reset discount to 0 when changing the typ
+=======
+      discount: 0, // Reset discount to 0 when changing the type
+>>>>>>> 79b3d5bf5f3efa073b84493c3b47e5c886641766
     });
   };
 
@@ -219,6 +232,7 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
                       <SelectValue placeholder="Sélectionnez un article" />
                     </SelectTrigger>
                     <SelectContent>
+<<<<<<< HEAD
                     {articles.map((art) => (
   art.id !== undefined && (
     <SelectItem key={art.id} value={art.id.toString()}>
@@ -226,6 +240,13 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
     </SelectItem>
   )
 ))}
+=======
+                      {articles.map((art) => (
+                        <SelectItem key={art.id} value={art.id.toString()}>
+                          {art.title}
+                        </SelectItem>
+                      ))}
+>>>>>>> 79b3d5bf5f3efa073b84493c3b47e5c886641766
                     </SelectContent>
                   </Select>
                 ) : (
