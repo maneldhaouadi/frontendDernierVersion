@@ -146,7 +146,7 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
     );
     let finalTotal = total;
     // Apply discount
-    if (quotationManager.discountType === DISCOUNT_TYPE.PERCENTAGE) {
+    if (quotationManager.discount_type === DISCOUNT_TYPE.PERCENTAGE) {
       const discountAmount = total.multiply(quotationManager.discount / 100);
       finalTotal = total.subtract(discountAmount);
     } else {
@@ -160,7 +160,7 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
       finalTotal = total.subtract(discountAmount);
     }
     quotationManager.set('total', finalTotal.toUnit());
-  }, [articleManager.articles, quotationManager.discount, quotationManager.discountType]);
+  }, [articleManager.articles, quotationManager.discount, quotationManager.discount_type]);
 
   //create quotation mutator
   const { mutate: createQuotation, isPending: isCreatePending } = useMutation({
@@ -209,14 +209,15 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
   const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
     id: article?.id,
     article: {
+      id: article?.article?.id ?? 0,  // Assurez-vous que l'ID existe (vous pouvez choisir une valeur par défaut ici)
       title: article?.article?.title,
       description: !controlManager.isArticleDescriptionHidden ? article?.article?.description : ''
     },
     quantity: article?.quantity,
-    unit_price: article?.unitPrice,
+    unit_price: article?.unit_price,
     discount: article?.discount,
     discount_type:
-      article?.discountType === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+      article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
     taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => {
       return entry?.tax?.id;
     })
@@ -233,7 +234,7 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
       bankAccountId: !controlManager?.isBankAccountDetailsHidden
         ? quotationManager?.bankAccount?.id
         : undefined,
-      status,
+      status:quotationManager?.status,
       generalConditions: !controlManager.isGeneralConditionsHidden
         ? quotationManager?.generalConditions
         : '',
@@ -241,7 +242,7 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
       articleQuotationEntries: articlesDto,
       discount: quotationManager?.discount,
       discount_type:
-        quotationManager?.discountType === 'PERCENTAGE'
+        quotationManager?.discount_type === 'PERCENTAGE'
           ? DISCOUNT_TYPE.PERCENTAGE
           : DISCOUNT_TYPE.AMOUNT,
           expensequotationMetaData: {

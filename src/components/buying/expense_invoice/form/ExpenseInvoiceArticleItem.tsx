@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Textarea } from '@/components/ui/textarea';
 import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
 import { ExpenseArticleInvoiceEntry, ExpenseInvoiceTaxEntry } from '@/types/expense_invoices';
-import { ArticleInvoiceEntry, Currency, Tax } from '@/types';
+import {Currency, Tax } from '@/types';
 import { ExpenseInvoiceTaxEntries } from './ExpenseInvoiceTaxEntries';
 
 interface ExpenseInvoiceArticleItemProps {
@@ -42,25 +42,27 @@ export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps>
   const digitAfterComma = currency?.digitAfterComma || 3;
   const currencySymbol = currency?.symbol || '$';
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({
-      ...article,
-      article: {
-        ...article.article,
-        title: e.target.value
-      }
-    });
-  };
-
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange({
-      ...article,
-      article: {
-        ...article.article,
-        description: e.target.value
-      }
-    });
-  };
+ const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+     onChange({
+       ...article,
+       article: {
+         ...article.article,
+         id:parseInt(e.target.value),
+         title: e.target.value
+       }
+     });
+   };
+ 
+   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+     onChange({
+       ...article,
+       article: {
+         ...article.article,
+         id:parseInt(e.target.value),
+         description: e.target.value
+       }
+     });
+   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const quantity = e.target.value;

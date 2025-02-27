@@ -136,7 +136,8 @@ export interface ExpenseCreateInvoiceDto
   > {
   articleInvoiceEntries?: ExpenseCreateArticleInvoiceEntry[];
   files?: File[];
-  sequential:string,
+  sequentialNumbr:string,
+  sequential:string
 }
 
 export interface ExpenseUpdateInvoiceDto extends ExpenseCreateInvoiceDto {

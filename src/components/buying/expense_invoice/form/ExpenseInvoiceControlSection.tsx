@@ -245,7 +245,7 @@ export const ExpenseInvoiceControlSection = ({
     }
   ];
   const sequential = invoiceManager.sequentialNumbr;
-  console.log("sequentialllllll",sequential)
+
 
 
 
@@ -264,7 +264,6 @@ export const ExpenseInvoiceControlSection = ({
       />
       <ExpenseInvoiceDuplicateDialog
   id={invoiceManager?.id || 0}
-  sequential={invoiceManager?.sequentialNumbr || ''}  // Utilisation correcte de sequentialNumbr
   open={duplicateDialog}
   duplicateInvoice={(includeFiles: boolean) => {
     invoiceManager?.id &&

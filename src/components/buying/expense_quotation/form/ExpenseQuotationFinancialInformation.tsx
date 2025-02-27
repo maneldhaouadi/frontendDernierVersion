@@ -42,7 +42,7 @@ export const ExpenseQuotationFinancialInformation = ({
   const digitAfterComma = currency?.digitAfterComma || 3;
   const discount = quotationManager.discount ?? 0;
   const discountType =
-    quotationManager.discountType === DISCOUNT_TYPE.PERCENTAGE ? 'PERCENTAGE' : 'AMOUNT';
+    quotationManager.discount_type === DISCOUNT_TYPE.PERCENTAGE ? 'PERCENTAGE' : 'AMOUNT';
 
   return (
     <div className={cn(className)}>
@@ -80,7 +80,7 @@ export const ExpenseQuotationFinancialInformation = ({
                 <Select
                   onValueChange={(value: string) => {
                     quotationManager.set(
-                      'discountType',
+                      'discount_type',
                       value === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT
                     );
                   }}

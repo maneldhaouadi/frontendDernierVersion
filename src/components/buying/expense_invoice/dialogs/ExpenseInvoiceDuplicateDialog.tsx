@@ -11,22 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Check, X } from 'lucide-react';
-import { useMediaQuery } from '@/hooks/other/useMediaQuery';
 import { cn } from '@/lib/utils';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle
-} from '@/components/ui/drawer';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface ExpenseInvoiceDuplicateDialogProps {
   className?: string;
   id: number;
-  sequential: string;  // Vérifie que ce nom de prop est bien cohérent
   open: boolean;
   duplicateInvoice: (includeFiles: boolean) => void;
   isDuplicationPending?: boolean;
@@ -36,10 +26,9 @@ interface ExpenseInvoiceDuplicateDialogProps {
 export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDialogProps> = ({
   className,
   id,
-  sequential,  // Cette prop est utilisée ici
   open,
   duplicateInvoice,
-  isDuplicationPending,
+  isDuplicationPending = false,
   onClose
 }) => {
   const { t: tCommon } = useTranslation('common');
@@ -48,27 +37,26 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
 
   const header = (
     <Label className="leading-5">
-      Voulez-vous vraiment dupliquer la facture N°{' '}
-      <span className="font-semibold">{sequential}</span>
+      Voulez-vous vraiment dupliquer cette facture ?
     </Label>
   );
-  
+
   const content = (
     <div className="flex gap-2 items-center">
       <Checkbox checked={includeFiles} onCheckedChange={() => setIncludeFiles(!includeFiles)} />{' '}
       <Label>{tInvoicing('expense_invoice.file_duplication')}</Label>
     </div>
   );
-  
+
   const footer = (
     <div className="flex gap-2 mt-2 items-center justify-center">
       <Button
         className="w-1/2 flex gap-1"
         onClick={() => {
-          // Utilise la valeur 'sequential' sans modification
           duplicateInvoice(includeFiles); 
-          setIncludeFiles(false);
-        }}>
+          setIncludeFiles(false);  
+        }}
+      >
         <Check className="h-4 w-4" />
         {tCommon('commands.duplicate')}
         <Spinner size={'small'} show={isDuplicationPending} />
@@ -76,13 +64,13 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
       <Button
         className="w-1/2 flex gap-1"
         variant={'secondary'}
-        onClick={() => {
-          onClose();
-        }}>
+        onClick={() => onClose()}
+      >
         <X className="h-4 w-4" /> {tCommon('commands.cancel')}
       </Button>
     </div>
   );
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className={cn('max-w-[30vw] py-5 px-4', className)}>
@@ -97,4 +85,3 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
     </Dialog>
   );
 };
-

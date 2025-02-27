@@ -261,6 +261,7 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
   const onSubmit = (status: EXPENSE_INVOICE_STATUS) => {
     const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
       article: {
+        id: article?.article?.id ?? 0,
         title: article?.article?.title,
         description: controlManager.isArticleDescriptionHidden ? '' : article?.article?.description
       },
@@ -280,8 +281,8 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       firmId: invoiceManager?.firm?.id,
       interlocutorId: invoiceManager?.interlocutor?.id,
       currencyId: invoiceManager?.currency?.id,
-      sequentialNumbr:invoiceManager.sequential, // Utilisation du manuel ou génération automatique
-      sequential: invoiceManager?.sequentialNumbr,  // Utilisation du manuel ou génération automatique
+      sequentialNumbr: invoiceManager?.sequentialNumbr,
+      sequential:'',  // Utilisation du manuel ou génération automatique
 
       bankAccountId: !controlManager?.isBankAccountDetailsHidden
         ? invoiceManager?.bankAccount?.id

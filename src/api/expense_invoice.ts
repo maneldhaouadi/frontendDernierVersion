@@ -25,6 +25,8 @@ const factory = (): ExpenseCreateInvoiceDto => {
     firmId: 0,
     interlocutorId: 0,
     notes: '',
+    sequential:'',
+    sequentialNumbr:'',
     articleInvoiceEntries: [],
     expenseInvoiceMetaData: {
       showDeliveryAddress: true,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { api } from '@/api';
-import { BankAccount, Currency, DuplicateQuotationDto, EXPENSQUOTATION_STATUS, Invoice, QUOTATION_STATUS } from '@/types';
+import { BankAccount, Currency, DuplicateQuotationDto, EXPENSQUOTATION_STATUS} from '@/types';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -34,6 +34,7 @@ import { ExpenseQuotationDeleteDialog } from '../dialogs/ExpenseQuotationDeleteD
 import { ExpenseQuotationInvoiceDialog } from '../dialogs/ExpenseQuotationInvoiceDialog';
 import { QuotationInvoiceList } from './ExpenseQuotationInvoiceList';
 import { useExpenseQuotationManager } from '../hooks/useExpenseQuotationManager';
+import { ExpenseInvoice } from '@/types/expense_invoices';
 
 interface ExpenseQuotationLifecycle {
   label: string;
@@ -54,7 +55,7 @@ interface ExpenseQuotationControlSectionProps {
   isDataAltered?: boolean;
   bankAccounts: BankAccount[];
   currencies: Currency[];
-  invoices: Invoice[];
+  invoices: ExpenseInvoice[];
   handleSubmit?: () => void;
   handleSubmitDraft: () => void;
   handleSubmitValidated: () => void;

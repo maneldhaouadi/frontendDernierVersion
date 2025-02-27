@@ -177,9 +177,8 @@ export const ExpenseInvoiceEmbeddedMain: React.FC<ExpenseInvoiceEmbeddedMainProp
           isDeletionPending={isDeletePending}
           onClose={() => setDeleteDialog(false)}
         />
-        <ExpenseInvoiceDuplicateDialog
+    <ExpenseInvoiceDuplicateDialog
   id={invoiceManager?.id || 0}
-  sequential={invoiceManager?.sequentialNumbr || ''}  // Correct utilisation de sequentialNumbr
   open={duplicateDialog}
   duplicateInvoice={(includeFiles: boolean) => {
     invoiceManager?.id &&

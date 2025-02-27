@@ -18,9 +18,9 @@ export type ExpenseQuotationArticleManager = {
 };
 const calculateForExpenseQuotation = (article: ExpenseArticleQuotationEntry) => {
   const quantity = article?.quantity || 0;
-  const unit_price = article?.unitPrice || 0;
+  const unit_price = article?.unit_price || 0;
   const discount = article?.discount || 0;
-  const discount_type = article?.discountType || DISCOUNT_TYPE.PERCENTAGE;
+  const discount_type = article?.discount_type || DISCOUNT_TYPE.PERCENTAGE;
 
   const subTotal = quantity * unit_price;
 
@@ -121,7 +121,7 @@ export const useExpenseQuotationArticleManager = create<ExpenseQuotationArticleM
             ...article,
             total,
             subTotal,
-            discount_type: article.discountType || DISCOUNT_TYPE.AMOUNT,
+            discount_type: article.discount_type|| DISCOUNT_TYPE.AMOUNT,
             discount: article.discount || 0
           }
         }

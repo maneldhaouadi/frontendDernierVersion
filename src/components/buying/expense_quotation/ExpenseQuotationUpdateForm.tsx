@@ -150,7 +150,7 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
     );
     let finalTotal = total;
     // Apply discount
-    if (quotationManager.discountType === DISCOUNT_TYPE.PERCENTAGE) {
+    if (quotationManager.discount_type === DISCOUNT_TYPE.PERCENTAGE) {
       const discountAmount = total.multiply(quotationManager.discount / 100);
       finalTotal = total.subtract(discountAmount);
     } else {
@@ -164,7 +164,7 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
       finalTotal = total.subtract(discountAmount);
     }
     quotationManager.set('total', finalTotal.toUnit());
-  }, [articleManager.articles, quotationManager.discount, quotationManager.discountType]);
+  }, [articleManager.articles, quotationManager.discount, quotationManager.discount_type]);
 
   //full quotation setter across multiple stores
   //full quotation setter across multiple stores
@@ -238,14 +238,15 @@ const setQuotationData = (data: Partial<ExpenseQuotation & { files: ExpensQuotat
   const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
     const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
       article: {
+        id: article?.article?.id ?? 0,  // Assurez-vous que l'ID existe (vous pouvez choisir une valeur par défaut ici)
         title: article?.article?.title,
         description: controlManager.isArticleDescriptionHidden ? '' : article?.article?.description
       },
       quantity: article?.quantity || 0,
-      unit_price: article?.unitPrice || 0,
+      unit_price: article?.unit_price || 0,
       discount: article?.discount || 0,
       discount_type:
-        article?.discountType === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+        article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
       taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => entry?.tax?.id) || []
     }));
 console.log("article recupere",articleManager.getArticles())
@@ -269,7 +270,7 @@ console.log("article recupere",articleManager.getArticles())
       articleQuotationEntries: articlesDto,
       discount: quotationManager?.discount,
       discount_type:
-        quotationManager?.discountType === 'PERCENTAGE'
+        quotationManager?.discount_type === 'PERCENTAGE'
           ? DISCOUNT_TYPE.PERCENTAGE
           : DISCOUNT_TYPE.AMOUNT,
         expensequotationMetaData: {

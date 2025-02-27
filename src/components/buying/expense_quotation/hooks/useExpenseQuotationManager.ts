@@ -32,7 +32,7 @@ type ExpenseQuotationManager = {
   subTotal: number;
   total: number;
   discount: number;
-  discountType: DISCOUNT_TYPE;
+  discount_type: DISCOUNT_TYPE;
   bankAccount?: BankAccount;
   currency?: Currency;
   notes: string;
@@ -94,7 +94,7 @@ const initialState: Omit<
   subTotal: 0,
   total: 0,
   discount: 0,
-  discountType: DISCOUNT_TYPE.PERCENTAGE,
+  discount_type: DISCOUNT_TYPE.PERCENTAGE,
   bankAccount: api?.bankAccount?.factory() || undefined,
   currency: api?.currency?.factory() || undefined,
   notes: '',
@@ -153,7 +153,7 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       firm,
       interlocutor,
       discount,
-      discountType,
+      discount_type,
       notes,
       generalConditions,
       bankAccount,
@@ -171,7 +171,7 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       firmId: firm?.id,
       interlocutorId: interlocutor?.id,
       discount,
-      discountType,
+      discount_type,
       notes,
       generalConditions,
       bankAccountId: bankAccount?.id,
@@ -194,7 +194,7 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       firm: firms?.find((firm) => quotation?.firm?.id === firm.id),
       interlocutor: quotation?.interlocutor,
       discount: quotation?.discount,
-      discountType: quotation?.discount_type,
+      discount_type: quotation?.discount_type,
       bankAccount: quotation?.bankAccount,
       currency: quotation?.currency || quotation?.firm?.currency,
       notes: quotation?.notes,

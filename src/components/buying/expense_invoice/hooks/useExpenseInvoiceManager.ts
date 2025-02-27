@@ -77,10 +77,7 @@ const getDateRangeAccordingToPaymentConditions = (paymentCondition: PaymentCondi
   }
 };
 
-const initialState: Omit<
-  ExpenseInvoiceManager,
-  'set' | 'reset' | 'setFirm' | 'setInterlocutor' | 'getInvoice' | 'setInvoice'
-> = {
+const initialState: Omit<ExpenseInvoiceManager, 'set' | 'reset' | 'setFirm' | 'setInterlocutor' | 'getInvoice' | 'setInvoice'> = {
   id: undefined,
   sequentialNumber: {
     prefix: '',
@@ -88,7 +85,7 @@ const initialState: Omit<
     next: 0
   },
   sequential: '',
-  sequentialNumbr: '',  // Ajoutez cette ligne pour initialiser sequentialNumbr
+  sequentialNumbr: '',  // initialisation de sequentialNumbr vide
   date: undefined,
   dueDate: undefined,
   object: '',
@@ -111,6 +108,7 @@ const initialState: Omit<
   taxWithholdingId: undefined
 };
 
+// Gestionnaire d'état de `ExpenseInvoiceManager`
 export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get) => ({
   ...initialState,
   setFirm: (firm?: Firm) => {
@@ -140,31 +138,31 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
       interlocutor,
       isInterlocutorInFirm: true
     })),
-    // Mise à jour de `sequentialNumbr` pour accepter la saisie manuelle
-    set: (name: keyof ExpenseInvoiceManager, value: any) => {
-      set((state) => {
-        const newValue =
-          name === 'date' || name === 'dueDate'
-            ? typeof value === 'string'
-              ? new Date(value)
-              : value
-            : value;
-  
-        if (state[name] === newValue) {
-          return state;
-        }
-  
-        return {
-          ...state,
-          [name]: newValue
-        };
-      });
-    },
+  // Mise à jour de `sequentialNumbr` pour accepter la saisie manuelle
+  set: (name: keyof ExpenseInvoiceManager, value: any) => {
+    set((state) => {
+      const newValue =
+        name === 'date' || name === 'dueDate'
+          ? typeof value === 'string'
+            ? new Date(value)
+            : value
+          : value;
+
+      if (state[name] === newValue) {
+        return state;
+      }
+
+      return {
+        ...state,
+        [name]: newValue
+      };
+    });
+  },
   getInvoice: () => {
     const {
       id,
       sequentialNumber,
-      sequentialNumbr,
+      sequentialNumbr,  // récupérer la valeur de sequentialNumbr
       date,
       dueDate,
       object,
@@ -185,7 +183,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
     return {
       id,
       sequentialNumber,
-      sequentialNumbr,
+      sequentialNumbr,  // renvoyer sequentialNumbr
       date,
       dueDate,
       object,
@@ -203,7 +201,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
     };
   },
   setInvoice: (
-    invoice: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }>,
+    invoice: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }> ,
     firms: Firm[],
     bankAccounts: BankAccount[]
   ) => {
@@ -211,7 +209,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
       const newState = {
         ...state,
         id: invoice?.id,
-        sequentialNumbr:invoice.sequential,
+        sequentialNumbr: invoice?.sequentialNumbr,  // ici, on attribue la valeur de sequentialNumbr à partir de l'invoice
         date: invoice?.date ? new Date(invoice?.date) : undefined,
         dueDate: invoice?.dueDate ? new Date(invoice?.dueDate) : undefined,
         object: invoice?.object,
@@ -231,18 +229,9 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
         taxWithholdingId: invoice?.taxWithholdingId,
         taxWithholdingAmount: invoice?.taxWithholdingAmount
       };
-      console.log(invoice); // Vérifie la structure complète de l'objet invoice
-      console.log("sequentielNumbr1111111:", invoice.sequentialNumbr);
-      console.log("sequentiel222222222222:", invoice.sequential);
-
-      
-      // Vérification avant mise à jour
-      if (JSON.stringify(state) === JSON.stringify(newState)) {
-        return state;
-      }
-    
+      console.log("sequentielNumbr:", invoice.sequentialNumbr);
       return newState;
-    });    
+    });
   },
   reset: () => set({ ...initialState })
 }));

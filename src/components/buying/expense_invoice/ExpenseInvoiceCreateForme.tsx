@@ -46,19 +46,14 @@ interface ExpenseInvoiceFormProps {
 }
 
 export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFormProps) => {
-  //next-router
   const router = useRouter();
-
-  //translations
   const { t: tCommon, ready: commonReady } = useTranslation('common');
   const { t: tInvoicing, ready: invoicingReady } = useTranslation('invoicing');
 
-  // Stores
   const invoiceManager = useExpenseInvoiceManager();
   const articleManager = useExpenseInvoiceArticleManager();
   const controlManager = useExpenseInvoiceControlManager();
 
-  //set page title in the breadcrumb
   const { setRoutes } = useBreadcrumb();
   React.useEffect(() => {
     setRoutes(
@@ -71,10 +66,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
         : [
             { title: tCommon('menu.contacts'), href: '/contacts' },
             { title: 'Entreprises', href: '/contacts/firms' },
-            {
-              title: `Entreprise N°${firmId}`,
-              href: `/contacts/firm/${firmId}?tab=entreprise`
-            },
+            { title: `Entreprise N°${firmId}`, href: `/contacts/firm/${firmId}?tab=entreprise` },
             { title: 'Nouvelle Facture' }
           ]
     );
@@ -100,47 +92,39 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
   );
   const { taxWithholdings, isFetchTaxWithholdingsPending } = useTaxWithholding();
   const { dateRange, isFetchInvoiceRangePending } = useInvoiceRangeDates(invoiceManager.id);
-  //websocket to listen for server changes related to sequence number
+
   const { currentSequence, isInvoiceSequencePending } = useExpenseInvoiceSocket();
 
-  //handle Sequential Number
+  // Handle Sequential Number
   React.useEffect(() => {
-    invoiceManager.set('sequentialNumber', currentSequence);
-    invoiceManager.set(
-      'bankAccount',
-      bankAccounts.find((a) => a.isMain)
-    );
+    if (!invoiceManager.sequentialNumbr && currentSequence) {
+      invoiceManager.set('sequentialNumbr', currentSequence);  // Mettre à jour seulement si non défini
+    }
+    invoiceManager.set('bankAccount', bankAccounts.find((a) => a.isMain));
     invoiceManager.set('currency', cabinet?.currency);
-  }, [currentSequence]);
+  }, [currentSequence, bankAccounts, cabinet]);
 
-  // perform calculations when the financialy Information are changed
   const digitAfterComma = React.useMemo(() => {
     return invoiceManager.currency?.digitAfterComma || 3;
   }, [invoiceManager.currency]);
+
   React.useEffect(() => {
     const zero = dinero({ amount: 0, precision: digitAfterComma });
     const articles = articleManager.getArticles() || [];
-    const subTotal = articles?.reduce((acc, article) => {
+    const subTotal = articles.reduce((acc, article) => {
       return acc.add(
         dinero({
-          amount: createDineroAmountFromFloatWithDynamicCurrency(
-            article?.subTotal || 0,
-            digitAfterComma
-          ),
+          amount: createDineroAmountFromFloatWithDynamicCurrency(article?.subTotal || 0, digitAfterComma),
           precision: digitAfterComma
         })
       );
     }, zero);
     invoiceManager.set('subTotal', subTotal.toUnit());
-    // Calculate total
-    const total = articles?.reduce(
+    const total = articles.reduce(
       (acc, article) =>
         acc.add(
           dinero({
-            amount: createDineroAmountFromFloatWithDynamicCurrency(
-              article?.total || 0,
-              digitAfterComma
-            ),
+            amount: createDineroAmountFromFloatWithDynamicCurrency(article?.total || 0, digitAfterComma),
             precision: digitAfterComma
           })
         ),
@@ -148,21 +132,16 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     );
 
     let finalTotal = total;
-    // Apply discount
     if (invoiceManager.discountType === DISCOUNT_TYPE.PERCENTAGE) {
       const discountAmount = total.multiply(invoiceManager.discount / 100);
       finalTotal = total.subtract(discountAmount);
     } else {
       const discountAmount = dinero({
-        amount: createDineroAmountFromFloatWithDynamicCurrency(
-          invoiceManager?.discount || 0,
-          digitAfterComma
-        ),
+        amount: createDineroAmountFromFloatWithDynamicCurrency(invoiceManager?.discount || 0, digitAfterComma),
         precision: digitAfterComma
       });
       finalTotal = total.subtract(discountAmount);
     }
-    // Apply tax stamp if applicable
     if (invoiceManager.taxStampId) {
       const tax = taxes.find((t) => t.id === invoiceManager.taxStampId);
       if (tax) {
@@ -181,7 +160,6 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     invoiceManager.taxStampId
   ]);
 
-  //create invoice mutator
   const { mutate: createInvoice, isPending: isCreatePending } = useMutation({
     mutationFn: (data: { invoice: ExpenseCreateInvoiceDto; files: File[] }) =>
       api.expense_invoice.create(data.invoice, data.files),
@@ -195,76 +173,52 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       toast.error(message);
     }
   });
-  const loading =
-    isFetchFirmsPending ||
-    isFetchTaxesPending ||
-    isFetchCabinetPending ||
-    isFetchBankAccountsPending ||
-    isFetchCurrenciesPending ||
-    isFetchDefaultConditionPending ||
-    isCreatePending ||
-    isFetchQuotationPending ||
-    isFetchTaxWithholdingsPending ||
-    isFetchInvoiceRangePending ||
-    !commonReady ||
-    !invoicingReady;
+
+  const loading = isFetchFirmsPending || isFetchTaxesPending || isFetchCabinetPending || isFetchBankAccountsPending || isFetchCurrenciesPending || isFetchDefaultConditionPending || isCreatePending || isFetchQuotationPending || isFetchTaxWithholdingsPending || isFetchInvoiceRangePending || !commonReady || !invoicingReady;
+
   const { value: debounceLoading } = useDebounce<boolean>(loading, 500);
 
-  //Reset Form
   const globalReset = () => {
     invoiceManager.reset();
     articleManager.reset();
     controlManager.reset();
   };
-  //side effect to reset the form when the component is mounted
+
   React.useEffect(() => {
     globalReset();
     articleManager.add();
   }, []);
 
-  //create handler
   const onSubmit = (status: EXPENSE_INVOICE_STATUS) => {
     const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
       id: article?.id,
       article: {
+        id: article?.article?.id ?? 0,
         title: article?.article?.title || '',
-        description: !controlManager.isArticleDescriptionHidden
-          ? article?.article?.description || ''
-          : ''
+        description: !controlManager.isArticleDescriptionHidden ? article?.article?.description || '' : ''
       },
       quantity: article?.quantity || 0,
       unit_price: article?.unit_price || 0,
       discount: article?.discount || 0,
-      discount_type:
-        article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => {
-        return entry?.tax?.id;
-      })
+      discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+      taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id)
     }));
     const invoice: ExpenseCreateInvoiceDto = {
       date: invoiceManager?.date?.toString(),
       dueDate: invoiceManager?.dueDate?.toString(),
       object: invoiceManager?.object,
-      sequential: invoiceManager?.sequentialNumbr, 
-      sequentialNumbr:invoiceManager.sequential, // Utilisation du manuel ou génération automatique
+      sequentialNumbr: invoiceManager?.sequentialNumbr,  // Assurez-vous que sequentialNumbr est bien défini ici
       cabinetId: invoiceManager?.firm?.cabinetId,
       firmId: invoiceManager?.firm?.id,
       interlocutorId: invoiceManager?.interlocutor?.id,
       currencyId: invoiceManager?.currency?.id,
-      bankAccountId: !controlManager?.isBankAccountDetailsHidden
-        ? invoiceManager?.bankAccount?.id
-        : undefined,
+      bankAccountId: !controlManager?.isBankAccountDetailsHidden ? invoiceManager?.bankAccount?.id : undefined,
       status,
-      generalConditions: !controlManager.isGeneralConditionsHidden
-        ? invoiceManager?.generalConditions
-        : '',
+      generalConditions: !controlManager.isGeneralConditionsHidden ? invoiceManager?.generalConditions : '',
       notes: invoiceManager?.notes,
       articleInvoiceEntries: articlesDto,
       discount: invoiceManager?.discount,
-      discount_type:
-        invoiceManager?.discountType === 'PERCENTAGE'
-          ? DISCOUNT_TYPE.PERCENTAGE
-          : DISCOUNT_TYPE.AMOUNT,
+      discount_type: invoiceManager?.discountType === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
       quotationId: invoiceManager?.quotationId,
       taxStampId: invoiceManager?.taxStampId,
       taxWithholdingId: invoiceManager?.taxWithholdingId,
@@ -277,9 +231,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
         hasTaxWithholding: !controlManager.isTaxWithholdingHidden
       }
     };
-    console.log("Invoice Manager:", invoiceManager);
-    console.log("Quotation ID:", invoiceManager?.quotationId);
-        const validation = api.expense_invoice.validate(invoice, dateRange);
+    const validation = api.expense_invoice.validate(invoice, dateRange);
     if (validation.message) {
       toast.error(validation.message);
     } else {
@@ -291,7 +243,6 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       globalReset();
     }
   };
-
   //component representation
   if (debounceLoading) return <Spinner className="h-screen" show={loading} />;
   return (

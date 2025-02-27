@@ -13,14 +13,14 @@ import { Tax } from './tax';
 import { Upload } from './upload';
 
 export enum EXPENSQUOTATION_STATUS {
-  Nonexistent = 'quotation.status.non_existent',
-  Expired = 'quotation.status.expired',
-  Draft = 'quotation.status.draft',
-  Validated = 'quotation.status.validated',
-  Sent = 'quotation.status.sent',
-  Accepted = 'quotation.status.accepted',
-  Rejected = 'quotation.status.rejected',
-  Invoiced = 'quotation.status.invoiced'
+  Nonexistent = 'expense_quotation.status.non_existent',
+  Expired = 'expense_quotation.status.expired',
+  Draft = 'expense_quotation.status.draft',
+  Validated = 'expense_quotation.status.validated',
+  Sent = 'expense_quotation.status.sent',
+  Accepted = 'expense_quotation.status.accepted',
+  Rejected = 'expense_quotation.status.rejected',
+  Invoiced = 'expense_quotation.status.invoiced'
 }
 
 export interface ExpenseQuotationMetaData extends DatabaseEntity {
@@ -46,10 +46,10 @@ export interface ExpenseArticleQuotationEntry extends DatabaseEntity {
   expenseQuotationId?: number;  // Linking to `expense_quotation`
   article?: Article;
   articleId?: number;
-  unitPrice?: number;
+  unit_price?: number;
   quantity?: number;
   discount?: number;
-  discountType?: DISCOUNT_TYPE;
+  discount_type?: DISCOUNT_TYPE;
   articleExpensQuotationEntryTaxes?: ExpenseQuotationTaxEntry[];  // Relates to `expense_article_quotation_entry_tax`
   subTotal?: number;
   total?: number;

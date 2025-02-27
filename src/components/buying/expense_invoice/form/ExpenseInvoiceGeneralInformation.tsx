@@ -138,18 +138,16 @@ export const ExpenseInvoiceGeneralInformation = ({
     <Input
       className="mt-1"
       placeholder="Numéro séquentiel"
-      value={invoiceManager.sequentialNumbr || ''}
+      value={invoiceManager.sequentialNumbr || ''}  // Affichage de la valeur actuelle de sequentialNumbr
       onChange={(e) => {
         const newValue = e.target.value;
         console.log("Nouvelle valeur du numéro saisi:", newValue);
-        console.log("SEQUENCE:", invoiceManager.sequential);
 
-      
         // Ne mettre à jour sequentialNumbr que si l'utilisateur veut vraiment le modifier
         if (invoiceManager.sequential !== newValue) {
-          invoiceManager.set('sequentialNumbr', newValue);
+          invoiceManager.set('sequentialNumbr', newValue);  // Met à jour sequentialNumbr avec la valeur saisie
         }
-      }}             
+      }}
       isPending={loading}
     />
   ) : (
