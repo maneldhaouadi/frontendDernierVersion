@@ -1,9 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api';
-import {
-  EXPENSQUOTATION_STATUS
-} from '@/types';
+import { EXPENSQUOTATION_STATUS } from '@/types';
 import { Spinner } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
 import useTax from '@/hooks/content/useTax';
@@ -14,7 +12,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { getErrorMessage } from '@/utils/errors';
 import { DISCOUNT_TYPE } from '@/types/enums/discount-types';
 import { useDebounce } from '@/hooks/other/useDebounce';
-
 import _ from 'lodash';
 import useCurrency from '@/hooks/content/useCurrency';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +23,6 @@ import { useRouter } from 'next/router';
 import { useBreadcrumb } from '@/components/layout/BreadcrumbContext';
 import useInitializedState from '@/hooks/use-initialized-state';
 import useQuotationChoices from '@/hooks/content/useQuotationChoice';
-
 import useTaxWithholding from '@/hooks/content/useTaxWitholding';
 import dinero from 'dinero.js';
 import { createDineroAmountFromFloatWithDynamicCurrency } from '@/utils/money.utils';
@@ -49,21 +45,16 @@ interface ExpenseInvoiceFormProps {
   invoiceId: string;
 }
 
-export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoiceFormProps) => {
-  //next-router
+export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoiceFormProps) => {
   const router = useRouter();
-
-  //translations
   const { t: tCommon, ready: commonReady } = useTranslation('common');
   const { t: tInvoicing, ready: invoicingReady } = useTranslation('invoicing');
 
-  // Stores
   const invoiceManager = useExpenseInvoiceManager();
   const quotationManager = useExpenseQuotationManager();
   const controlManager = useExpenseInvoiceControlManager();
   const articleManager = useExpenseInvoiceArticleManager();
 
-  //Fetch options
   const {
     isPending: isFetchPending,
     data: invoiceResp,
@@ -72,11 +63,8 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     queryKey: ['expense_invoice', invoiceId],
     queryFn: () => api.expense_invoice.findOne(parseInt(invoiceId))
   });
-  const invoice = React.useMemo(() => {
-    return invoiceResp || null;
-  }, [invoiceResp]);
+  const invoice = React.useMemo(() => invoiceResp || null, [invoiceResp]);
 
-  //set page title in the breadcrumb
   const { setRoutes } = useBreadcrumb();
   React.useEffect(() => {
     if (invoice?.sequential)
@@ -87,13 +75,11 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       ]);
   }, [router.locale, invoice?.sequential]);
 
-  //recognize if the form can be edited
   const editMode = React.useMemo(() => {
     const editModeStatuses = [EXPENSE_INVOICE_STATUS.Validated, EXPENSE_INVOICE_STATUS.Draft];
     return invoice?.status && editModeStatuses.includes(invoice?.status);
   }, [invoice]);
 
-  // Fetch options
   const { firms, isFetchFirmsPending } = useFirmChoice([
     'interlocutorsToFirm',
     'interlocutorsToFirm.interlocutor',
@@ -125,10 +111,10 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     !invoicingReady;
   const { value: debounceFetching } = useDebounce<boolean>(fetching, 500);
 
-  // perform calculations when the financialy Information are changed
   const digitAfterComma = React.useMemo(() => {
     return invoiceManager.currency?.digitAfterComma || 3;
   }, [invoiceManager.currency]);
+
   React.useEffect(() => {
     const zero = dinero({ amount: 0, precision: digitAfterComma });
     const articles = articleManager.getArticles() || [];
@@ -144,7 +130,7 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       );
     }, zero);
     invoiceManager.set('subTotal', subTotal.toUnit());
-    // Calculate total
+
     const total = articles?.reduce(
       (acc, article) =>
         acc.add(
@@ -160,7 +146,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     );
 
     let finalTotal = total;
-    // Apply discount
     if (invoiceManager.discountType === DISCOUNT_TYPE.PERCENTAGE) {
       const discountAmount = total.multiply(invoiceManager.discount / 100);
       finalTotal = total.subtract(discountAmount);
@@ -174,7 +159,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
       });
       finalTotal = total.subtract(discountAmount);
     }
-    // Apply tax stamp if applicable
     if (invoiceManager.taxStampId) {
       const tax = taxes.find((t) => t.id === invoiceManager.taxStampId);
       if (tax) {
@@ -193,28 +177,20 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     invoiceManager.taxStampId
   ]);
 
-  //full invoice setter across multiple stores
   const setInvoiceData = (data: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }>) => {
-    //invoice infos
+    console.log('Fichiers existants dans setInvoiceData:', data?.files); // Ajout du log
     data && invoiceManager.setInvoice(data, firms, bankAccounts);
     data?.quotation && quotationManager.set('sequential', data?.quotation?.sequential);
-    //invoice meta infos
     controlManager.setControls({
       isBankAccountDetailsHidden: !data?.expenseInvoiceMetaData?.hasBankingDetails,
       isArticleDescriptionHidden: !data?.expenseInvoiceMetaData?.showArticleDescription,
       isGeneralConditionsHidden: !data?.expenseInvoiceMetaData?.hasGeneralConditions,
       isTaxStampHidden: !data?.expenseInvoiceMetaData?.hasTaxStamp,
       isTaxWithholdingHidden: !data?.expenseInvoiceMetaData?.hasTaxWithholding,
-
     });
-    //invoice article infos
-    //propriete de l'interface
     articleManager.setArticles(data?.articleExpenseEntries || []);
-
-
   };
 
-  //initialized value to detect changement whiie modifying the invoice
   const { isDisabled, globalReset } = useInitializedState({
     data: invoice || ({} as Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }>),
     getCurrentData: () => {
@@ -235,97 +211,118 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
     loading: fetching
   });
 
-  //update invoice mutator
   const { mutate: updateInvoice, isPending: isUpdatingPending } = useMutation({
     mutationFn: (data: { invoice: ExpenseUpdateInvoiceDto; files: File[] }) =>
       api.expense_invoice.update(data.invoice, data.files),
     onSuccess: () => {
       refetchInvoice();
-      toast.success('Facture modifié avec succès');
+      toast.success('Facture modifiée avec succès');
     },
     onError: (error) => {
       const message = getErrorMessage(
         'invoicing',
         error,
-        'Erreur lors de la modification de Facture'
+        'Erreur lors de la modification de la facture'
       );
       toast.error(message);
     }
   });
 
-  //update handler
-  const onSubmit = (status: EXPENSE_INVOICE_STATUS) => {
-    const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
-      article: {
-        id: article?.article?.id ?? 0,
-        title: article?.article?.title,
-        description: controlManager.isArticleDescriptionHidden ? '' : article?.article?.description
-      },
-      quantity: article?.quantity || 0,
-      unit_price: article?.unit_price || 0,
-      discount: article?.discount || 0,
-      discount_type:
-        article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id) || []
-    }));
-    const invoice: ExpenseUpdateInvoiceDto = {
-      id: invoiceManager?.id,
-      date: invoiceManager?.date?.toString(),
-      dueDate: invoiceManager?.dueDate?.toString(),
-      object: invoiceManager?.object,
-      cabinetId: invoiceManager?.firm?.cabinetId,
-      firmId: invoiceManager?.firm?.id,
-      interlocutorId: invoiceManager?.interlocutor?.id,
-      currencyId: invoiceManager?.currency?.id,
-      sequentialNumbr: invoiceManager?.sequentialNumbr,
-      sequential:'',  // Utilisation du manuel ou génération automatique
-
-      bankAccountId: !controlManager?.isBankAccountDetailsHidden
-        ? invoiceManager?.bankAccount?.id
-        : undefined,
-      status,
-      generalConditions: !controlManager.isGeneralConditionsHidden
-        ? invoiceManager?.generalConditions
-        : '',
-      notes: invoiceManager?.notes,
-      articleInvoiceEntries: articlesDto,
-      discount: invoiceManager?.discount,
-      discount_type:
-        invoiceManager?.discountType === 'PERCENTAGE'
-          ? DISCOUNT_TYPE.PERCENTAGE
-          : DISCOUNT_TYPE.AMOUNT,
-      quotationId: invoiceManager?.quotationId,
-      taxStampId: invoiceManager?.taxStampId,
-      taxWithholdingId: invoiceManager?.taxWithholdingId,
-      expenseInvoiceMetaData: {
-        showArticleDescription: !controlManager?.isArticleDescriptionHidden,
-        hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
-        hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
-        hasTaxStamp: !controlManager.isTaxStampHidden,
-        hasTaxWithholding: !controlManager.isTaxWithholdingHidden,
-      },
-      uploads: invoiceManager.uploadedFiles.filter((u) => !!u.upload).map((u) => u.upload)
-    };
-    const validation = api.expense_invoice.validate(invoice, dateRange);
-    if (validation.message) {
-      toast.error(validation.message, { position: validation.position || 'bottom-right' });
-    } else {
-      updateInvoice({
-        invoice,
-        files: invoiceManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
-      });
+  const onSubmit = async (status: EXPENSE_INVOICE_STATUS) => {
+    try {
+      // Convertir les articles en DTO
+      const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
+        id: article?.id,
+        article: {
+          id: article?.article?.id ?? 0,
+          title: article?.article?.title || '',
+          description: !controlManager.isArticleDescriptionHidden ? article?.article?.description || '' : '',
+        },
+        quantity: article?.quantity || 0,
+        unit_price: article?.unit_price || 0,
+        discount: article?.discount || 0,
+        discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+        taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id),
+      }));
+  
+      // Gestion des fichiers PDF
+      let pdfFileId = invoiceManager.pdfFileId; // ID du fichier PDF existant
+  
+      // Si un nouveau fichier PDF est uploadé, on l'upload et on récupère son ID
+      if (invoiceManager.pdfFile) {
+        const [uploadedPdfFileId] = await api.upload.uploadFiles([invoiceManager.pdfFile]);
+        pdfFileId = uploadedPdfFileId; // Mettre à jour l'ID du fichier PDF
+      }
+  
+      // Upload des fichiers supplémentaires (exclure le fichier PDF)
+      const additionalFiles = invoiceManager.uploadedFiles
+        .filter((u) => !u.upload) // Fichiers supplémentaires non encore uploadés
+        .map((u) => u.file);
+  
+      const uploadIds = await api.upload.uploadFiles(additionalFiles);
+  
+      // Créer l'objet invoice avec les fichiers uploadés
+      const invoice: ExpenseUpdateInvoiceDto = {
+        id: invoiceManager?.id,
+        date: invoiceManager?.date?.toString(),
+        dueDate: invoiceManager?.dueDate?.toString(),
+        object: invoiceManager?.object,
+        sequentialNumbr: invoiceManager?.sequentialNumbr,
+        sequential: '', // Assurez-vous que sequentialNumbr est bien défini ici
+        cabinetId: invoiceManager?.firm?.cabinetId,
+        firmId: invoiceManager?.firm?.id,
+        interlocutorId: invoiceManager?.interlocutor?.id,
+        currencyId: invoiceManager?.currency?.id,
+        bankAccountId: !controlManager?.isBankAccountDetailsHidden ? invoiceManager?.bankAccount?.id : undefined,
+        status,
+        generalConditions: !controlManager.isGeneralConditionsHidden ? invoiceManager?.generalConditions : '',
+        notes: invoiceManager?.notes,
+        articleInvoiceEntries: articlesDto,
+        discount: invoiceManager?.discount,
+        discount_type: invoiceManager?.discountType === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+        quotationId: invoiceManager?.quotationId,
+        taxStampId: invoiceManager?.taxStampId,
+        taxWithholdingId: invoiceManager?.taxWithholdingId,
+        pdfFileId, // Inclure l'ID du fichier PDF (nouveau ou existant)
+        uploads: [
+          ...(invoiceManager.uploadedFiles.filter((u) => !!u.upload).map((u) => ({ uploadId: u.upload.id }))), // Fichiers existants
+          ...uploadIds.map((id) => ({ uploadId: id })), // Nouveaux fichiers
+        ],
+        expenseInvoiceMetaData: {
+          showArticleDescription: !controlManager?.isArticleDescriptionHidden,
+          hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
+          hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
+          hasTaxWithholding: !controlManager.isTaxWithholdingHidden,
+        },
+      };
+  
+      // Validation de la facture
+      const validation = api.expense_invoice.validate(invoice, dateRange);
+      if (validation.message) {
+        toast.error(validation.message);
+      } else {
+        if (controlManager.isGeneralConditionsHidden) delete invoice.generalConditions;
+  
+        // Mettre à jour la facture avec les fichiers
+        updateInvoice({
+          invoice,
+          files: additionalFiles, // Fichiers supplémentaires
+        });
+  
+        // Réinitialiser l'état après la mise à jour
+        globalReset();
+      }
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      toast.error('An error occurred while updating the invoice');
     }
   };
-
-  //component representation
   if (debounceFetching) return <Spinner className="h-screen" />;
   return (
     <div className={cn('overflow-auto px-10 py-6', className)}>
-      {/* Main Container */}
       <div className={cn('block xl:flex gap-4', isUpdatingPending ? 'pointer-events-none' : '')}>
-        {/* First Card */}
         <div className="w-full h-auto flex flex-col xl:w-9/12">
-          <ScrollArea className=" max-h-[calc(100vh-120px)] border rounded-lg">
+          <ScrollArea className="max-h-[calc(100vh-120px)] border rounded-lg">
             <Card className="border-0">
               <CardContent className="p-5">
                 <ExpenseInvoiceGeneralInformation
@@ -334,7 +331,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
                   edit={editMode}
                   loading={debounceFetching}
                 />
-                {/* Article Management */}
                 <ExpenseInvoiceArticleManagement
                   className="my-5"
                   taxes={taxes}
@@ -342,9 +338,10 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
                   isArticleDescriptionHidden={controlManager.isArticleDescriptionHidden}
                   loading={debounceFetching}
                 />
-                {/* File Upload & Notes */}
-                <ExpenseInvoiceExtraOptions />
-                {/* Other Information */}
+                <ExpenseInvoiceExtraOptions
+                  onUploadAdditionalFiles={(files) => invoiceManager.set('uploadedFiles', files)}
+                  onUploadPdfFile={(file) => invoiceManager.set('pdfFile', file)}
+                />
                 <div className="flex gap-10 m-5">
                   <ExpenseInvoiceGeneralConditions
                     className="flex flex-col w-2/3 my-auto"
@@ -354,7 +351,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
                     edit={editMode}
                   />
                   <div className="w-1/3 my-auto">
-                    {/* Final Financial Information */}
                     <ExpenseInvoiceFinancialInformation
                       subTotal={invoiceManager.subTotal}
                       status={invoiceManager.status}
@@ -370,9 +366,8 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
             </Card>
           </ScrollArea>
         </div>
-        {/* Second Card */}
-        <div className="w-full xl:mt-0 xl:w-3/12 ">
-          <ScrollArea className=" max-h-[calc(100vh-120px)] border rounded-lg">
+        <div className="w-full xl:mt-0 xl:w-3/12">
+          <ScrollArea className="max-h-[calc(100vh-120px)] border rounded-lg">
             <Card className="border-0">
               <CardContent className="p-5">
                 <ExpenseInvoiceControlSection
@@ -387,7 +382,6 @@ export const  ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoi
                   handleSubmitDraft={() => onSubmit(EXPENSE_INVOICE_STATUS.Draft)}
                   handleSubmitValidated={() => onSubmit(EXPENSE_INVOICE_STATUS.Validated)}
                   handleSubmitExpired={() => onSubmit(EXPENSE_INVOICE_STATUS.Expired)}
-
                   loading={debounceFetching}
                   reset={globalReset}
                   edit={editMode}

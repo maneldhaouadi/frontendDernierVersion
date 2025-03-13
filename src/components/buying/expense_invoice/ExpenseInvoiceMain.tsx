@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useBreadcrumb } from '@/components/layout/BreadcrumbContext';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,7 @@ import { ExpenseInvoiceDuplicateDialog } from './dialogs/ExpenseInvoiceDuplicate
 import { ExpenseInvoiceActionsContext } from './data-table/ActionsContext';
 import { ExpenseDuplicateInvoiceDto } from '@/types/expense_invoices';
 import { EXPENSE_INVOICE_STATUS } from '@/types/expense_invoices';
+import { DuplicateInvoiceDto } from '@/types';
 
 interface ExpenseInvoiceMainProps {
   className?: string;
@@ -26,6 +27,7 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
   const { t: tCommon } = useTranslation('common');
   const { t: tInvoicing } = useTranslation('invoicing');
   const { setRoutes } = useBreadcrumb();
+
   React.useEffect(() => {
     setRoutes([
       { title: tCommon('menu.buying'), href: '/buying' },
@@ -79,34 +81,34 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
       )
   });
 
-  // Fonction pour vérifier si une facture est expirée
-  const isInvoiceExpired = (dueDate: string | undefined): boolean => {
-    if (!dueDate) {
-      console.error("Due Date is undefined or empty.");
-      return false;
+  // Mutation pour mettre à jour le statut des factures expirées
+  const { mutate: updateInvoiceStatus } = useMutation({
+    mutationFn: (invoiceId: number) => api.expense_invoice.updateInvoiceStatusIfExpired(invoiceId),
+    onSuccess: () => {
+      refetchInvoices();
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage('invoicing', error, tInvoicing('expense_invoice.status_update_failed')));
     }
+  });
 
-    try {
-      const dueDateObj = new Date(dueDate); // Convertit la chaîne en objet Date
-      const currentDate = new Date();
-      currentDate.setUTCHours(0, 0, 0, 0); // Réinitialise l'heure pour une comparaison précise
-
-      return dueDateObj < currentDate; // Retourne true si la date d'échéance est dépassée
-    } catch (error) {
-      console.error("Error parsing dueDate:", error);
-      return false;
+  // Vérifier les factures expirées lors du chargement des données
+  useEffect(() => {
+    if (invoicesResp?.data) {
+      invoicesResp.data.forEach((invoice) => {
+        // Vérifier que l'ID de la facture est défini
+        if (invoice.id && invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
+          updateInvoiceStatus(invoice.id); // Appeler la mutation uniquement si l'ID est défini
+        }
+      });
     }
-  };
+  }, [invoicesResp]);
 
-  // Mettre à jour le statut des factures lors de l'affichage
   const invoices = React.useMemo(() => {
     if (!invoicesResp?.data) return [];
-
+  
     return invoicesResp.data.map((invoice) => {
-      if (invoice.dueDate && isInvoiceExpired(invoice.dueDate)) {
-        return { ...invoice, status: EXPENSE_INVOICE_STATUS.Expired }; // Met à jour le statut à "Expired"
-      }
-      return invoice;
+      return invoice; // Retourne l'invoice sans modification
     });
   }, [invoicesResp]);
 
@@ -144,21 +146,28 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
 
   //Duplicate Invoice
   const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({
-    mutationFn: (duplicateInvoiceDto: ExpenseDuplicateInvoiceDto) =>
-      api.expense_invoice.duplicate(duplicateInvoiceDto),
+    mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
+      const duplicateInvoiceDto: ExpenseDuplicateInvoiceDto = {
+        id, // ID de la facture à dupliquer
+        includeFiles, // Inclure ou non les fichiers
+      };
+      return api.expense_invoice.duplicate(duplicateInvoiceDto); // Appel API pour dupliquer la facture
+    },
     onSuccess: async (data) => {
+      // Afficher un message de succès
       toast.success(tInvoicing('expense_invoice.action_duplicate_success'));
+      // Rediriger vers la nouvelle facture dupliquée
       await router.push('/buying/expense_invoice/' + data.id);
+      // Fermer la boîte de dialogue de duplication
       setDuplicateDialog(false);
     },
     onError: (error) => {
+      // Afficher un message d'erreur en cas d'échec
       toast.error(
         getErrorMessage('invoicing', error, tInvoicing('expense_invoice.action_duplicate_failure'))
       );
-    }
+    },
   });
-
-  //Download Invoice
 
   const isPending = isFetchPending || isDeletePending || paging || resizing || searching || sorting;
 

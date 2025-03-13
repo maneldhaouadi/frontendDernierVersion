@@ -19,7 +19,7 @@ export enum EXPENSE_INVOICE_STATUS {
   Paid = 'expense_invoice.status.paid',
   PartiallyPaid = 'expense_invoice.status.partially_paid',
   Unpaid = 'expense_invoice.status.unpaid',
-  Expired = 'expense_invoice.status.expired'
+  Expired = 'expense_invoice.status.expired',
 }
 
 export interface ExpenseInvoiceTaxEntry extends DatabaseEntity {
@@ -45,7 +45,7 @@ export interface ExpenseArticleInvoiceEntry extends DatabaseEntity {
 
 export interface ExpenseCreateArticleInvoiceEntry
   extends Omit<
-  ExpenseArticleInvoiceEntry,
+    ExpenseArticleInvoiceEntry,
     | 'id'
     | 'expenseInvoiceId'
     | 'subTotal'
@@ -75,7 +75,6 @@ export interface ExpenseInvoiceUpload extends DatabaseEntity {
   invoice?: ExpenseInvoice;
   uploadId?: number;
   upload?: Upload;
-  filePath?:number;
 }
 
 export interface ExpenseInvoice extends DatabaseEntity {
@@ -115,7 +114,9 @@ export interface ExpenseInvoice extends DatabaseEntity {
   taxWithholding?: TaxWithholding;
   taxWithholdingId?: number;
   taxWithholdingAmount?: number;
-
+  pdfFileId?: number;
+  pdfFile?:File;
+  uploadPdfField?:Upload;
 }
 
 export interface ExpenseCreateInvoiceDto
@@ -133,9 +134,11 @@ export interface ExpenseCreateInvoiceDto
     | 'bankAccount'
   > {
   articleInvoiceEntries?: ExpenseCreateArticleInvoiceEntry[];
-  files?: File[];
-  sequentialNumbr:string,
-  sequential:string
+  files?: ExpenseInvoiceUpload[];
+  sequentialNumbr: string;
+  sequential: string;
+  pdfFileId?: number;
+  pdfFile?:File
 }
 
 export interface ExpenseUpdateInvoiceDto extends ExpenseCreateInvoiceDto {
@@ -153,4 +156,3 @@ export interface ExpenseInvoiceUploadedFile {
   upload: ExpenseInvoiceUpload;
   file: File;
 }
-

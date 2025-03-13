@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/other/useDebounce';
@@ -16,8 +16,9 @@ import { ExpenseQuotationDeleteDialog } from './dialogs/ExpenseQuotationDeleteDi
 import { ExpenseQuotationDuplicateDialog } from './dialogs/ExpenseQuotationDuplicateDialog';
 import { ExpenseQuotationInvoiceDialog } from './dialogs/ExpenseQuotationInvoiceDialog';
 import { ExpenseQuotationActionsContext } from './data-table/ActionsContext';
+import { EXPENSQUOTATION_STATUS } from '@/types'; // Assurez-vous d'importer le statut approprié
 
-interface   ExpenseQuotationMainProps {
+interface ExpenseQuotationMainProps {
   className?: string;
 }
 
@@ -52,7 +53,6 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
 
   const [deleteDialog, setDeleteDialog] = React.useState(false);
   const [duplicateDialog, setDuplicateDialog] = React.useState(false);
-  const [downloadDialog, setDownloadDialog] = React.useState(false);
   const [invoiceDialog, setInvoiceDialog] = React.useState(false);
 
   const {
@@ -80,15 +80,41 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
       )
   });
 
-  const quotations = React.useMemo(() => {
-    return quotationsResp?.data || [];
-  }, [quotationsResp]);
+  const { mutate: updateQuotationStatus } = useMutation({
+      mutationFn: (quotationId: number) => api.expense_quotation.updateInvoiceStatusIfExpired(quotationId),
+      onSuccess: () => {
+        refetchQuotations();
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage('invoicing', error, tInvoicing('expense_invoice.status_update_failed')));
+      }
+    });
+
+  
+  // Mettre à jour le statut des quotations lors de l'affichage
+  useEffect(() => {
+      if (quotationsResp?.data) {
+        quotationsResp.data.forEach((quotation) => {
+          // Vérifier que l'ID de la facture est défini
+          if (quotation.id && quotation.dueDate && new Date(quotation.dueDate) < new Date()) {
+            updateQuotationStatus(quotation.id); // Appeler la mutation uniquement si l'ID est défini
+          }
+        });
+      }
+    }, [quotationsResp]);
+  
+    const quotations = React.useMemo(() => {
+      if (!quotationsResp?.data) return [];
+    
+      return quotationsResp.data.map((quotation) => {
+        return quotation; // Retourne l'invoice sans modification
+      });
+    }, [quotationsResp]);
 
   const context = {
     //dialogs
     openDeleteDialog: () => setDeleteDialog(true),
     openDuplicateDialog: () => setDuplicateDialog(true),
-    openDownloadDialog: () => setDownloadDialog(true),
     openInvoiceDialog: () => setInvoiceDialog(true),
     //search, filtering, sorting & paging
     searchTerm,
@@ -119,35 +145,29 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
     }
   });
 
-  //Duplicate Quotation
   const { mutate: duplicateQuotation, isPending: isDuplicationPending } = useMutation({
-    mutationFn: (duplicateQuotationDto: DuplicateExpensQuotationDto) =>
-      api.expense_quotation.duplicate(duplicateQuotationDto),
+    mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
+      console.log("Starting duplication...");
+      const duplicateQuotationDto: DuplicateExpensQuotationDto = {
+        id,
+        includeFiles,
+      };
+      console.log("Duplicate DTO:", duplicateQuotationDto);
+      return api.expense_quotation.duplicate(duplicateQuotationDto);
+    },
     onSuccess: async (data) => {
-      toast.success(tInvoicing('quotation.action_duplicate_success'));
-      await router.push('/buying/expense_quotation/' + data.id);
+      console.log("Duplication successful, redirecting...");
+      console.log("Duplicated Quotation Data in onSuccess:", data);
+      toast.success(tInvoicing('expensequotation.action_duplicate_success'));
+      await router.push('/buying/expense_quotation/' + data.id); // Rediriger vers le nouveau devis
       setDuplicateDialog(false);
     },
     onError: (error) => {
+      console.error("Duplication error:", error);
       toast.error(
-        getErrorMessage('invoicing', error, tInvoicing('quotation.action_duplicate_failure'))
+        getErrorMessage('invoicing', error, tInvoicing('expensequotation.action_duplicate_failure'))
       );
-    }
-  });
-
-  //Download Quotation
-  const { mutate: downloadQuotation, isPending: isDownloadPending } = useMutation({
-    mutationFn: (data: { id: number; template: string }) =>
-      api.expense_quotation.download(data.id, data.template),
-    onSuccess: () => {
-      toast.success(tInvoicing('quotation.action_download_success'));
-      setDownloadDialog(false);
     },
-    onError: (error) => {
-      toast.error(
-        getErrorMessage('invoicing', error, tInvoicing('quotation.action_download_failure'))
-      );
-    }
   });
 
   //Invoice quotation
@@ -164,8 +184,6 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
       toast.error(message);
     }
   });
-  console.log("pleaaaseeeee",quotationManager.firm?.name)
-
 
   const isPending =
     isFetchPending ||

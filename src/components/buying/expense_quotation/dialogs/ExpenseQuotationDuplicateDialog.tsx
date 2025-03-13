@@ -7,7 +7,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Check, X } from 'lucide-react';
@@ -19,7 +19,7 @@ import {
   DrawerDescription,
   DrawerFooter,
   DrawerHeader,
-  DrawerTitle
+  DrawerTitle,
 } from '@/components/ui/drawer';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -27,9 +27,9 @@ interface ExpenseQuotationDuplicateDialogProps {
   className?: string;
   id: number;
   open: boolean;
-  duplicateQuotation: (includeFiles: boolean) => void;
-  isDuplicationPending?: boolean;
-  onClose: () => void;
+  duplicateQuotation: (includeFiles: boolean) => void; // Fonction pour dupliquer le devis
+  isDuplicationPending?: boolean; // Indique si la duplication est en cours
+  onClose: () => void; // Fonction pour fermer la boîte de dialogue
 }
 
 export const ExpenseQuotationDuplicateDialog: React.FC<ExpenseQuotationDuplicateDialogProps> = ({
@@ -37,53 +37,58 @@ export const ExpenseQuotationDuplicateDialog: React.FC<ExpenseQuotationDuplicate
   id,
   open,
   duplicateQuotation,
-  isDuplicationPending,
-  onClose
+  isDuplicationPending = false,
+  onClose,
 }) => {
   const { t: tCommon } = useTranslation('common');
   const { t: tInvoicing } = useTranslation('invoicing');
-
   const isDesktop = useMediaQuery('(min-width: 1500px)');
-  const [includeFiles, setIncludeFiles] = React.useState(false);
+  const [includeFiles, setIncludeFiles] = React.useState(false); // État pour inclure les fichiers
 
   const header = (
     <Label className="leading-5">
-      Voulez-vous vraiment dupliquer le devis N°
-      ?
+      Voulez-vous vraiment dupliquer le devis N°{id} ?
     </Label>
   );
 
   const content = (
     <div className="flex gap-2 items-center">
-      <Checkbox checked={includeFiles} onCheckedChange={() => setIncludeFiles(!includeFiles)} />{' '}
+      {/* Case à cocher pour inclure les fichiers */}
+      <Checkbox
+        checked={includeFiles}
+        onCheckedChange={() => setIncludeFiles(!includeFiles)}
+      />{' '}
       <Label>{tInvoicing('quotation.file_duplication')}</Label>
     </div>
   );
 
   const footer = (
     <div className="flex gap-2 mt-2 items-center justify-center">
+      {/* Bouton pour confirmer la duplication */}
       <Button
         className="w-1/2 flex gap-1"
         onClick={() => {
-          duplicateQuotation(includeFiles);
-          setIncludeFiles(false);
-        }}>
+          duplicateQuotation(includeFiles); // Appeler la fonction de duplication avec l'état includeFiles
+          setIncludeFiles(false); // Réinitialiser l'état après la duplication
+        }}
+      >
         <Check className="h-4 w-4" />
         {tCommon('commands.duplicate')}
+        {/* Afficher un spinner pendant la duplication */}
         <Spinner size={'small'} show={isDuplicationPending} />
       </Button>
+      {/* Bouton pour annuler */}
       <Button
         className="w-1/2 flex gap-1"
         variant={'secondary'}
-        onClick={() => {
-          onClose();
-        }}>
+        onClick={() => onClose()}
+      >
         <X className="h-4 w-4" /> {tCommon('commands.cancel')}
       </Button>
     </div>
   );
 
-  if (isDesktop)
+  if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className={cn('max-w-[30vw] py-5 px-4', className)}>
@@ -97,12 +102,16 @@ export const ExpenseQuotationDuplicateDialog: React.FC<ExpenseQuotationDuplicate
         </DialogContent>
       </Dialog>
     );
+  }
+
   return (
     <Drawer open={open} onClose={onClose}>
       <DrawerContent>
         <DrawerHeader className="text-left">
           <DrawerTitle>{header}</DrawerTitle>
-          <DrawerDescription className="flex gap-2 items-center p-4">{content}</DrawerDescription>
+          <DrawerDescription className="flex gap-2 items-center p-4">
+            {content}
+          </DrawerDescription>
         </DrawerHeader>
         <DrawerFooter className="border-t pt-2">{footer}</DrawerFooter>
       </DrawerContent>

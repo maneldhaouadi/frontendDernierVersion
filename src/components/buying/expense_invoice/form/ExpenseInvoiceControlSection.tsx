@@ -82,6 +82,8 @@ export const ExpenseInvoiceControlSection = ({
   handleSubmit,
   handleSubmitDraft,
   handleSubmitValidated,
+  handleSubmitDuplicate,
+  handleSubmitExpired,
   reset,
   loading,
   edit = true
@@ -209,11 +211,6 @@ export const ExpenseInvoiceControlSection = ({
     }
   ];
   const sequential = invoiceManager.sequentialNumbr;
-
-
-
-
-
 
   return (
     <>

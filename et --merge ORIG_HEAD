@@ -1,0 +1,21 @@
+[33m8e36851[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to 8e36851
+[33m8e36851[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{1}: reset: moving to 8e36851
+[33m033905e[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{2}: commit (merge): ModuleAchatVrsion1
+[33m8e36851[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{3}: commit: ModuleAchatBeforChatbot
+[33m4f1b747[m HEAD@{4}: pull origin main: Fast-forward
+[33m6d4734e[m HEAD@{5}: commit: PartieFrontAchat
+[33md8e595b[m HEAD@{6}: commit: BackendInvoiceQuotationPayment
+[33m70397ce[m[33m ([m[1;31morigin/FrontendQuotationInvoice[m[33m)[m HEAD@{7}: commit (merge): FRONTSEQUENCE
+[33m14490cb[m HEAD@{8}: commit: SquenceFront
+[33m904b6ce[m HEAD@{9}: reset: moving to HEAD@{3}
+[33m904b6ce[m HEAD@{10}: rebase (abort): returning to refs/heads/main
+[33m692830d[m HEAD@{11}: rebase (continue): front
+[33m79b3d5b[m HEAD@{12}: pull --rebase origin main (start): checkout 79b3d5bf5f3efa073b84493c3b47e5c886641766
+[33m904b6ce[m HEAD@{13}: commit: front
+[33m5339af2[m HEAD@{14}: commit: DernierVersionFront
+[33m78e89bc[m HEAD@{15}: pull origin main: Fast-forward
+[33m28a6ddc[m HEAD@{16}: reset: moving to ORIG_HEAD
+[33m3a385fc[m HEAD@{17}: pull origin main: Fast-forward
+[33m28a6ddc[m HEAD@{18}: commit: DernierModifFront
+[33m07e6738[m HEAD@{19}: commit: FrontendInvoice
+[33m943f72d[m HEAD@{20}: clone: from https://github.com/Jouininada/PFE0.1-FRONTEND.git

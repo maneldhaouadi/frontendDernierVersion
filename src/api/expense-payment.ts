@@ -15,7 +15,8 @@ const findOne = async (
     'invoices.expenseInvoice',
     'invoices.expenseInvoice.currency',
     'uploads',
-    'uploads.upload'
+    'uploads.upload',
+    'uploadPdfField'
   ]
 ): Promise<ExpensePayment & { files: ExpensePaymentUploadedFile[] }> => {
   const response = await axios.get<ExpensePayment>(`public/expense-payment/${id}?join=${relations.join(',')}`);
@@ -58,13 +59,26 @@ const uploadPaymentFiles = async (files: File[]): Promise<number[]> => {
 };
 
 const create = async (payment: ExpenseCreatePaymentDto, files: File[] = []): Promise<ExpensePayment> => {
+  let pdfFileId = payment.pdfFileId;
+
+  // Vérifie si un fichier PDF est présent et l'upload
+  if (payment.pdfFile) {
+    const [uploadId] = await uploadPaymentFiles([payment.pdfFile]); // Upload le fichier PDF et récupère l'ID
+    pdfFileId = uploadId; // Met à jour pdfFileId avec l'ID uploadé
+  }
+
+  // Upload les autres fichiers
   const uploadIds = await uploadPaymentFiles(files);
-  const response = await axios.post<ExpenseCreatePaymentDto>('public/expense-payment/save', {
-    ...payment,
-    uploads: uploadIds.map((id) => {
-      return { uploadId: id };
-    })
+
+  // Envoie les données à l'API
+  const response = await axios.post<ExpensePayment>('public/expense-payment/save', {
+    ...payment, // Copie toutes les propriétés de l'objet payment
+    sequential: payment.sequentialNumbr, // Assigner sequentialNumbr à sequential
+    pdfFileId, // Ajoute pdfFileId (ID du fichier PDF uploadé)
+    uploads: uploadIds.map((id) => ({ uploadId: id })), // Transforme les IDs en objets { uploadId: id }
   });
+
+  // Retourne les données de la réponse
   return response.data;
 };
 
@@ -91,22 +105,51 @@ const getPaymentUploads = async (payment: ExpensePayment): Promise<ExpensePaymen
 };
 
 const update = async (payment: ExpenseUpdatePaymentDto, files: File[] = []): Promise<ExpensePayment> => {
+  let pdfFileId = payment.pdfFileId;
+
+  // Vérifie si un fichier PDF est présent et l'upload
+  if (payment.pdfFile) {
+    const [uploadId] = await uploadPaymentFiles([payment.pdfFile]); // Upload le fichier PDF et récupère l'ID
+    pdfFileId = uploadId; // Met à jour pdfFileId avec l'ID uploadé
+  }
+
+  // Upload les autres fichiers
   const uploadIds = await uploadPaymentFiles(files);
+
+  // Envoie les données à l'API
   const response = await axios.put<ExpensePayment>(`public/expense-payment/${payment.id}`, {
     ...payment,
+    sequential: payment.sequentialNumbr, // Assigner sequentialNumbr à sequential
+    pdfFileId, // Ajoute pdfFileId (ID du fichier PDF uploadé)
     uploads: [
-      ...(payment.uploads || []),
-      ...uploadIds.map((id) => {
-        return { uploadId: id };
-      })
-    ]
+      ...(payment.uploads || []), // Conserve les uploads existants
+      ...uploadIds.map((id) => ({ uploadId: id })), // Ajoute les nouveaux uploads
+    ],
   });
+
+  // Retourne les données de la réponse
   return response.data;
 };
 
 const remove = async (id: number): Promise<ExpensePayment> => {
   const response = await axios.delete<ExpensePayment>(`public/expense-payment/${id}`);
   return response.data;
+};
+const deletePdfFile = async (paymentId: number): Promise<void> => {
+  try {
+    // Appeler l'API pour supprimer le fichier PDF
+    const response = await axios.delete(`/public/expensquotation/${paymentId}/pdf`);
+
+    // Vérifier si la suppression a réussi
+    if (response.status === 200) {
+      console.log('PDF file deleted successfully');
+    } else {
+      throw new Error('Failed to delete PDF file');
+    }
+  } catch (error) {
+    console.error('Error deleting PDF file:', error);
+    throw error; // Propager l'erreur pour la gérer dans le composant
+  }
 };
 
 const validate = (payment: Partial<ExpensePayment>, used: number, paid: number): ToastValidation => {
@@ -121,4 +164,4 @@ const validate = (payment: Partial<ExpensePayment>, used: number, paid: number):
   return { message: '', position: 'bottom-right' };
 };
 
-export const expensepayment = { findOne, findPaginated, create, update, remove, validate };
+export const expensepayment = { findOne, findPaginated, create, update, remove, validate,deletePdfFile };

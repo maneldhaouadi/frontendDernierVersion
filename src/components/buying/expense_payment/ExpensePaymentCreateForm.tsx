@@ -12,9 +12,7 @@ import { api } from '@/api';
 import { useMutation } from '@tanstack/react-query';
 import { getErrorMessage } from '@/utils/errors';
 import { toast } from 'sonner';
-
 import useCabinet from '@/hooks/content/useCabinet';
-
 import dinero from 'dinero.js';
 import { createDineroAmountFromFloatWithDynamicCurrency } from '@/utils/money.utils';
 import { useExpensePaymentManager } from './hooks/useExpensePaymentManager';
@@ -73,7 +71,7 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
     mutationFn: (data: { payment: ExpenseCreatePaymentDto; files: File[] }) =>
       api.expensepayment.create(data.payment, data.files),
     onSuccess: () => {
-      toast.success('Paiement crée avec succès');
+      toast.success('Paiement créé avec succès');
       router.push('/buying/expense_payments');
     },
     onError: (error) => {
@@ -82,7 +80,7 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
     }
   });
 
-  //Reset Form
+  // Reset Form
   const globalReset = () => {
     paymentManager.reset();
     invoiceManager.reset();
@@ -92,7 +90,7 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
     globalReset();
   }, []);
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     const invoices: ExpensePaymentInvoiceEntry[] = invoiceManager
       .getInvoices()
       .map((invoice: ExpensePaymentInvoiceEntry) => ({
@@ -109,6 +107,21 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
       precision: currency?.digitAfterComma || 3
     }).toUnit();
 
+    let pdfFileId = paymentManager.pdfFileId; // Existing PDF file ID
+
+    // If a new PDF file is uploaded, upload it and get its ID
+    if (paymentManager.pdfFile) {
+      const [uploadedPdfFileId] = await api.upload.uploadFiles([paymentManager.pdfFile]);
+      pdfFileId = uploadedPdfFileId; // Update the PDF file ID
+    }
+
+    // Upload additional files
+    const additionalFiles = paymentManager.uploadedFiles
+      .filter((u) => !u.upload) // Additional files not yet uploaded
+      .map((u) => u.file);
+
+    const uploadIds = await api.upload.uploadFiles(additionalFiles);
+
     const payment: ExpenseCreatePaymentDto = {
       amount: paymentManager.amount,
       fee: paymentManager.fee,
@@ -118,15 +131,21 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
       notes: paymentManager.notes,
       currencyId: paymentManager.currencyId,
       firmId: paymentManager.firmId,
+      sequentialNumbr: paymentManager.sequentialNumbr, 
+      sequential: '', // Assurez-vous que sequentialNumbr est bien défini ici
+      // Include sequential number
+      pdfFileId, // Include PDF file ID
+      uploads: uploadIds.map((id) => ({ uploadId: id })), // Include upload IDs
       invoices
     };
+
     const validation = api.expensepayment.validate(payment, used, paid);
     if (validation.message) {
       toast.error(validation.message);
     } else {
       createPayment({
         payment,
-        files: paymentManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
+        files: additionalFiles
       });
       globalReset();
     }
@@ -157,8 +176,10 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
                 )}
                 {/* Extra Options (files) */}
                 <div>
-                  <ExpensePaymentExtraOptions loading={loading} />
-
+                  <ExpensePaymentExtraOptions
+                    onUploadAdditionalFiles={(files) => paymentManager.set('uploadedFiles', files)}
+                    onUploadPdfFile={(file) => paymentManager.set('pdfFile', file)}
+                  />
                 </div>
                 <div className="flex gap-10 mt-5">
                   <Textarea

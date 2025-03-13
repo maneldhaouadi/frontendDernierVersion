@@ -7,7 +7,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Check, X } from 'lucide-react';
@@ -18,9 +18,9 @@ interface ExpenseInvoiceDuplicateDialogProps {
   className?: string;
   id: number;
   open: boolean;
-  duplicateInvoice: (includeFiles: boolean) => void;
-  isDuplicationPending?: boolean;
-  onClose: () => void;
+  duplicateInvoice: (includeFiles: boolean) => void; // Fonction pour dupliquer la facture
+  isDuplicationPending?: boolean; // Indique si la duplication est en cours
+  onClose: () => void; // Fonction pour fermer la boîte de dialogue
 }
 
 export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDialogProps> = ({
@@ -29,11 +29,11 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
   open,
   duplicateInvoice,
   isDuplicationPending = false,
-  onClose
+  onClose,
 }) => {
   const { t: tCommon } = useTranslation('common');
   const { t: tInvoicing } = useTranslation('invoicing');
-  const [includeFiles, setIncludeFiles] = React.useState(false);
+  const [includeFiles, setIncludeFiles] = React.useState(false); // État pour inclure les fichiers
 
   const header = (
     <Label className="leading-5">
@@ -43,24 +43,31 @@ export const ExpenseInvoiceDuplicateDialog: React.FC<ExpenseInvoiceDuplicateDial
 
   const content = (
     <div className="flex gap-2 items-center">
-      <Checkbox checked={includeFiles} onCheckedChange={() => setIncludeFiles(!includeFiles)} />{' '}
+      {/* Case à cocher pour inclure les fichiers */}
+      <Checkbox
+        checked={includeFiles}
+        onCheckedChange={() => setIncludeFiles(!includeFiles)}
+      />{' '}
       <Label>{tInvoicing('expense_invoice.file_duplication')}</Label>
     </div>
   );
 
   const footer = (
     <div className="flex gap-2 mt-2 items-center justify-center">
+      {/* Bouton pour confirmer la duplication */}
       <Button
         className="w-1/2 flex gap-1"
         onClick={() => {
-          duplicateInvoice(includeFiles); 
-          setIncludeFiles(false);  
+          duplicateInvoice(includeFiles); // Appeler la fonction de duplication avec l'état includeFiles
+          setIncludeFiles(false); // Réinitialiser l'état après la duplication
         }}
       >
         <Check className="h-4 w-4" />
         {tCommon('commands.duplicate')}
+        {/* Afficher un spinner pendant la duplication */}
         <Spinner size={'small'} show={isDuplicationPending} />
       </Button>
+      {/* Bouton pour annuler */}
       <Button
         className="w-1/2 flex gap-1"
         variant={'secondary'}

@@ -1,22 +1,18 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api';
-import {  } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getErrorMessage } from '@/utils/errors';
-import _ from 'lodash';
 import useCurrency from '@/hooks/content/useCurrency';
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/router';
 import { useBreadcrumb } from '@/components/layout/BreadcrumbContext';
 import useInitializedState from '@/hooks/use-initialized-state';
-
 import useFirmChoices from '@/hooks/content/useFirmChoice';
 import { Textarea } from '@/components/ui/textarea';
-
 import dinero from 'dinero.js';
 import { createDineroAmountFromFloatWithDynamicCurrency } from '@/utils/money.utils';
 import { useExpensePaymentManager } from './hooks/useExpensePaymentManager';
@@ -42,14 +38,14 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
   const paymentManager = useExpensePaymentManager();
   const invoiceManager = useExpensePaymentInvoiceManager();
 
-  //Fetch options
+  // Fetch payment data
   const {
     isPending: isFetchPending,
     data: paymentResp,
-    refetch: refetchInvoice
+    refetch: refetchPayment,
   } = useQuery({
-    queryKey: ['invoice', paymentId],
-    queryFn: () => api.expensepayment.findOne(parseInt(paymentId))
+    queryKey: ['payment', paymentId],
+    queryFn: () => api.expensepayment.findOne(parseInt(paymentId)),
   });
 
   const payment = React.useMemo(() => {
@@ -57,12 +53,13 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
   }, [paymentResp]);
 
   React.useEffect(() => {
-    if (payment?.id)
+    if (payment?.id) {
       setRoutes([
         { title: tCommon('menu.buying'), href: '/buying' },
         { title: tInvoicing('payment.plural'), href: '/buying/expense_payments' },
-        { title: tInvoicing('payment.singular') + ' N° ' + payment?.id }
+        { title: tInvoicing('payment.singular') + ' N° ' + payment?.id },
       ]);
+    }
   }, [router.locale, payment?.id]);
 
   // Fetch options
@@ -76,19 +73,27 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
   const { firms, isFetchFirmsPending } = useFirmChoices([
     'currency',
     'invoices',
-    'invoices.currency'
+    'invoices.currency',
   ]);
+
   const fetching =
     isFetchPending || isFetchFirmsPending || isFetchCurrenciesPending || isFetchCabinetPending;
 
   const setPaymentData = (data: Partial<ExpensePayment>) => {
-    //invoice infos
-    paymentManager.setPayment({ ...data, firm: firms.find((firm) => firm.id === data.firmId) });
-    //invoice article infos
+    // Payment infos
+    paymentManager.setPayment({
+      ...data,
+      firm: firms.find((firm) => firm.id === data.firmId),
+      sequentialNumbr: data.sequentialNumbr, // Récupérer sequentialNumbr
+      uploadPdfField: data.uploadPdfField, // Récupérer le fichier PDF
+      uploads: data.uploads || [], // Récupérer les fichiers uploadés
+    });
+
+    // Invoice infos
     data?.invoices &&
       data.convertionRate &&
       data.currency &&
-      invoiceManager.setInvoices(data?.invoices, data.currency, data.convertionRate, 'EDIT');
+      invoiceManager.setInvoices(data.invoices, data.currency, data.convertionRate, 'EDIT');
   };
 
   const { isDisabled, globalReset } = useInitializedState({
@@ -96,7 +101,7 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
     getCurrentData: () => {
       return {
         payment: paymentManager.getPayment(),
-        invoices: invoiceManager.getInvoices()
+        invoices: invoiceManager.getInvoices(),
       };
     },
     setFormData: (data: Partial<ExpensePayment>) => {
@@ -106,7 +111,7 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
       paymentManager.reset();
       invoiceManager.reset();
     },
-    loading: fetching
+    loading: fetching,
   });
 
   const currency = React.useMemo(() => {
@@ -123,7 +128,7 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
     onError: (error) => {
       const message = getErrorMessage('', error, 'Erreur lors de la mise à jour de paiement');
       toast.error(message);
-    }
+    },
   });
 
   const onSubmit = () => {
@@ -131,19 +136,21 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
       .getInvoices()
       .map((invoice: ExpensePaymentInvoiceEntry) => ({
         expenseInvoiceId: invoice.expenseInvoice?.id,
-        amount: invoice.amount
+        amount: invoice.amount,
       }));
+
     const used = invoiceManager.calculateUsedAmount();
     const paid = dinero({
       amount: createDineroAmountFromFloatWithDynamicCurrency(
         (paymentManager.amount || 0) + (paymentManager.fee || 0),
         currency?.digitAfterComma || 3
       ),
-      precision: currency?.digitAfterComma || 3
+      precision: currency?.digitAfterComma || 3,
     }).toUnit();
 
     const payment: ExpenseUpdatePaymentDto = {
       id: paymentManager.id,
+      sequential: '', // Assurez-vous que sequentialNumbr est bien défini ici
       amount: paymentManager.amount,
       fee: paymentManager.fee,
       convertionRate: paymentManager.convertionRate,
@@ -152,16 +159,18 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
       notes: paymentManager.notes,
       currencyId: paymentManager.currencyId,
       firmId: paymentManager.firmId,
+      sequentialNumbr: paymentManager.sequentialNumbr, // Inclure sequentialNumbr
       invoices,
-      uploads: paymentManager.uploadedFiles.filter((u) => !!u.upload).map((u) => u.upload)
+      uploads: paymentManager.uploadedFiles.filter((u) => !!u.upload).map((u) => u.upload),
     };
+
     const validation = api.expensepayment.validate(payment, used, paid);
     if (validation.message) {
       toast.error(validation.message);
     } else {
       updatePayment({
         payment,
-        files: paymentManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
+        files: paymentManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file),
       });
     }
   };
@@ -187,9 +196,12 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
                   <ExpensePaymentInvoiceManagement className="pb-5 border-b" loading={fetching} />
                 )}
                 {/* Extra Options (files) */}
-                <div>
-                  <ExpensePaymentExtraOptions loading={fetching} />
-                </div>
+                 <div>
+                                  <ExpensePaymentExtraOptions
+                                    onUploadAdditionalFiles={(files) => paymentManager.set('uploadedFiles', files)}
+                                    onUploadPdfFile={(file) => paymentManager.set('pdfFile', file)}
+                                  />
+                                </div>
                 <div className="flex gap-10 mt-5">
                   <Textarea
                     placeholder={tInvoicing('payment.attributes.notes')}

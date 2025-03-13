@@ -17,6 +17,7 @@ import { useExpenseInvoiceManager } from './hooks/useExpenseInvoiceManager';
 import { ExpenseInvoiceDeleteDialog } from './dialogs/ExpenseInvoiceDeleteDialog';
 import { ExpenseInvoiceDuplicateDialog } from './dialogs/ExpenseInvoiceDuplicateDialog';
 import { ExpenseInvoiceActionsContext } from './data-table/ActionsContext';
+import { ExpenseDuplicateInvoiceDto } from '@/types/expense_invoices';
 
 interface ExpenseInvoiceEmbeddedMainProps {
   className?: string;
@@ -127,20 +128,28 @@ export const ExpenseInvoiceEmbeddedMain: React.FC<ExpenseInvoiceEmbeddedMainProp
 
   //Duplicate Invoice
   const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({
-    mutationFn: (duplicateInvoiceDto: DuplicateInvoiceDto) =>
-      api.expense_invoice.duplicate(duplicateInvoiceDto),
+    mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
+      const duplicateInvoiceDto: ExpenseDuplicateInvoiceDto = {
+        id, // ID de la facture à dupliquer
+        includeFiles, // Inclure ou non les fichiers
+      };
+      return api.expense_invoice.duplicate(duplicateInvoiceDto); // Appel API pour dupliquer la facture
+    },
     onSuccess: async (data) => {
+      // Afficher un message de succès
       toast.success(tInvoicing('expense_invoice.action_duplicate_success'));
+      // Rediriger vers la nouvelle facture dupliquée
       await router.push('/buying/expense_invoice/' + data.id);
+      // Fermer la boîte de dialogue de duplication
       setDuplicateDialog(false);
     },
     onError: (error) => {
+      // Afficher un message d'erreur en cas d'échec
       toast.error(
         getErrorMessage('invoicing', error, tInvoicing('expense_invoice.action_duplicate_failure'))
       );
-    }
+    },
   });
-
   //Download Invoice
 
   const isPending = isFetchPending || isDeletePending || paging || resizing || searching || sorting;

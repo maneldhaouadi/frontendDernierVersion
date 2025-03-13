@@ -32,6 +32,8 @@ export interface ExpensePaymentInvoiceEntry extends DatabaseEntity {
 
 export interface ExpensePayment extends DatabaseEntity {
   id?: number;
+  sequential?: string;
+  sequentialNumbr?: string;
   amount?: number;
   fee?: number;
   convertionRate?: number;
@@ -44,11 +46,18 @@ export interface ExpensePayment extends DatabaseEntity {
   currencyId?: number;
   firm?: Firm;
   firmId?: number;
+  pdfFileId?: number;
+  pdfFile?:File;
+  uploadPdfField?:Upload;
 }
 
 export interface ExpenseCreatePaymentDto
   extends Omit<ExpensePayment, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'isDeletionRestricted'> {
   files?: File[];
+  sequentialNumbr:string,
+  sequential:string,
+  pdfFileId?: number;
+  pdfFile?:File
 }
 
 export interface ExpenseUpdatePaymentDto extends ExpenseCreatePaymentDto {

@@ -10,32 +10,35 @@ import {
 } from '@/types';
 import { EXPENSE_INVOICE_STATUS, ExpenseCreateInvoiceDto, ExpenseDuplicateInvoiceDto, ExpenseInvoice, ExpenseInvoiceUploadedFile, ExpensePagedInvoice,ExpenseUpdateInvoiceDto } from '@/types/expense_invoices';
 import { EXPENSE_INVOICE_FILTER_ATTRIBUTES } from '@/constants/expense_invoice.filter-attributes';
+import { Underline, Upload } from 'lucide-react';
 
 const factory = (): ExpenseCreateInvoiceDto => {
   return {
-    date: '',
-    dueDate: '',
-    status: EXPENSE_INVOICE_STATUS.Unpaid,
-    generalConditions: '',
-    total: 0,
-    subTotal: 0,
-    discount: 0,
-    discount_type: DISCOUNT_TYPE.AMOUNT,
-    currencyId: 0,
-    firmId: 0,
-    interlocutorId: 0,
-    notes: '',
-    sequential:'',
-    sequentialNumbr:'',
-    articleInvoiceEntries: [],
-    expenseInvoiceMetaData: {
-      hasBankingDetails: true,
-      hasGeneralConditions: true,
-      showArticleDescription: true,
-      taxSummary: []
-    },
-    files: []
-  };
+  date: '',
+  dueDate: '',
+  status: EXPENSE_INVOICE_STATUS.Unpaid,
+  generalConditions: '',
+  total: 0,
+  subTotal: 0,
+  discount: 0,
+  discount_type: DISCOUNT_TYPE.AMOUNT,
+  currencyId: 0,
+  firmId: 0,
+  interlocutorId: 0,
+  notes: '',
+  sequential: '',
+  sequentialNumbr: '',
+  articleInvoiceEntries: [],
+  expenseInvoiceMetaData: {
+    hasBankingDetails: true,
+    hasGeneralConditions: true,
+    showArticleDescription: true,
+    taxSummary: []
+  },
+  files: [],
+  pdfFileId:0,
+  pdfFile:undefined
+};
 };
 
 const findPaginated = async (
@@ -90,7 +93,9 @@ const findOne = async (
     'firm.interlocutorsToFirm',
     'articleExpenseEntries.article',
     'articleExpenseEntries.expenseArticleInvoiceEntryTaxes',
-    'articleExpenseEntries.expenseArticleInvoiceEntryTaxes.tax'
+    'articleExpenseEntries.expenseArticleInvoiceEntryTaxes.tax',
+    'uploadPdfField'
+
   ]
 ): Promise<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }> => {
   const response = await axios.get<ExpenseInvoice>(`public/expenseinvoice/${id}?join=${relations.join(',')}`);
@@ -104,16 +109,27 @@ const uploadInvoiceFiles = async (files: File[]): Promise<number[]> => {
 };
 
 const create = async (invoice: ExpenseCreateInvoiceDto, files: File[]): Promise<ExpenseInvoice> => {
+  let referenceDocId = invoice.pdfFileId;
+
+  // Vérifie si un fichier PDF est présent et l'upload
+  if (invoice.pdfFile) {
+    const [uploadId] = await uploadInvoiceFiles([invoice.pdfFile]); // Destructure le premier ID du tableau
+    referenceDocId = uploadId; // Met à jour referenceDocId avec l'ID uploadé
+  }
+
+  // Upload les autres fichiers
   const uploadIds = await uploadInvoiceFiles(files);
+
+  // Envoie les données à l'API
   const response = await axios.post<ExpenseInvoice>('public/expenseinvoice', {
-    ...invoice,
-    uploads: uploadIds.map((id) => {
-      return { uploadId: id,filePath:id};
-    })
+    ...invoice, // Copie toutes les propriétés de l'objet invoice
+    referenceDocId, // Ajoute referenceDocId
+    uploads: uploadIds.map((id) => ({ uploadId: id })), // Transforme les IDs en objets { uploadId: id }
   });
+
+  // Retourne les données de la réponse
   return response.data;
 };
-
 const getInvoiceUploads = async (invoice: ExpenseInvoice): Promise<ExpenseInvoiceUploadedFile[]> => {
   if (!invoice?.uploads) return [];
 
@@ -137,24 +153,78 @@ const getInvoiceUploads = async (invoice: ExpenseInvoice): Promise<ExpenseInvoic
 };
 
 const duplicate = async (duplicateInvoiceDto: ExpenseDuplicateInvoiceDto): Promise<ExpenseInvoice> => {
-  const response = await axios.post<ExpenseInvoice>('public/expenseinvoice/duplicate', duplicateInvoiceDto);
-  return response.data;
+  try {
+    const response = await axios.post<ExpenseInvoice>(
+      'public/expenseinvoice/duplicate',
+      {
+        ...duplicateInvoiceDto,
+        sequentialNumbr: null, // Définir sequentialNumbr à null
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error duplicating invoice:', error);
+    throw new Error('Failed to duplicate invoice');
+  }
 };
-
 const update = async (invoice: ExpenseUpdateInvoiceDto, files: File[]): Promise<ExpenseInvoice> => {
-  const uploadIds = await uploadInvoiceFiles(files);
-  const response = await axios.put<ExpenseInvoice>(`public/expenseinvoice/${invoice.id}`, {
-    ...invoice,
-    uploads: [
-      ...(invoice.uploads || []),
-      ...uploadIds.map((id) => {
-        return { uploadId: id,filePath:id };
-      })
-    ]
-  });
-  return response.data;
-};
+  let pdfFileId = invoice.pdfFileId; // ID du fichier PDF existant
+  console.log('ID du fichier PDF existant:', pdfFileId); // Log de l'ID du fichier PDF existant
 
+  // Upload du nouveau fichier PDF s'il est fourni
+  if (invoice.pdfFile) {
+    try {
+      const [uploadedPdfFileId] = await uploadInvoiceFiles([invoice.pdfFile]);
+      pdfFileId = uploadedPdfFileId; // Mettre à jour l'ID du fichier PDF
+      console.log('Nouveau fichier PDF uploadé. ID:', uploadedPdfFileId); // Log du nouvel ID du fichier PDF
+    } catch (error) {
+      console.error('Erreur lors de l\'upload du fichier PDF:', error);
+      throw error;
+    }
+  }
+
+  // Upload des fichiers supplémentaires (exclure le fichier PDF)
+  let uploadIds: number[] = [];
+  if (files.length > 0) {
+    try {
+      uploadIds = await uploadInvoiceFiles(files);
+      console.log('Fichiers supplémentaires uploadés. IDs:', uploadIds); // Log des IDs des fichiers supplémentaires
+    } catch (error) {
+      console.error('Erreur lors de l\'upload des fichiers supplémentaires:', error);
+      throw error;
+    }
+  }
+
+  // Préparer les données pour la mise à jour
+  const updatedInvoice = {
+    ...invoice,
+    pdfFileId, // Inclure l'ID du fichier PDF (nouveau ou existant)
+    uploads: [
+      ...(invoice.uploads || []), // Inclure les fichiers existants
+      ...uploadIds.map((id) => ({ uploadId: id })), // Ajouter les nouveaux fichiers
+    ],
+  };
+
+  console.log('Données de la facture mises à jour:', updatedInvoice); // Log des données de la facture
+
+  try {
+    // Envoyer les données au backend
+    const response = await axios.put<ExpenseInvoice>(
+      `public/expenseinvoice/${invoice.id}`,
+      updatedInvoice
+    );
+    console.log('Facture mise à jour avec succès:', response.data); // Log de la réponse du backend
+    return response.data;
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de la facture:', error);
+    throw error;
+  }
+};
 const remove = async (id: number): Promise<ExpenseInvoice> => {
   const response = await axios.delete<ExpenseInvoice>(`public/expenseinvoice/${id}`);
   return response.data;
@@ -189,6 +259,35 @@ const validate = (invoice: Partial<ExpenseInvoice>, dateRange?: DateRange): Toas
   return { message: '' };
 };
 
+const deletePdfFile = async (invoiceId: number): Promise<void> => {
+  try {
+    // Appeler l'API pour supprimer le fichier PDF
+    const response = await axios.delete(`public/expenseinvoice/${invoiceId}/pdf`);
+
+    // Vérifier si la suppression a réussi
+    if (response.status === 200) {
+      console.log('PDF file deleted successfully');
+    } else {
+      throw new Error('Failed to delete PDF file');
+    }
+  } catch (error) {
+    console.error('Error deleting PDF file:', error);
+    throw error; // Propager l'erreur pour la gérer dans le composant
+  }
+};
+
+const updateInvoiceStatusIfExpired = async (invoiceId: number): Promise<ExpenseInvoice> => {
+  try {
+    const response = await axios.put<ExpenseInvoice>(
+      `public/expenseinvoice/${invoiceId}/update-status-if-expired`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating invoice status:', error);
+    throw error;
+  }
+};
+
 
 export const expense_invoice = {
   factory,
@@ -198,5 +297,7 @@ export const expense_invoice = {
   duplicate,
   update,
   remove,
-  validate
+  validate,
+  deletePdfFile,
+  updateInvoiceStatusIfExpired
 };

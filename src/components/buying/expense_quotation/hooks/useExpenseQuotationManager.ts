@@ -8,13 +8,13 @@ import {
   Firm,
   Interlocutor,
   PaymentCondition,
-  QuotationUploadedFile
+  Upload,
 } from '@/types';
 import { DISCOUNT_TYPE } from '@/types/enums/discount-types';
 import { create } from 'zustand';
 
 type ExpenseQuotationManager = {
-  // data
+  // Data
   id?: number;
   sequential: string;
   sequentialNumbr: string;
@@ -32,10 +32,13 @@ type ExpenseQuotationManager = {
   notes: string;
   status: EXPENSQUOTATION_STATUS;
   generalConditions: string;
-  uploadedFiles: QuotationUploadedFile[];
-  // utility data
+  uploadedFiles: ExpensQuotationUploadedFile[]; // Include uploadPdfField and pdfFileId
+  pdfFile?: File; // Unique PDF file
+  pdfFileId?: number; // ID of the PDF file
+  uploadPdfField?: Upload;
+  // Utility data
   isInterlocutorInFirm: boolean;
-  // methods
+  // Methods
   setFirm: (firm?: Firm) => void;
   setInterlocutor: (interlocutor?: Interlocutor) => void;
   set: (name: keyof ExpenseQuotationManager, value: any) => void;
@@ -75,7 +78,7 @@ const initialState: Omit<
 > = {
   id: -1,
   sequential: '',
-  sequentialNumbr:'',
+  sequentialNumbr: '',
   date: undefined,
   dueDate: undefined,
   object: '',
@@ -91,7 +94,10 @@ const initialState: Omit<
   status: EXPENSQUOTATION_STATUS.Draft,
   generalConditions: '',
   isInterlocutorInFirm: false,
-  uploadedFiles: []
+  uploadedFiles: [],
+  pdfFile: undefined, // PDF file
+  pdfFileId: undefined, // ID of the PDF file
+  uploadPdfField: undefined, // Initialize with undefined
 };
 
 export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, get) => ({
@@ -110,34 +116,34 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
           : api?.interlocutor?.factory() || undefined,
       isInterlocutorInFirm: !!firm?.interlocutorsToFirm?.length,
       date: dateRange.date,
-      dueDate: dateRange.dueDate
+      dueDate: dateRange.dueDate,
     }));
   },
   setInterlocutor: (interlocutor?: Interlocutor) =>
     set((state) => ({
       ...state,
       interlocutor,
-      isInterlocutorInFirm: true
+      isInterlocutorInFirm: true,
     })),
-    set: (name: keyof ExpenseQuotationManager, value: any) => {
-      set((state) => {
-        const newValue =
-          name === 'date' || name === 'dueDate'
-            ? typeof value === 'string'
-              ? new Date(value)
-              : value
-            : value;
-  
-        if (state[name] === newValue) {
-          return state;
-        }
-  
-        return {
-          ...state,
-          [name]: newValue
-        };
-      });
-    },
+  set: (name: keyof ExpenseQuotationManager, value: any) => {
+    set((state) => {
+      const newValue =
+        name === 'date' || name === 'dueDate'
+          ? typeof value === 'string'
+            ? new Date(value)
+            : value
+          : value;
+
+      if (state[name] === newValue) {
+        return state;
+      }
+
+      return {
+        ...state,
+        [name]: newValue,
+      };
+    });
+  },
   getQuotation: () => {
     const {
       id,
@@ -154,6 +160,9 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       bankAccount,
       currency,
       uploadedFiles,
+      pdfFile,
+      pdfFileId,
+      uploadPdfField,
       ...rest
     } = get();
 
@@ -171,7 +180,10 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       generalConditions,
       bankAccountId: bankAccount?.id,
       currencyId: currency?.id,
-      uploadedFiles
+      uploadedFiles,
+      pdfFile, // PDF file
+      pdfFileId, // ID of the PDF file
+      uploadPdfField,
     };
   },
   setQuotation: (
@@ -195,8 +207,11 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       notes: quotation?.notes,
       generalConditions: quotation?.generalConditions,
       status: quotation?.status,
-      uploadedFiles: quotation?.files || []
+      uploadedFiles: quotation?.files || [], // Ensure uploadedFiles is an array
+      pdfFile: quotation?.pdfFile || state.pdfFile, // Keep existing PDF file
+      pdfFileId: quotation?.pdfFileId || state.pdfFileId, // Keep existing PDF file ID
+      uploadPdfField: quotation?.uploadPdfField || state.uploadPdfField, // Keep existing uploadPdfField
     }));
   },
-  reset: () => set({ ...initialState })
+  reset: () => set({ ...initialState }),
 }));

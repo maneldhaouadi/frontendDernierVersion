@@ -20,7 +20,6 @@ import { ACTIVITY_TYPE } from '@/types/enums/activity-type';
 import { DOCUMENT_TYPE } from '@/types/enums/document-type';
 import { useBreadcrumb } from '@/components/layout/BreadcrumbContext';
 import useQuotationChoices from '@/hooks/content/useQuotationChoice';
-
 import useTaxWithholding from '@/hooks/content/useTaxWitholding';
 import dinero from 'dinero.js';
 import { createDineroAmountFromFloatWithDynamicCurrency } from '@/utils/money.utils';
@@ -36,7 +35,7 @@ import { ExpenseInvoiceGeneralConditions } from './form/ExpenseInvoiceGeneralCon
 import { ExpenseInvoiceExtraOptions } from './form/ExpenseInvoiceExtraOptions';
 import { ExpenseInvoiceControlSection } from './form/ExpenseInvoiceControlSection';
 import useInvoiceRangeDates from '@/hooks/content/useInvoiceRangeDates';
-import { EXPENSQUOTATION_STATUS, QUOTATION_STATUS } from '@/types';
+import { EXPENSQUOTATION_STATUS } from '@/types';
 import useExpenseQuotationChoices from '@/hooks/content/useExpenseQuotationChoice';
 
 interface ExpenseInvoiceFormProps {
@@ -60,13 +59,13 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
         ? [
             { title: tCommon('menu.buying'), href: '/buying' },
             { title: tInvoicing('invoice.plural'), href: '/buying/expense_invoices' },
-            { title: tInvoicing('invoice.new') }
+            { title: tInvoicing('invoice.new') },
           ]
         : [
             { title: tCommon('menu.contacts'), href: '/contacts' },
             { title: 'Entreprises', href: '/contacts/firms' },
             { title: `Entreprise N°${firmId}`, href: `/contacts/firm/${firmId}?tab=entreprise` },
-            { title: 'Nouvelle Facture' }
+            { title: 'Nouvelle Facture' },
           ]
     );
   }, [router.locale, firmId]);
@@ -78,7 +77,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     'paymentCondition',
     'invoicingAddress',
     'deliveryAddress',
-    'currency'
+    'currency',
   ]);
   const { quotations, isFetchQuotationPending } = useExpenseQuotationChoices(EXPENSQUOTATION_STATUS.Invoiced);
   const { cabinet, isFetchCabinetPending } = useCabinet();
@@ -92,10 +91,8 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
   const { taxWithholdings, isFetchTaxWithholdingsPending } = useTaxWithholding();
   const { dateRange, isFetchInvoiceRangePending } = useInvoiceRangeDates(invoiceManager.id);
 
-
   // Handle Sequential Number
   React.useEffect(() => {
-  
     invoiceManager.set('bankAccount', bankAccounts.find((a) => a.isMain));
     invoiceManager.set('currency', cabinet?.currency);
   }, [bankAccounts, cabinet]);
@@ -111,7 +108,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       return acc.add(
         dinero({
           amount: createDineroAmountFromFloatWithDynamicCurrency(article?.subTotal || 0, digitAfterComma),
-          precision: digitAfterComma
+          precision: digitAfterComma,
         })
       );
     }, zero);
@@ -121,7 +118,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
         acc.add(
           dinero({
             amount: createDineroAmountFromFloatWithDynamicCurrency(article?.total || 0, digitAfterComma),
-            precision: digitAfterComma
+            precision: digitAfterComma,
           })
         ),
       zero
@@ -134,7 +131,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     } else {
       const discountAmount = dinero({
         amount: createDineroAmountFromFloatWithDynamicCurrency(invoiceManager?.discount || 0, digitAfterComma),
-        precision: digitAfterComma
+        precision: digitAfterComma,
       });
       finalTotal = total.subtract(discountAmount);
     }
@@ -143,7 +140,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       if (tax) {
         const taxAmount = dinero({
           amount: createDineroAmountFromFloatWithDynamicCurrency(tax.value || 0, digitAfterComma),
-          precision: digitAfterComma
+          precision: digitAfterComma,
         });
         finalTotal = finalTotal.add(taxAmount);
       }
@@ -153,7 +150,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     articleManager.articles,
     invoiceManager.discount,
     invoiceManager.discountType,
-    invoiceManager.taxStampId
+    invoiceManager.taxStampId,
   ]);
 
   const { mutate: createInvoice, isPending: isCreatePending } = useMutation({
@@ -162,15 +159,27 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     onSuccess: () => {
       if (!firmId) router.push('/buying/expense_invoices');
       else router.push(`/contacts/firm/${firmId}/?tab=invoices`);
-      toast.success('Facture crée avec succès');
+      toast.success('Facture créée avec succès');
     },
     onError: (error) => {
       const message = getErrorMessage('invoicing', error, 'Erreur lors de la création de facture');
       toast.error(message);
-    }
+    },
   });
 
-  const loading = isFetchFirmsPending || isFetchTaxesPending || isFetchCabinetPending || isFetchBankAccountsPending || isFetchCurrenciesPending || isFetchDefaultConditionPending || isCreatePending || isFetchQuotationPending || isFetchTaxWithholdingsPending || isFetchInvoiceRangePending || !commonReady || !invoicingReady;
+  const loading =
+    isFetchFirmsPending ||
+    isFetchTaxesPending ||
+    isFetchCabinetPending ||
+    isFetchBankAccountsPending ||
+    isFetchCurrenciesPending ||
+    isFetchDefaultConditionPending ||
+    isCreatePending ||
+    isFetchQuotationPending ||
+    isFetchTaxWithholdingsPending ||
+    isFetchInvoiceRangePending ||
+    !commonReady ||
+    !invoicingReady;
 
   const { value: debounceLoading } = useDebounce<boolean>(loading, 500);
 
@@ -185,26 +194,45 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     articleManager.add();
   }, []);
 
-  const onSubmit = (status: EXPENSE_INVOICE_STATUS) => {
+  const onSubmit = async (status: EXPENSE_INVOICE_STATUS) => {
+    // Convertir les articles en DTO
     const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
       id: article?.id,
       article: {
         id: article?.article?.id ?? 0,
         title: article?.article?.title || '',
-        description: !controlManager.isArticleDescriptionHidden ? article?.article?.description || '' : ''
+        description: !controlManager.isArticleDescriptionHidden ? article?.article?.description || '' : '',
       },
       quantity: article?.quantity || 0,
       unit_price: article?.unit_price || 0,
       discount: article?.discount || 0,
       discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id)
+      taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id),
     }));
+  
+    // Gestion des fichiers uploadés
+    let pdfFileId = invoiceManager.pdfFileId; // ID du fichier PDF existant
+  
+    // Si un nouveau fichier PDF est uploadé, on l'upload et on récupère son ID
+    if (invoiceManager.pdfFile) {
+      const [uploadedPdfFileId] = await api.upload.uploadFiles([invoiceManager.pdfFile]);
+      pdfFileId = uploadedPdfFileId; // Mettre à jour l'ID du fichier PDF
+    }
+  
+    // Upload des fichiers supplémentaires
+    const additionalFiles = invoiceManager.uploadedFiles
+      .filter((u) => !u.upload) // Fichiers supplémentaires non encore uploadés
+      .map((u) => u.file);
+  
+    const uploadIds = await api.upload.uploadFiles(additionalFiles);
+  
+    // Créer l'objet invoice avec les fichiers uploadés
     const invoice: ExpenseCreateInvoiceDto = {
       date: invoiceManager?.date?.toString(),
       dueDate: invoiceManager?.dueDate?.toString(),
       object: invoiceManager?.object,
       sequentialNumbr: invoiceManager?.sequentialNumbr,
-      sequential:'',  // Assurez-vous que sequentialNumbr est bien défini ici
+      sequential: '', // Assurez-vous que sequentialNumbr est bien défini ici
       cabinetId: invoiceManager?.firm?.cabinetId,
       firmId: invoiceManager?.firm?.id,
       interlocutorId: invoiceManager?.interlocutor?.id,
@@ -219,26 +247,34 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       quotationId: invoiceManager?.quotationId,
       taxStampId: invoiceManager?.taxStampId,
       taxWithholdingId: invoiceManager?.taxWithholdingId,
+      pdfFileId, // ID du fichier PDF
+      uploads: uploadIds.map((id) => ({ uploadId: id })), // IDs des fichiers supplémentaires
       expenseInvoiceMetaData: {
         showArticleDescription: !controlManager?.isArticleDescriptionHidden,
         hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
         hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
-        hasTaxWithholding: !controlManager.isTaxWithholdingHidden
-      }
+        hasTaxWithholding: !controlManager.isTaxWithholdingHidden,
+      },
     };
+  
+    // Validation de la facture
     const validation = api.expense_invoice.validate(invoice, dateRange);
     if (validation.message) {
       toast.error(validation.message);
     } else {
       if (controlManager.isGeneralConditionsHidden) delete invoice.generalConditions;
+  
+      // Créer la facture avec les fichiers
       createInvoice({
         invoice,
-        files: invoiceManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
+        files: additionalFiles, // Fichiers supplémentaires
       });
+  
+      // Réinitialiser l'état après la création
       globalReset();
     }
   };
-  //component representation
+  // Component representation
   if (debounceLoading) return <Spinner className="h-screen" show={loading} />;
   return (
     <div className={cn('overflow-auto px-10 py-6', className)}>
@@ -246,7 +282,7 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
       <div className={cn('block xl:flex gap-4', isCreatePending ? 'pointer-events-none' : '')}>
         {/* First Card */}
         <div className="w-full h-auto flex flex-col xl:w-9/12">
-          <ScrollArea className=" max-h-[calc(100vh-120px)] border rounded-lg">
+          <ScrollArea className="max-h-[calc(100vh-120px)] border rounded-lg">
             <Card className="border-0">
               <CardContent className="p-5">
                 {/* General Information */}
@@ -262,7 +298,10 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
                   isArticleDescriptionHidden={controlManager.isArticleDescriptionHidden}
                 />
                 {/* File Upload & Notes */}
-                  <ExpenseInvoiceExtraOptions />
+                <ExpenseInvoiceExtraOptions
+                  onUploadAdditionalFiles={(files) => invoiceManager.set('uploadedFiles', files)}
+                  onUploadPdfFile={(file) => invoiceManager.set('pdfFile', file)}
+                />
                 {/* Other Information */}
                 <div className="flex gap-10 mt-5">
                   <ExpenseInvoiceGeneralConditions
@@ -271,8 +310,6 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
                     hidden={controlManager.isGeneralConditionsHidden}
                     defaultCondition={defaultCondition}
                   />
-
-                  
                   <div className="w-1/3 my-auto">
                     {/* Final Financial Information */}
                     <ExpenseInvoiceFinancialInformation
@@ -290,12 +327,12 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
         </div>
         {/* Second Card */}
         <div className="w-full xl:mt-0 xl:w-3/12">
-          <ScrollArea className=" max-h-[calc(100vh-120px)] border rounded-lg">
+          <ScrollArea className="max-h-[calc(100vh-120px)] border rounded-lg">
             <Card className="border-0">
               <CardContent className="p-5">
                 {/* Control Section */}
                 <ExpenseInvoiceControlSection
-                    quotations={quotations}
+                  quotations={quotations}
                   bankAccounts={bankAccounts}
                   currencies={currencies}
                   taxWithholdings={taxWithholdings}
@@ -304,7 +341,6 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
                   reset={globalReset}
                   loading={debounceLoading}
                 />
-                
               </CardContent>
             </Card>
           </ScrollArea>

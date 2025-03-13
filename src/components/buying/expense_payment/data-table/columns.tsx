@@ -19,10 +19,10 @@ export const getPaymentColumns = (t: Function, tCurrency: Function): ColumnDef<E
         <DataTableColumnHeader
           column={column}
           title={translate('payment.attributes.number')}
-          attribute={EXPENSE_PAYMENT_FILTER_ATTRIBUTES.ID}
+          attribute={EXPENSE_PAYMENT_FILTER_ATTRIBUTES.SEQUENTIAL}
         />
       ),
-      cell: ({ row }) => <div>PAY-{row.original.id}</div>,
+      cell: ({ row }) => <div>PAY-{row.original.sequentialNumbr}</div>,
       enableSorting: true,
       enableHiding: true
     },

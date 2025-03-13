@@ -7,7 +7,7 @@ import { getErrorMessage } from '@/utils/errors';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { DuplicateExpensQuotationDto } from '@/types';
+import { DuplicateExpensQuotationDto, EXPENSQUOTATION_STATUS } from '@/types';
 import ContentSection from '@/components/common/ContentSection';
 import { cn } from '@/lib/utils';
 import { BreadcrumbRoute, useBreadcrumb } from '@/components/layout/BreadcrumbContext';
@@ -18,7 +18,6 @@ import { ExpenseQuotationActionsContext } from './data-table/ActionsContext';
 import { DataTable } from './data-table/data-table';
 import { getQuotationColumns } from './data-table/columns';
 import { useExpenseQuotationManager } from './hooks/useExpenseQuotationManager';
-
 
 interface ExpenseQuotationEmbeddedMainProps {
   className?: string;
@@ -31,7 +30,7 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
   className,
   firmId,
   interlocutorId,
-  routes
+  routes,
 }) => {
   const router = useRouter();
 
@@ -63,14 +62,13 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
 
   const [deleteDialog, setDeleteDialog] = React.useState(false);
   const [duplicateDialog, setDuplicateDialog] = React.useState(false);
-  const [downloadDialog, setDownloadDialog] = React.useState(false);
   const [invoiceDialog, setInvoiceDialog] = React.useState(false);
 
   const {
     isPending: isFetchPending,
     error,
     data: quotationsResp,
-    refetch: refetchQuotations
+    refetch: refetchQuotations,
   } = useQuery({
     queryKey: [
       'quotations',
@@ -78,7 +76,7 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
       debouncedSize,
       debouncedSortDetails.order,
       debouncedSortDetails.sortKey,
-      debouncedSearchTerm
+      debouncedSearchTerm,
     ],
     queryFn: () =>
       api.expense_quotation.findPaginated(
@@ -90,20 +88,47 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
         ['firm', 'interlocutor', 'currency', 'invoices'],
         firmId,
         interlocutorId
-      )
+      ),
   });
 
-  const quotations = React.useMemo(() => {
-    return quotationsResp?.data || [];
-  }, [quotationsResp]);
+  const isQuotationExpired = (dueDate: string | undefined): boolean => {
+      if (!dueDate) {
+        console.error("Due Date is undefined or empty.");
+        return false;
+      }
+  
+      try {
+        const dueDateObj = new Date(dueDate); // Convertit la chaîne en objet Date
+        const currentDate = new Date();
+        currentDate.setUTCHours(0, 0, 0, 0); // Réinitialise l'heure pour une comparaison précise
+  
+        return dueDateObj < currentDate; // Retourne true si la date d'échéance est dépassée
+      } catch (error) {
+        console.error("Error parsing dueDate:", error);
+        return false;
+      }
+    };
+  
+    // Mettre à jour le statut des quotations lors de l'affichage
+    const quotations = React.useMemo(() => {
+      if (!quotationsResp?.data) return [];
+  
+      return quotationsResp.data.map((quotation) => {
+        if (quotation.dueDate && isQuotationExpired(quotation.dueDate)) {
+          return { ...quotation, status: EXPENSQUOTATION_STATUS.Expired }; // Met à jour le statut à "Expired"
+        }
+        return quotation;
+      });
+    }, [quotationsResp]);
+
+
 
   const context = {
-    //dialogs
+    // Dialogs
     openDeleteDialog: () => setDeleteDialog(true),
     openDuplicateDialog: () => setDuplicateDialog(true),
-    openDownloadDialog: () => setDownloadDialog(true),
     openInvoiceDialog: () => setInvoiceDialog(true),
-    //search, filtering, sorting & paging
+    // Search, filtering, sorting & paging
     searchTerm,
     setSearchTerm,
     page,
@@ -115,57 +140,56 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
     sortKey: sortDetails.sortKey,
     setSortDetails: (order: boolean, sortKey: string) => setSortDetails({ order, sortKey }),
     firmId,
-    interlocutorId
+    interlocutorId,
   };
 
-  //Remove Quotation
+  // Remove Quotation
   const { mutate: removeExpenseQuotation, isPending: isDeletePending } = useMutation({
     mutationFn: (id: number) => api.expense_quotation.remove(id),
-    onSuccess: () => {
-      if (quotations?.length == 1 && page > 1) setPage(page - 1);
-      toast.success(tInvoicing('expensequotation.action_remove_success'));
-      refetchQuotations();
-      setDeleteDialog(false);
+    onSuccess: async (data) => {
+      console.log("Duplication successful, redirecting...");
+      console.log("Duplicated Quotation Data in onSuccess:", data); // Vérifiez la structure de `data`
+      toast.success(tInvoicing('expensequotation.action_duplicate_success'));
+      try {
+        await router.push('/buying/expense-quotations/123'); // Rediriger vers un ID statique
+      } catch (error) {
+        console.error("Redirection error:", error);
+      }
+      setDuplicateDialog(false);
     },
     onError: (error) => {
       toast.error(
         getErrorMessage('invoicing', error, tInvoicing('expensequotation.action_remove_failure'))
       );
-    }
+    },
   });
 
-  //Duplicate Quotation
-  const { mutate: duplicateExpenseQuotation, isPending: isDuplicationPending } = useMutation({
-    mutationFn: (duplicateQuotationDto: DuplicateExpensQuotationDto) =>
-      api.expense_quotation.duplicate(duplicateQuotationDto),
+  const { mutate: duplicateQuotation, isPending: isDuplicationPending } = useMutation({
+    mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
+      console.log("Starting duplication...");
+      const duplicateQuotationDto: DuplicateExpensQuotationDto = {
+        id,
+        includeFiles,
+      };
+      console.log("Duplicate DTO:", duplicateQuotationDto);
+      return api.expense_quotation.duplicate(duplicateQuotationDto);
+    },
     onSuccess: async (data) => {
+      console.log("Duplication successful, redirecting...");
+      console.log("Duplicated Quotation Data in onSuccess:", data);
       toast.success(tInvoicing('expensequotation.action_duplicate_success'));
-      await router.push('/buying/expense-quotations/' + data.id);
+      await router.push('/buying/expense_quotation/' + data.id); // Rediriger vers le nouveau devis
       setDuplicateDialog(false);
     },
     onError: (error) => {
+      console.error("Duplication error:", error);
       toast.error(
         getErrorMessage('invoicing', error, tInvoicing('expensequotation.action_duplicate_failure'))
       );
-    }
-  });
-
-  //Download Quotation
-  const { mutate: downloadExpenseQuotation, isPending: isDownloadPending } = useMutation({
-    mutationFn: (data: { id: number; template: string }) =>
-      api.expense_quotation.download(data.id, data.template),
-    onSuccess: () => {
-      toast.success(tInvoicing('expensequotation.action_download_success'));
-      setDownloadDialog(false);
     },
-    onError: (error) => {
-      toast.error(
-        getErrorMessage('invoicing', error, tInvoicing('expensequotation.action_download_failure'))
-      );
-    }
   });
 
-  //Invoice quotation
+  // Invoice Quotation
   const { mutate: invoiceExpenseQuotation, isPending: isInvoicingPending } = useMutation({
     mutationFn: (data: { id?: number; createInvoice: boolean }) =>
       api.expense_quotation.invoice(data.id, data.createInvoice),
@@ -177,7 +201,7 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
     onError: (error) => {
       const message = getErrorMessage('contacts', error, 'Erreur lors de la facturation de devis');
       toast.error(message);
-    }
+    },
   });
 
   const isPending =
@@ -191,6 +215,7 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
     !invoicingReady;
 
   if (error) return 'An error has occurred: ' + error.message;
+
   return (
     <ContentSection
       title={tInvoicing('expensequotation.singular')}
@@ -213,15 +238,14 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
           open={duplicateDialog}
           duplicateQuotation={(includeFiles: boolean) => {
             quotationManager?.id &&
-              duplicateExpenseQuotation({
+              duplicateQuotation({
                 id: quotationManager?.id,
-                includeFiles: includeFiles
+                includeFiles: includeFiles,
               });
           }}
           isDuplicationPending={isDuplicationPending}
           onClose={() => setDuplicateDialog(false)}
         />
-        
         <ExpenseQuotationInvoiceDialog
           id={quotationManager?.id || 0}
           status={quotationManager?.status}

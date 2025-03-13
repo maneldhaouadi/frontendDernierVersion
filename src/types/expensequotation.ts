@@ -16,9 +16,6 @@ export enum EXPENSQUOTATION_STATUS {
   Expired = 'expense_quotation.status.expired',
   Draft = 'expense_quotation.status.draft',
   Validated = 'expense_quotation.status.validated',
-  Sent = 'expense_quotation.status.sent',
-  Accepted = 'expense_quotation.status.accepted',
-  Rejected = 'expense_quotation.status.rejected',
   Invoiced = 'expense_quotation.status.invoiced'
 }
 
@@ -72,7 +69,6 @@ export interface ExpenseQuotationUpload extends DatabaseEntity {
   expenseQuotationId?: number;  // Linking to `expense_quotation`
   expenseQuotation?: ExpenseQuotation;
   uploadId?: number;
-  pdfFileId?:number;
   upload?: Upload;
 }
 
@@ -104,6 +100,10 @@ export interface ExpenseQuotation extends DatabaseEntity {
   expensearticleQuotationEntries?: ExpenseArticleQuotationEntry[];
   uploads?: ExpenseQuotationUpload[];
   invoices: ExpenseInvoice[];
+  pdfFileId?: number;
+  pdfFile?:File;
+  uploadPdfField?:Upload;
+
 }
 
 export interface CreateExpensQuotationDto
@@ -124,12 +124,13 @@ export interface CreateExpensQuotationDto
   articleQuotationEntries?: CreateExpensArticleQuotationEntry[];  // Article entries
   files?: File[];  // Files to upload
   sequentialNumbr:string,
-  sequential:string
+  sequential:string,
+  pdfFileId?: number;
+  pdfFile?:File
 }
 
 export interface UpdateExpensQuotationDto extends CreateExpensQuotationDto {
   id?: number;
-  createInvoice?: boolean;
 }
 
 export interface DuplicateExpensQuotationDto {
@@ -140,6 +141,7 @@ export interface DuplicateExpensQuotationDto {
 export interface PagedExpensQuotation extends PagedResponse<ExpenseQuotation> {}
 
 export interface ExpensQuotationUploadedFile {
-  upload: ExpenseQuotationUpload;
-  file: File;
+  upload: ExpenseQuotationUpload;       // Informations de l'upload principal
+  file: File;                           // Le fichier lui-même
 }
+

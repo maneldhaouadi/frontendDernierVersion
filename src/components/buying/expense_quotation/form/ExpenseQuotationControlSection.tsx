@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { api } from '@/api';
-import { BankAccount, Currency, DuplicateQuotationDto, EXPENSQUOTATION_STATUS} from '@/types';
+import { BankAccount, Currency, DuplicateQuotationDto, EXPENSQUOTATION_STATUS } from '@/types';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -16,12 +16,10 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/common';
 import { AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errors';
 import { useRouter } from 'next/router';
-;
 import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
 import { useQuotationControlManager } from '../hooks/useExpenseQuotationControlManager';
 import { useExpenseQuotationArticleManager } from '../hooks/useExpenseQuotationArticleManager';
@@ -57,13 +55,13 @@ interface ExpenseQuotationControlSectionProps {
   handleSubmit?: () => void;
   handleSubmitDraft: () => void;
   handleSubmitValidated: () => void;
-  handleSubmitSent: () => void;
-  handleSubmitAccepted?: () => void;
-  handleSubmitRejected?: () => void;
+  handleSubmitExpired?: () => void;
+  handleSubmitDuplicate?: () => void;
   reset: () => void;
   refetch?: () => void;
   loading?: boolean;
   edit?: boolean;
+  expirationDate?: Date; // Ajoutez cette prop pour la date d'échéance
 }
 
 export const ExpenseQuotationControlSection = ({
@@ -76,13 +74,13 @@ export const ExpenseQuotationControlSection = ({
   handleSubmit,
   handleSubmitDraft,
   handleSubmitValidated,
-  handleSubmitSent,
-  handleSubmitAccepted,
-  handleSubmitRejected,
+  handleSubmitDuplicate,
+  handleSubmitExpired,
   reset,
   refetch,
   loading,
-  edit = true
+  edit = true,
+  expirationDate // Ajoutez cette prop pour la date d'échéance
 }: ExpenseQuotationControlSectionProps) => {
   const router = useRouter();
   const { t: tInvoicing } = useTranslation('invoicing');
@@ -93,28 +91,17 @@ export const ExpenseQuotationControlSection = ({
   const controlManager = useQuotationControlManager();
   const articleManager = useExpenseQuotationArticleManager();
 
+  // Vérifiez si la date d'échéance est dépassée
+  useEffect(() => {
+    if (expirationDate && new Date(expirationDate) < new Date() && status !== EXPENSQUOTATION_STATUS.Expired) {
+      handleSubmitExpired?.();
+    }
+  }, [expirationDate, status, handleSubmitExpired]);
+
   //action dialog
   const [actionDialog, setActionDialog] = React.useState<boolean>(false);
   const [actionName, setActionName] = React.useState<string>();
   const [action, setAction] = React.useState<() => void>(() => {});
-
-  //download dialog
-  const [downloadDialog, setDownloadDialog] = React.useState(false);
-
-  //Download Quotation
-  const { mutate: downloadQuotation, isPending: isDownloadPending } = useMutation({
-    mutationFn: (data: { id: number; template: string }) =>
-      api.expense_quotation.download(data.id, data.template),
-    onSuccess: () => {
-      toast.success(tInvoicing('quotation.action_download_success'));
-      setDownloadDialog(false);
-    },
-    onError: (error) => {
-      toast.error(
-        getErrorMessage('invoicing', error, tInvoicing('quotation.action_download_failure'))
-      );
-    }
-  });
 
   //duplicate dialog
   const [duplicateDialog, setDuplicateDialog] = React.useState(false);
@@ -217,12 +204,6 @@ export const ExpenseQuotationControlSection = ({
       loading: false
     },
     {
-      ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.download,
-      key: 'download',
-      onClick: () => setDownloadDialog(true),
-      loading: false
-    },
-    {
       ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.delete,
       key: 'delete',
       onClick: () => {
@@ -244,7 +225,8 @@ export const ExpenseQuotationControlSection = ({
       loading: false
     }
   ];
-  const sequential =quotationManager.sequentialNumbr;
+
+  const sequential = quotationManager.sequentialNumbr;
   return (
     <>
       <ExpenseQuotationActionDialog

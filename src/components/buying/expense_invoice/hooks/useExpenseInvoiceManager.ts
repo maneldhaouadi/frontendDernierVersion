@@ -4,19 +4,24 @@ import {
   Currency,
   Firm,
   Interlocutor,
-  PaymentCondition
+  PaymentCondition,
+  Upload,
 } from '@/types';
 import { DATE_FORMAT } from '@/types/enums/date-formats';
 import { DISCOUNT_TYPE } from '@/types/enums/discount-types';
 import { ExpensePaymentCondition } from '@/types/expense-payment-condition';
-import { EXPENSE_INVOICE_STATUS, ExpenseInvoice, ExpenseInvoiceUploadedFile } from '@/types/expense_invoices';
+import {
+  EXPENSE_INVOICE_STATUS,
+  ExpenseInvoice,
+  ExpenseInvoiceUploadedFile,
+} from '@/types/expense_invoices';
 import { create } from 'zustand';
 
 type ExpenseInvoiceManager = {
   // data
   id?: number;
   sequential: string;
-  sequentialNumbr:string,
+  sequentialNumbr: string;
   date: Date | undefined;
   dueDate: Date | undefined;
   object: string;
@@ -32,7 +37,10 @@ type ExpenseInvoiceManager = {
   notes: string;
   status: EXPENSE_INVOICE_STATUS;
   generalConditions: string;
-  uploadedFiles: ExpenseInvoiceUploadedFile[];
+  uploadedFiles: ExpenseInvoiceUploadedFile[]; // Fichiers supplémentaires
+  pdfFile?: File; // Fichier PDF unique
+  pdfFileId?: number; // ID du fichier PDF
+  uploadPdfField?: Upload; // Champ d'upload du PDF
   quotationId?: number;
   taxStampId?: number;
   taxWithholdingId?: number;
@@ -44,7 +52,7 @@ type ExpenseInvoiceManager = {
   set: (name: keyof ExpenseInvoiceManager, value: any) => void;
   getInvoice: () => Partial<ExpenseInvoiceManager>;
   setInvoice: (
-    invoice: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }>,
+    invoice: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[]; pdfFile?: File }>,
     firms: Firm[],
     bankAccounts: BankAccount[]
   ) => void;
@@ -75,7 +83,7 @@ const getDateRangeAccordingToPaymentConditions = (paymentCondition: ExpensePayme
 const initialState: Omit<ExpenseInvoiceManager, 'set' | 'reset' | 'setFirm' | 'setInterlocutor' | 'getInvoice' | 'setInvoice'> = {
   id: undefined,
   sequential: '',
-  sequentialNumbr: '',  // initialisation de sequentialNumbr vide
+  sequentialNumbr: '',
   date: undefined,
   dueDate: undefined,
   object: '',
@@ -92,10 +100,13 @@ const initialState: Omit<ExpenseInvoiceManager, 'set' | 'reset' | 'setFirm' | 's
   status: EXPENSE_INVOICE_STATUS.Nonexistent,
   generalConditions: '',
   isInterlocutorInFirm: false,
-  uploadedFiles: [],
+  uploadedFiles: [], // Fichiers supplémentaires
+  pdfFile: undefined, // Fichier PDF
+  pdfFileId: undefined, // ID du fichier PDF
+  uploadPdfField: undefined, // Champ d'upload du PDF
   quotationId: undefined,
   taxStampId: undefined,
-  taxWithholdingId: undefined
+  taxWithholdingId: undefined,
 };
 
 // Gestionnaire d'état de `ExpenseInvoiceManager`
@@ -115,16 +126,15 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
           : api?.interlocutor?.factory() || undefined,
       isInterlocutorInFirm: !!firm?.interlocutorsToFirm?.length,
       date: dateRange.date,
-      dueDate: dateRange.dueDate
+      dueDate: dateRange.dueDate,
     }));
   },
   setInterlocutor: (interlocutor?: Interlocutor) =>
     set((state) => ({
       ...state,
       interlocutor,
-      isInterlocutorInFirm: true
+      isInterlocutorInFirm: true,
     })),
-  // Mise à jour de `sequentialNumbr` pour accepter la saisie manuelle
   set: (name: keyof ExpenseInvoiceManager, value: any) => {
     set((state) => {
       const newValue =
@@ -140,14 +150,14 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
 
       return {
         ...state,
-        [name]: newValue
+        [name]: newValue,
       };
     });
   },
   getInvoice: () => {
     const {
       id,
-      sequentialNumbr,  // récupérer la valeur de sequentialNumbr
+      sequentialNumbr,
       date,
       dueDate,
       object,
@@ -160,6 +170,9 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
       bankAccount,
       currency,
       uploadedFiles,
+      pdfFile,
+      pdfFileId,
+      uploadPdfField,
       taxStampId,
       taxWithholdingId,
       ...rest
@@ -167,7 +180,7 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
 
     return {
       id,
-      sequentialNumbr,  // renvoyer sequentialNumbr
+      sequentialNumbr,
       date,
       dueDate,
       object,
@@ -180,17 +193,19 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
       bankAccountId: bankAccount?.id,
       currencyId: currency?.id,
       uploadedFiles,
+      pdfFile, // Fichier PDF
+      pdfFileId, // ID du fichier PDF
+      uploadPdfField, // Champ d'upload du PDF
       taxStampId,
-      taxWithholdingId
+      taxWithholdingId,
     };
   },
   setInvoice: (
-    invoice: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }> ,
+    invoice: Partial<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[]; pdfFile?: File }>,
     firms: Firm[],
     bankAccounts: BankAccount[]
   ) => {
     set((state) => {
-      // Crée un nouvel état avec les modifications
       const newState = {
         ...state,
         id: invoice?.id,
@@ -207,22 +222,20 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
         notes: invoice?.notes,
         generalConditions: invoice?.generalConditions,
         status: invoice?.status,
-        uploadedFiles: invoice?.files || [],
         quotationId: invoice?.quotationId,
         taxStampId: invoice?.taxStampId,
         amountPaid: invoice?.amountPaid,
         taxWithholdingId: invoice?.taxWithholdingId,
-        taxWithholdingAmount: invoice?.taxWithholdingAmount
+        taxWithholdingAmount: invoice?.taxWithholdingAmount,
+        uploadedFiles: invoice?.files || [], // Fichiers uploadés
+        pdfFile: invoice?.pdfFile || state.pdfFile, // Conserver le fichier PDF existant
+        pdfFileId: invoice?.pdfFileId || state.pdfFileId, // Conserver l'ID du fichier PDF existant
+        uploadPdfField: invoice?.uploadPdfField || state.uploadPdfField, // Conserver le champ d'upload du PDF
       };
-    
-      // Vérifie si l'état a changé avant de mettre à jour
-      if (JSON.stringify(state) !== JSON.stringify(newState)) {
-        return newState;
-      }
-    
-      // Si l'état est le même, on ne fait pas de mise à jour
-      return state;
-    });    
+  
+      console.log('Nouvel état dans setInvoice:', newState); // Log du nouvel état
+      return newState;
+    });
   },
-  reset: () => set({ ...initialState })
+  reset: () => set({ ...initialState }),
 }));

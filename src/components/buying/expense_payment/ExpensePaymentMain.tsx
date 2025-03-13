@@ -33,7 +33,7 @@ export const ExpensePaymentMain: React.FC<ExpensePaymentMainProps> = ({ classNam
         { title: tCommon('menu.buying'), href: '/buying' },
         { title: tCommon('submenu.payments') }
       ]);
-  }, [router.locale, firmId, interlocutorId]);
+  }, [router.locale, firmId, interlocutorId, setRoutes, tCommon]);
 
   const paymentManager = useExpensePaymentManager();
 
@@ -53,7 +53,6 @@ export const ExpensePaymentMain: React.FC<ExpensePaymentMainProps> = ({ classNam
   const { value: debouncedSearchTerm, loading: searching } = useDebounce<string>(searchTerm, 500);
 
   const [deleteDialog, setDeleteDialog] = React.useState(false);
-  const [downloadDialog, setDownloadDialog] = React.useState(false);
 
   const {
     isPending: isFetchPending,
@@ -83,13 +82,14 @@ export const ExpensePaymentMain: React.FC<ExpensePaymentMainProps> = ({ classNam
   });
 
   const payments = React.useMemo(() => {
-    return paymentsResp?.data || [];
+    const data = paymentsResp?.data || [];
+    console.log('Payments data:', data); // Ajoutez cette ligne
+    return data;
   }, [paymentsResp]);
 
   const context = {
     //dialogs
     openDeleteDialog: () => setDeleteDialog(true),
-    openDownloadDialog: () => setDownloadDialog(true),
     //search, filtering, sorting & paging
     searchTerm,
     setSearchTerm,

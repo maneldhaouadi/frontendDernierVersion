@@ -27,13 +27,13 @@ import dinero from 'dinero.js';
 import { createDineroAmountFromFloatWithDynamicCurrency } from '@/utils/money.utils';
 import { useExpenseQuotationArticleManager } from './hooks/useExpenseQuotationArticleManager';
 import { useQuotationControlManager } from './hooks/useExpenseQuotationControlManager';
-import { ExpenseQuotationGeneralInformation } from './form/ExpenseQuotationGeneralInformation';
 import { ExpenseQuotationArticleManagement } from './form/ExpenseQuotationArticleManagement';
-import { ExpenseQuotationExtraOptions } from './form/ExpenseQuotationExtraOptions';
 import { ExpenseQuotationGeneralConditions } from './form/ExpenseQuotationGeneralConditions';
 import { ExpenseQuotationFinancialInformation } from './form/ExpenseQuotationFinancialInformation';
 import { ExpenseQuotationControlSection } from './form/ExpenseQuotationControlSection';
 import { useExpenseQuotationManager } from './hooks/useExpenseQuotationManager';
+import { ExpenseQuotationGeneralInformation } from './form/ExpenseQuotationGeneralInformation';
+import { ExpensequotationExtraOptions } from './form/ExpenseQuotationExtraOptions';
 
 interface ExpenseQuotationFormProps {
   className?: string;
@@ -166,7 +166,7 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
     onSuccess: () => {
       if (!firmId) router.push('/buying/expense_quotations');
       else router.push(`/contacts/firm/${firmId}/?tab=quotations`);
-      toast.success('Devis crée avec succès');
+      toast.success('Devis créé avec succès');
     },
     onError: (error) => {
       const message = getErrorMessage('invoicing', error, 'Erreur lors de la création de devis');
@@ -199,32 +199,47 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
   //create handler
   const [submitted, setSubmitted] = React.useState(false);  // Nouveau state pour gérer la soumission
 
-const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
-  setSubmitted(true);  // Marquer la tentative de soumission
-
-  const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
-    id: article?.id,
-    article: {
-      id: article?.article?.id ?? 0,  // Assurez-vous que l'ID existe (vous pouvez choisir une valeur par défaut ici)
-      title: article?.article?.title,
-      description: !controlManager.isArticleDescriptionHidden ? article?.article?.description : ''
-    },
-    quantity: article?.quantity,
-    unit_price: article?.unit_price,
-    discount: article?.discount,
-    discount_type:
-      article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-    taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => {
-      return entry?.tax?.id;
-    })
-  }));
-
-  const quotation: CreateExpensQuotationDto = {
-    date: quotationManager?.date?.toString(),
+  const onSubmit = async (status: EXPENSQUOTATION_STATUS) => {
+    setSubmitted(true); // Mark the submission attempt
+  
+    // Convert articles to DTO
+    const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
+      id: article?.id,
+      article: {
+        id: article?.article?.id ?? 0, // Ensure the ID exists
+        title: article?.article?.title,
+        description: !controlManager.isArticleDescriptionHidden ? article?.article?.description : '',
+      },
+      quantity: article?.quantity,
+      unit_price: article?.unit_price,
+      discount: article?.discount,
+      discount_type:
+        article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+      taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => entry?.tax?.id),
+    }));
+  
+    let pdfFileId = quotationManager.pdfFileId; // Existing PDF file ID
+  
+    // If a new PDF file is uploaded, upload it and get its ID
+    if (quotationManager.pdfFile) {
+      const [uploadedPdfFileId] = await api.upload.uploadFiles([quotationManager.pdfFile]);
+      pdfFileId = uploadedPdfFileId; // Update the PDF file ID
+    }
+  
+    // Upload additional files
+    const additionalFiles = quotationManager.uploadedFiles
+      .filter((u) => !u.upload) // Additional files not yet uploaded
+      .map((u) => u.file);
+  
+    const uploadIds = await api.upload.uploadFiles(additionalFiles);
+  
+    // Create the quotation object
+    const quotation: CreateExpensQuotationDto = {
+      date: quotationManager?.date?.toString(),
       dueDate: quotationManager?.dueDate?.toString(),
       object: quotationManager?.object,
       sequentialNumbr: quotationManager?.sequentialNumbr,
-      sequential:'',
+      sequential: '',
       cabinetId: quotationManager?.firm?.cabinetId,
       firmId: quotationManager?.firm?.id,
       interlocutorId: quotationManager?.interlocutor?.id,
@@ -232,10 +247,12 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
       bankAccountId: !controlManager?.isBankAccountDetailsHidden
         ? quotationManager?.bankAccount?.id
         : undefined,
-      status:quotationManager?.status,
+      status: status, // Use the status passed as a parameter
       generalConditions: !controlManager.isGeneralConditionsHidden
         ? quotationManager?.generalConditions
         : '',
+      pdfFileId, // PDF file ID
+      uploads: uploadIds.map((id) => ({ uploadId: id })),
       notes: quotationManager?.notes,
       articleQuotationEntries: articlesDto,
       discount: quotationManager?.discount,
@@ -243,23 +260,30 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
         quotationManager?.discount_type === 'PERCENTAGE'
           ? DISCOUNT_TYPE.PERCENTAGE
           : DISCOUNT_TYPE.AMOUNT,
-          expensequotationMetaData: {
+      expensequotationMetaData: {
         showArticleDescription: !controlManager?.isArticleDescriptionHidden,
         hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
-        hasGeneralConditions: !controlManager.isGeneralConditionsHidden
-      }
+        hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
+      },
     };
-    console.log("apres cration",quotation);
-
+  
+    console.log("Quotation after creation:", quotation);
+  
+    // Validate the quotation
     const validation = api.expense_quotation.validate(quotation);
     if (validation.message) {
       toast.error(validation.message);
     } else {
+      // Remove optional fields if necessary
       if (controlManager.isGeneralConditionsHidden) delete quotation.generalConditions;
+  
+      // Call the mutation to create the quotation
       createQuotation({
         quotation,
-        files: quotationManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file)
+        files: additionalFiles, // Extract files
       });
+  
+      // Reset the form
       globalReset();
     }
   };
@@ -287,7 +311,10 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
                   isArticleDescriptionHidden={controlManager.isArticleDescriptionHidden}
                 />
                 {/* File Upload & Notes */}
-                <ExpenseQuotationExtraOptions />
+               <ExpensequotationExtraOptions
+                onUploadAdditionalFiles={(files) => quotationManager.set('uploadedFiles', files)}
+                onUploadPdfFile={(file) => quotationManager.set('pdfFile', file)}
+                               />
                 {/* Other Information */}
                 <div className="flex gap-10 mt-5">
                   <ExpenseQuotationGeneralConditions
@@ -321,7 +348,8 @@ const onSubmit = (status: EXPENSQUOTATION_STATUS) => {
                   invoices={[]}
                   handleSubmitDraft={() => onSubmit(EXPENSQUOTATION_STATUS.Draft)}
                   handleSubmitValidated={() => onSubmit(EXPENSQUOTATION_STATUS.Validated)}
-                  handleSubmitSent={() => onSubmit(EXPENSQUOTATION_STATUS.Sent)}
+                  handleSubmitExpired={() => onSubmit(EXPENSQUOTATION_STATUS.Expired)}
+
                   reset={globalReset}
                   loading={debounceLoading}
                 />

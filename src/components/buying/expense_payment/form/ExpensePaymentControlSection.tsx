@@ -22,31 +22,25 @@ export const ExpensePaymentControlSection = ({
   const router = useRouter();
   const { t: tCommon } = useTranslation('common');
 
-  // État pour la calculatrice
   const [calculatorInput, setCalculatorInput] = useState('');
   const [calculatorResult, setCalculatorResult] = useState('');
 
-  // Fonction pour gérer les clics sur les boutons de la calculatrice
   const handleCalculatorButtonClick = (value: string) => {
     if (value === '=') {
       try {
-        // Remplacer × par * avant d'évaluer
         const expression = calculatorInput.replace(/×/g, '*');
-        setCalculatorResult(eval(expression).toString()); // Évaluer l'expression mathématique
+        setCalculatorResult(eval(expression).toString());
       } catch (error) {
         setCalculatorResult('Error');
       }
     } else if (value === 'C') {
-      // Réinitialiser l'entrée et le résultat
       setCalculatorInput('');
       setCalculatorResult('');
     } else if (value === '←') {
-      // Supprimer le dernier caractère (vérifier que l'entrée n'est pas vide)
       if (calculatorInput.length > 0) {
         setCalculatorInput((prev) => prev.slice(0, -1));
       }
     } else {
-      // Ajouter la valeur à l'entrée
       setCalculatorInput((prev) => prev + value);
     }
   };
@@ -54,7 +48,6 @@ export const ExpensePaymentControlSection = ({
   return (
     <div className={className}>
       <div className="flex flex-col w-full gap-2">
-        {/* Boutons "Save" et "Initialize" */}
         <Button className="flex items-center" onClick={handleSubmit}>
           <Save className="h-5 w-5" />
           <span className="mx-1">{tCommon('commands.save')}</span>
@@ -64,119 +57,83 @@ export const ExpensePaymentControlSection = ({
           <span className="mx-1">{tCommon('commands.initialize')}</span>
         </Button>
 
-        {/* Ajouter la calculatrice ici */}
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">{tCommon('calculator.title')}</h2>
-          <div className="p-4 border rounded-lg shadow-md bg-white">
-            {/* Affichage de l'entrée et du résultat */}
-            <div className="mb-4">
-              <div className="text-right text-gray-700 text-2xl p-2 border rounded bg-gray-100">
+          <div className="p-6 border-2 border-blue-300 rounded-lg shadow-md bg-white">
+            <div className="mb-6">
+              <div className="text-right text-gray-700 text-2xl p-3 border-2 border-blue-300 rounded bg-gray-50">
                 {calculatorInput || '0'}
               </div>
-              <div className="text-right text-gray-900 text-3xl font-bold p-2">
+              <div className="text-right text-gray-900 text-3xl font-bold p-3">
                 {calculatorResult || '0'}
               </div>
             </div>
 
-            {/* Boutons de la calculatrice (disposition horizontale) */}
-            <div className="grid grid-cols-4 gap-2">
-              {/* Ligne 1 : Mémoire */}
-              {['MC', 'MR', 'M+', 'M-'].map((button) => (
+            <div className="grid grid-cols-4 gap-3">
+              {['C', '←', '%', '/'].map((button) => (
                 <button
                   key={button}
                   onClick={() => handleCalculatorButtonClick(button)}
                   className={`
                     p-4 text-xl font-bold rounded-lg
-                    bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all
+                    ${button === 'C' ? 'bg-blue-300 text-white' : 'bg-blue-100 text-blue-700'}
+                    hover:bg-blue-200 transition-all border-2 border-blue-300
                   `}
                 >
                   {button}
                 </button>
               ))}
 
-              {/* Ligne 2 : Opérations spéciales */}
-              {['%', 'CE', 'C', '←'].map((button) => (
-                <button
-                  key={button}
-                  onClick={() => handleCalculatorButtonClick(button)}
-                  className={`
-                    p-4 text-xl font-bold rounded-lg
-                    ${button === 'C' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}
-                    hover:bg-gray-300 transition-all
-                  `}
-                >
-                  {button}
-                </button>
-              ))}
-
-              {/* Ligne 3 : Opérations mathématiques */}
-              {['1/x', 'x²', '√x', '+'].map((button) => (
-                <button
-                  key={button}
-                  onClick={() => handleCalculatorButtonClick(button)}
-                  className={`
-                    p-4 text-xl font-bold rounded-lg
-                    bg-blue-500 text-white hover:bg-blue-600 transition-all
-                  `}
-                >
-                  {button}
-                </button>
-              ))}
-
-              {/* Ligne 4 : Chiffres et opérations */}
               {['7', '8', '9', '×'].map((button) => (
                 <button
                   key={button}
                   onClick={() => handleCalculatorButtonClick(button)}
                   className={`
                     p-4 text-xl font-bold rounded-lg
-                    ${button === '×' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}
-                    hover:bg-gray-300 transition-all
+                    ${button === '×' ? 'bg-blue-300 text-white' : 'bg-blue-100 text-blue-700'}
+                    hover:bg-blue-200 transition-all border-2 border-blue-300
                   `}
                 >
                   {button}
                 </button>
               ))}
 
-              {/* Ligne 5 : Chiffres et opérations */}
               {['4', '5', '6', '-'].map((button) => (
                 <button
                   key={button}
                   onClick={() => handleCalculatorButtonClick(button)}
                   className={`
                     p-4 text-xl font-bold rounded-lg
-                    ${button === '-' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}
-                    hover:bg-gray-300 transition-all
+                    ${button === '-' ? 'bg-blue-300 text-white' : 'bg-blue-100 text-blue-700'}
+                    hover:bg-blue-200 transition-all border-2 border-blue-300
                   `}
                 >
                   {button}
                 </button>
               ))}
 
-              {/* Ligne 6 : Chiffres et opérations */}
               {['1', '2', '3', '+'].map((button) => (
                 <button
                   key={button}
                   onClick={() => handleCalculatorButtonClick(button)}
                   className={`
                     p-4 text-xl font-bold rounded-lg
-                    ${button === '+' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}
-                    hover:bg-gray-300 transition-all
+                    ${button === '+' ? 'bg-blue-300 text-white' : 'bg-blue-100 text-blue-700'}
+                    hover:bg-blue-200 transition-all border-2 border-blue-300
                   `}
                 >
                   {button}
                 </button>
               ))}
 
-              {/* Ligne 7 : Dernière ligne */}
-              {['+/-', '0', '.', '='].map((button) => (
+              {['0', '.', '=', '+/-'].map((button) => (
                 <button
                   key={button}
                   onClick={() => handleCalculatorButtonClick(button)}
                   className={`
                     p-4 text-xl font-bold rounded-lg
-                    ${button === '=' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}
-                    hover:bg-gray-300 transition-all
+                    ${button === '=' ? 'bg-blue-300 text-white' : 'bg-blue-100 text-blue-700'}
+                    hover:bg-blue-200 transition-all border-2 border-blue-300
                   `}
                 >
                   {button}

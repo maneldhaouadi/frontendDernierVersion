@@ -43,34 +43,7 @@ export const EXPENSE_QUOTATION_LIFECYCLE_ACTIONS: Record<string, ExpenseQuotatio
     icon: <FilePlus className="h-5 w-5" />,
     when: {
       membership: 'IN',
-      set: [undefined, EXPENSQUOTATION_STATUS.Draft, EXPENSQUOTATION_STATUS.Sent]
-    }
-  },
-  sent: {
-    label: 'commands.send',
-    variant: 'default',
-    icon: <Send className="h-5 w-5" />,
-    when: {
-      membership: 'IN',
-      set: [undefined, EXPENSQUOTATION_STATUS.Draft, EXPENSQUOTATION_STATUS.Validated]
-    }
-  },
-  accepted: {
-    label: 'commands.accept',
-    variant: 'default',
-    icon: <Check className="h-5 w-5" />,
-    when: {
-      membership: 'IN',
-      set: [EXPENSQUOTATION_STATUS.Sent]
-    }
-  },
-  rejected: {
-    label: 'commands.reject',
-    variant: 'default',
-    icon: <X className="h-5 w-5" />,
-    when: {
-      membership: 'IN',
-      set: [EXPENSQUOTATION_STATUS.Sent]
+      set: [undefined, EXPENSQUOTATION_STATUS.Draft]
     }
   },
   invoiced: {
@@ -79,7 +52,7 @@ export const EXPENSE_QUOTATION_LIFECYCLE_ACTIONS: Record<string, ExpenseQuotatio
     icon: <FileCheck className="h-5 w-5" />,
     when: {
       membership: 'IN',
-      set: [EXPENSQUOTATION_STATUS.Accepted, EXPENSQUOTATION_STATUS.Invoiced]
+      set: [EXPENSQUOTATION_STATUS.Invoiced]
     }
   },
   duplicate: {
@@ -106,7 +79,7 @@ export const EXPENSE_QUOTATION_LIFECYCLE_ACTIONS: Record<string, ExpenseQuotatio
     icon: <Trash className="h-5 w-5" />,
     when: {
       membership: 'OUT',
-      set: [undefined, EXPENSQUOTATION_STATUS.Sent]
+      set: []
     }
   },
   archive: {

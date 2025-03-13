@@ -34,7 +34,9 @@ const factory = (): CreateExpensQuotationDto => {
       showArticleDescription: true,
       taxSummary: []
     },
-    files: []
+    files: [],
+    pdfFileId:0,
+    pdfFile:undefined
   };
 };
 
@@ -139,7 +141,9 @@ const findOne = async (
     'firm.interlocutorsToFirm',
     'expensearticleQuotationEntries.article',
     'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes',
-    'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes.tax'
+    'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes.tax',
+    'uploadPdfField'
+
   ]
 ): Promise<ExpenseQuotation & { files: ExpensQuotationUploadedFile[] }> => {
   const response = await axios.get<ExpenseQuotation>(`public/expensquotation/${id}?join=${relations.join(',')}`);
@@ -175,20 +179,27 @@ const create = async (quotation: CreateExpenseQuotationDto, files: File[]): Prom
 */
 
 const create = async (quotation: CreateExpensQuotationDto, files: File[]): Promise<ExpenseQuotation> => {
-  // Télécharger les fichiers associés au devis
+  let referenceDocId = quotation.pdfFileId;
+
+  // Vérifie si un fichier PDF est présent et l'upload
+  if (quotation.pdfFile) {
+    const [uploadId] = await uploadQuotationFiles([quotation.pdfFile]); // Destructure le premier ID du tableau
+    referenceDocId = uploadId; // Met à jour referenceDocId avec l'ID uploadé
+  }
+
+  // Upload les autres fichiers
   const uploadIds = await uploadQuotationFiles(files);
-  
-  // Envoyer la requête POST pour créer la quotation en ajoutant les fichiers
+
+  // Envoie les données à l'API
   const response = await axios.post<ExpenseQuotation>('public/expensquotation/save', {
-    ...quotation,
-    uploads: uploadIds.map((id) => ({
-      uploadId: id
-    }))
+    ...quotation, // Copie toutes les propriétés de l'objet invoice
+    referenceDocId, // Ajoute referenceDocId
+    uploads: uploadIds.map((id) => ({ uploadId: id })), // Transforme les IDs en objets { uploadId: id }
   });
-  
+
+  // Retourne les données de la réponse
   return response.data;
 };
-
 
 
 const getQuotationUploads = async (quotation: ExpenseQuotation): Promise<ExpensQuotationUploadedFile[]> => {
@@ -228,26 +239,84 @@ const download = async (id: number, template: string): Promise<any> => {
   return response;
 };
 
-const duplicate = async (duplicateQuotationDto: DuplicateExpensQuotationDto): Promise<ExpenseQuotation> => {
-  const response = await axios.post<ExpenseQuotation>(
-    '/public/expensquotation/duplicate',
-    duplicateQuotationDto
-  );
-  return response.data;
+const duplicate = async (
+  duplicateQuotationDto: DuplicateExpensQuotationDto
+): Promise<ExpenseQuotation> => {
+  try {
+    console.log("Sending duplicate request with DTO:", duplicateQuotationDto);
+    const response = await axios.post<ExpenseQuotation>(
+      '/public/expensquotation/duplicate',
+      duplicateQuotationDto
+    );
+
+    console.log("Response Status:", response.status);
+    console.log("Response Data:", response.data);
+
+    if ((response.status === 200 || response.status === 201) && response.data) {
+      console.log("Duplicated Quotation:", response.data); // Log du devis dupliqué
+      return response.data;
+    } else {
+      throw new Error('Failed to duplicate quotation');
+    }
+  } catch (error) {
+    console.error('Error duplicating quotation:', error);
+    throw error;
+  }
 };
 
 const update = async (quotation: UpdateExpensQuotationDto, files: File[]): Promise<ExpenseQuotation> => {
-  const uploadIds = await uploadQuotationFiles(files);
-  const response = await axios.put<ExpenseQuotation>(`public/expensquotation/${quotation.id}`, {
+  let pdfFileId = quotation.pdfFileId; // ID du fichier PDF existant
+  console.log('ID du fichier PDF existant:', pdfFileId); // Log de l'ID du fichier PDF existant
+
+  // Upload du nouveau fichier PDF s'il est fourni
+  if (quotation.pdfFile) {
+    try {
+      const [uploadedPdfFileId] = await uploadQuotationFiles([quotation.pdfFile]);
+      pdfFileId = uploadedPdfFileId; // Mettre à jour l'ID du fichier PDF
+      console.log('Nouveau fichier PDF uploadé. ID:', uploadedPdfFileId); // Log du nouvel ID du fichier PDF
+    } catch (error) {
+      console.error('Erreur lors de l\'upload du fichier PDF:', error);
+      throw error;
+    }
+  }
+
+  // Upload des fichiers supplémentaires (exclure le fichier PDF)
+  let uploadIds: number[] = [];
+  if (files.length > 0) {
+    try {
+      uploadIds = await uploadQuotationFiles(files);
+      console.log('Fichiers supplémentaires uploadés. IDs:', uploadIds); // Log des IDs des fichiers supplémentaires
+    } catch (error) {
+      console.error('Erreur lors de l\'upload des fichiers supplémentaires:', error);
+      throw error;
+    }
+  }
+
+  // Préparer les données pour la mise à jour
+  const updatedQuotation = {
     ...quotation,
+    pdfFileId, // Inclure l'ID du fichier PDF (nouveau ou existant)
     uploads: [
-      ...(quotation.uploads || []),
-      ...uploadIds.map((id) => {
-        return { uploadId: id };
-      })
-    ]
-  });
-  return response.data;
+      ...(quotation.uploads || []), // Inclure les fichiers existants
+      ...uploadIds.map((id) => ({ uploadId: id })), // Ajouter les nouveaux fichiers
+    ],
+  };
+
+  console.log('Données du devis mises à jour:', updatedQuotation); // Log des données du devis
+
+  try {
+    // Envoyer les données au backend
+    console.log('Envoi des données au backend pour la mise à jour...');
+    const response = await axios.put<ExpenseQuotation>(
+      `public/expensquotation/${quotation.id}`,
+      updatedQuotation
+    );
+    console.log('Devis mis à jour avec succès:', response.data); // Log de la réponse du backend
+    return response.data;
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du devis:', error);
+    throw error;
+  }
 };
 
 const invoice = async (id?: number, createInvoice?: boolean): Promise<ExpenseQuotation> => {
@@ -279,6 +348,34 @@ const updateQuotationsSequentials = async (updatedSequenceDto: UpdateQuotationSe
   return response.data;
 };
 
+const deletePdfFile = async (quotationId: number): Promise<void> => {
+  try {
+    // Appeler l'API pour supprimer le fichier PDF
+    const response = await axios.delete(`/public/expensquotation/${quotationId}/pdf`);
+
+    // Vérifier si la suppression a réussi
+    if (response.status === 200) {
+      console.log('PDF file deleted successfully');
+    } else {
+      throw new Error('Failed to delete PDF file');
+    }
+  } catch (error) {
+    console.error('Error deleting PDF file:', error);
+    throw error; // Propager l'erreur pour la gérer dans le composant
+  }
+};
+
+const updateInvoiceStatusIfExpired = async (quotationId: number): Promise<ExpenseQuotation> => {
+  try {
+    const response = await axios.put<ExpenseQuotation>(
+      `public/expensquotation/${quotationId}/update-status-if-expired`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating quotation status:', error);
+    throw error;
+  }
+};
 export const expense_quotation = {
   factory,
   findPaginated,
@@ -291,5 +388,7 @@ export const expense_quotation = {
   update,
   updateQuotationsSequentials,
   remove,
-  validate
+  validate,
+  deletePdfFile,
+  updateInvoiceStatusIfExpired
 };
