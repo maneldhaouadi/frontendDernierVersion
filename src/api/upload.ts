@@ -11,23 +11,43 @@ const findOne = async (id: number): Promise<Upload> => {
   return response.data;
 };
 
-const uploadFile = async (file: File): Promise<Upload> => {
+const uploadFile = async (file: File): Promise<{ id?: number; error?: string }> => {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await axios.post('public/storage/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
+
+  try {
+    const response = await axios.post('public/storage/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    console.log('File uploaded successfully:', response.data);
+
+    // Assurez-vous que la réponse contient un ID
+    if (response.data && response.data.id) {
+      return { id: response.data.id };
+    } else {
+      return { error: 'No ID returned from server' };
     }
-  });
-  return response.data;
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    return { error: 'Failed to upload file' };
+  }
 };
 
 const uploadFiles = async (files: File[]): Promise<number[]> => {
-  let uploadIds = [];
+  const uploadIds: number[] = [];
+
   for (const file of files) {
-    const upload = await uploadFile(file);
-    upload.id && uploadIds.push(upload.id);
+    const result = await uploadFile(file);
+
+    if (result.id) {
+      uploadIds.push(result.id); // Ajoutez l'ID si l'upload a réussi
+    } else {
+      console.error(`Failed to upload file: ${file.name}`); // Log l'erreur
+    }
   }
+
   return uploadIds;
 };
 

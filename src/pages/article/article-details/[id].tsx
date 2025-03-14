@@ -1,5 +1,6 @@
 import ArticleDetails from '@/components/article/ArticleDetails';
 import ArticleList from '@/components/article/ArticleMain';
+
 import React from 'react';
 
 export default function ArticlePage() {

@@ -3,7 +3,7 @@ import { Article } from '@/types';
 import { article } from '@/api';
 import Quagga from 'quagga';
 import { useRouter } from 'next/router';
-import { Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Trash2, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ArticleList: React.FC = () => {
@@ -52,7 +52,7 @@ const ArticleList: React.FC = () => {
 
   // Rediriger vers les détails de l'article
   const handleArticleClick = (id: number) => {
-    router.push(`/article/article-details/${id}`); // Redirige vers la page de détails de l'article
+    router.push(`/article/article-details/${id}`);
   };
 
   // Initialiser le scanner de code-barres pour la caméra
@@ -219,15 +219,24 @@ const ArticleList: React.FC = () => {
               articles.map((article) => (
                 <tr
                   key={article.id}
-                  onClick={() => handleArticleClick(article.id)} // Redirige vers les détails de l'article
-                  className="border-b hover:bg-gray-50 transition cursor-pointer" // Curseur pointer pour indiquer que la ligne est cliquable
+                  onClick={() => handleArticleClick(article.id)}
+                  className="border-b hover:bg-gray-50 transition cursor-pointer"
                 >
                   <td className="px-3 py-2 text-gray-800">{article.title}</td>
                   <td className="px-3 py-2 text-gray-600 truncate max-w-xs">{article.description}</td>
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={(e) => {
-                        e.stopPropagation(); // Empêche la redirection lors du clic sur le bouton de suppression
+                        e.stopPropagation(); // Empêche la redirection vers les détails de l'article
+                        router.push(`/article/article-history/${article.id}`); // Redirige vers la page d'historique de l'article
+                      }}
+                      className="text-gray-500 hover:text-gray-700 transition mr-2"
+                    >
+                      <HelpCircle size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Empêche la redirection vers les détails de l'article
                         handleDeleteArticle(article.id);
                       }}
                       className="text-red-500 hover:text-red-700 transition"

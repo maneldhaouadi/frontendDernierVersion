@@ -1,5 +1,5 @@
 import axios from './axios';
-import { Article, BarcodeSearchResponse, CreateArticleDto, PagedArticle, QrCodeSearchResponse } from '@/types';
+import { Article, BarcodeSearchResponse, CreateArticleDto, PagedArticle, QrCodeSearchResponse, UpdateArticleDto } from '@/types';
 
 const findPaginated = async (
   page: number = 1,
@@ -81,6 +81,17 @@ const generateQrCode = async (data: string): Promise<string> => {
   }
 };
 
+// Mettre à jour un article
+const update = async (id: number, updateArticleDto: UpdateArticleDto): Promise<Article> => {
+  try {
+    const response = await axios.put<Article>(`/public/article/update/${id}`, updateArticleDto);
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour de l'article:", error);
+    throw new Error("Impossible de mettre à jour l'article.");
+  }
+};
+
 // Récupérer un code QR par ID d'article
 const getQrCode = async (id: number): Promise<string> => {
   try {
@@ -92,8 +103,6 @@ const getQrCode = async (id: number): Promise<string> => {
   }
 };
 
-
-
 // Rechercher un article par code QR
 const searchByQrCode = async (qrCode: string): Promise<QrCodeSearchResponse> => {
   try {
@@ -103,8 +112,6 @@ const searchByQrCode = async (qrCode: string): Promise<QrCodeSearchResponse> => 
     console.error("Erreur lors de la recherche par code QR:", error);
     throw new Error("Impossible de trouver l'article.");
   }
-
-  
 };
 
 // Rechercher un article par code-barres
@@ -118,6 +125,7 @@ const searchByBarcode = async (barcode: string): Promise<BarcodeSearchResponse> 
   }
 };
 
+// Rechercher un article par scan de code-barres
 const searchByScan = async (scannedData: string): Promise<BarcodeSearchResponse> => {
   try {
     const response = await axios.post<BarcodeSearchResponse>('/public/article/search-by-scan', { scannedData });
@@ -128,16 +136,32 @@ const searchByScan = async (scannedData: string): Promise<BarcodeSearchResponse>
   }
 };
 
+// Récupérer l'historique des modifications d'un article
+const getArticleHistory = async (id: number): Promise<any[]> => {
+  try {
+    const response = await axios.get<any[]>(`/public/article/${id}/history`);
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'historique de l'article:", error);
+    throw new Error("Impossible de récupérer l'historique de l'article.");
+  }
+};
+
+
+
+
 export const article = {
   findPaginated,
   findOne,
   create,
   createWithFilterTitle,
   remove,
+  update,
   importExcel,
   generateQrCode,
   getQrCode,
   searchByQrCode,
   searchByBarcode,
-  searchByScan, // Ajouter la nouvelle méthode
+  searchByScan,
+  getArticleHistory, // Ajouter la nouvelle méthode
 };

@@ -1,0 +1,36 @@
+[33m5cb04ad[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to 5cb04ad
+[33m5cb04ad[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{1}: reset: moving to ORIG_HEAD
+[33m5cb04ad[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{2}: reset: moving to ORIG_HEAD
+[33m5cb04ad[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{3}: reset: moving to 5cb04ad
+[33md19bf31[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{4}: reset: moving to ORIG_HEAD
+[33md19bf31[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{5}: reset: moving to ORIG_HEAD
+[33md19bf31[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{6}: rebase (finish): returning to refs/heads/main
+[33md19bf31[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{7}: commit (merge): cc
+[33mda4de98[m HEAD@{8}: reset: moving to ORIG_HEAD
+[33m5a37347[m HEAD@{9}: commit: Achat
+[33m5cb04ad[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{10}: pull origin main --rebase (start): checkout 5cb04ad36dfca729e3579b2262f6afb5eab98d90
+[33mda4de98[m HEAD@{11}: commit: Achat
+[33m6d4734e[m HEAD@{12}: reset: moving to 6d4734e
+[33m4f1b747[m HEAD@{13}: reset: moving to 4f1b747
+[33m8e36851[m HEAD@{14}: reset: moving to ORIG_HEAD
+[33m8e36851[m HEAD@{15}: reset: moving to 8e36851
+[33m8e36851[m HEAD@{16}: reset: moving to 8e36851
+[33m033905e[m HEAD@{17}: commit (merge): ModuleAchatVrsion1
+[33m8e36851[m HEAD@{18}: commit: ModuleAchatBeforChatbot
+[33m4f1b747[m HEAD@{19}: pull origin main: Fast-forward
+[33m6d4734e[m HEAD@{20}: commit: PartieFrontAchat
+[33md8e595b[m HEAD@{21}: commit: BackendInvoiceQuotationPayment
+[33m70397ce[m[33m ([m[1;31morigin/FrontendQuotationInvoice[m[33m)[m HEAD@{22}: commit (merge): FRONTSEQUENCE
+[33m14490cb[m HEAD@{23}: commit: SquenceFront
+[33m904b6ce[m HEAD@{24}: reset: moving to HEAD@{3}
+[33m904b6ce[m HEAD@{25}: rebase (abort): returning to refs/heads/main
+[33m692830d[m HEAD@{26}: rebase (continue): front
+[33m79b3d5b[m HEAD@{27}: pull --rebase origin main (start): checkout 79b3d5bf5f3efa073b84493c3b47e5c886641766
+[33m904b6ce[m HEAD@{28}: commit: front
+[33m5339af2[m HEAD@{29}: commit: DernierVersionFront
+[33m78e89bc[m HEAD@{30}: pull origin main: Fast-forward
+[33m28a6ddc[m HEAD@{31}: reset: moving to ORIG_HEAD
+[33m3a385fc[m HEAD@{32}: pull origin main: Fast-forward
+[33m28a6ddc[m HEAD@{33}: commit: DernierModifFront
+[33m07e6738[m HEAD@{34}: commit: FrontendInvoice
+[33m943f72d[m HEAD@{35}: clone: from https://github.com/Jouininada/PFE0.1-FRONTEND.git

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router'; // Utilisez useRouter de Next.js
-import { article } from '@/api';
+import { useRouter } from 'next/router';
+import { api, article } from '@/api';
 import { Article } from '@/types';
 
 const ArticleDetails: React.FC = () => {
@@ -9,9 +9,9 @@ const ArticleDetails: React.FC = () => {
   const [articleDetails, setArticleDetails] = useState<Article | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showScrollButton, setShowScrollButton] = useState(false); // État pour le bouton de défilement
+  const [isEditing, setIsEditing] = useState<boolean>(false); // État pour gérer le mode d'édition
+  const [formData, setFormData] = useState<Partial<Article>>({}); // État pour stocker les modifications
 
-  // Récupérer les détails de l'article
   useEffect(() => {
     if (!id) return; // Attendre que l'ID soit disponible
 
@@ -19,6 +19,7 @@ const ArticleDetails: React.FC = () => {
       try {
         const response = await article.findOne(Number(id)); // Utilisez l'ID pour récupérer l'article
         setArticleDetails(response);
+        setFormData(response); // Initialiser les données du formulaire
       } catch (error) {
         setError('Impossible de récupérer les détails de l\'article.');
       } finally {
@@ -29,23 +30,31 @@ const ArticleDetails: React.FC = () => {
     fetchArticleDetails();
   }, [id]);
 
-  // Gérer l'affichage du bouton "Retour en haut"
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 100) {
-        setShowScrollButton(true);
-      } else {
-        setShowScrollButton(false);
-      }
-    };
+  // Gérer les changements dans les champs du formulaire
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Basculer entre les modes "lecture seule" et "édition"
+  const toggleEditMode = () => {
+    setIsEditing((prev) => !prev);
+  };
 
-  // Fonction pour remonter en haut de la page
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Soumettre les modifications
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Envoyer les modifications au serveur
+      await api.article.update(Number(id), formData);
+      setArticleDetails(formData as Article); // Mettre à jour les détails de l'article
+      setIsEditing(false); // Revenir en mode "lecture seule"
+    } catch (error) {
+      setError('Erreur lors de la mise à jour de l\'article.');
+    }
   };
 
   if (loading) return <p>Chargement...</p>;
@@ -54,16 +63,30 @@ const ArticleDetails: React.FC = () => {
 
   return (
     <div className="p-3 bg-white shadow-md rounded-lg overflow-y-auto h-screen">
-      <h1 className="text-xl font-semibold text-gray-800 mb-4">Détails de l'article</h1>
-      <form className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-semibold text-gray-800">Détails de l'article</h1>
+        <button
+          type="button"
+          onClick={toggleEditMode}
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          {isEditing ? 'Annuler' : 'Modifier'}
+        </button>
+      </div>
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
         {/* Champ Titre */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Titre</label>
           <input
             type="text"
-            value={articleDetails.title}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="title"
+            value={formData.title || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -71,20 +94,13 @@ const ArticleDetails: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700">Description</label>
           <textarea
-            value={articleDetails.description}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        {/* Champ SKU */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">SKU</label>
-          <input
-            type="text"
-            value={articleDetails.sku}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="description"
+            value={formData.description || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -93,9 +109,13 @@ const ArticleDetails: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700">Catégorie</label>
           <input
             type="text"
-            value={articleDetails.category}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="category"
+            value={formData.category || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -104,9 +124,13 @@ const ArticleDetails: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700">Sous-catégorie</label>
           <input
             type="text"
-            value={articleDetails.subCategory}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="subCategory"
+            value={formData.subCategory || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -115,9 +139,13 @@ const ArticleDetails: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700">Prix d'achat</label>
           <input
             type="number"
-            value={articleDetails.purchasePrice}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="purchasePrice"
+            value={formData.purchasePrice || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -126,9 +154,13 @@ const ArticleDetails: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700">Prix de vente</label>
           <input
             type="number"
-            value={articleDetails.salePrice}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="salePrice"
+            value={formData.salePrice || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -137,9 +169,13 @@ const ArticleDetails: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700">Quantité en stock</label>
           <input
             type="number"
-            value={articleDetails.quantityInStock}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            name="quantityInStock"
+            value={formData.quantityInStock || ''}
+            onChange={handleInputChange}
+            readOnly={!isEditing}
+            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              !isEditing ? 'bg-gray-100' : ''
+            }`}
           />
         </div>
 
@@ -148,7 +184,8 @@ const ArticleDetails: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700">Code-barres</label>
           <input
             type="text"
-            value={articleDetails.barcode}
+            name="barcode"
+            value={formData.barcode || ''}
             readOnly
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
           />
@@ -161,17 +198,19 @@ const ArticleDetails: React.FC = () => {
             <img src={articleDetails.qrCode} alt="QR Code" className="mt-1 w-32 h-32" />
           </div>
         )}
-      </form>
 
-      {/* Bouton "Retour en haut" */}
-      {showScrollButton && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-5 right-5 p-3 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition-colors"
-        >
-          ↑
-        </button>
-      )}
+        {/* Bouton Valider en mode édition */}
+        {isEditing && (
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Valider
+            </button>
+          </div>
+        )}
+      </form>
     </div>
   );
 };
