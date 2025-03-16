@@ -98,12 +98,6 @@ const baseMenuItems = [
         href: '/buying/expense_payments',
         icon: <Wallet className="h-5 w-5" />
       },
-      {
-        code: 'withholding',
-        title: 'Tax Withholding',
-        href: '/buying/withholdings',
-        icon: <Magnet className="h-5 w-5" />
-      }
     ]
   },
   {

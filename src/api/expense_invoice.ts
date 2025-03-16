@@ -109,21 +109,25 @@ const uploadInvoiceFiles = async (files: File[]): Promise<number[]> => {
 };
 
 const create = async (invoice: ExpenseCreateInvoiceDto, files: File[]): Promise<ExpenseInvoice> => {
-  let referenceDocId = invoice.pdfFileId;
+  let pdfFileId = invoice.pdfFileId;
 
-  // Vérifie si un fichier PDF est présent et l'upload
+  // Upload du fichier PDF s'il est présent
   if (invoice.pdfFile) {
-    const [uploadId] = await uploadInvoiceFiles([invoice.pdfFile]); // Destructure le premier ID du tableau
-    referenceDocId = uploadId; // Met à jour referenceDocId avec l'ID uploadé
+    const result = await api.upload.uploadFile(invoice.pdfFile); // Upload du fichier PDF
+    if (result.id) {
+      pdfFileId = result.id; // Met à jour pdfFileId avec l'ID uploadé
+    } else {
+      throw new Error('Failed to upload PDF file');
+    }
   }
 
-  // Upload les autres fichiers
-  const uploadIds = await uploadInvoiceFiles(files);
+  // Upload des autres fichiers (si nécessaire)
+  const uploadIds = await api.upload.uploadFiles(files);
 
-  // Envoie les données à l'API
+  // Envoie les données à l'API pour créer la facture
   const response = await axios.post<ExpenseInvoice>('public/expenseinvoice', {
     ...invoice, // Copie toutes les propriétés de l'objet invoice
-    referenceDocId, // Ajoute referenceDocId
+    pdfFileId, // Ajoute pdfFileId
     uploads: uploadIds.map((id) => ({ uploadId: id })), // Transforme les IDs en objets { uploadId: id }
   });
 

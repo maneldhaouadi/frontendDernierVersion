@@ -13,36 +13,43 @@ const findOne = async (id: number): Promise<Upload> => {
 
 const uploadFile = async (file: File): Promise<{ id?: number; error?: string }> => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', file); // Ajoute le fichier au FormData
+
+  console.log('FormData content:', formData.get('file')); // Log pour vérifier le fichier
+  console.log('File size:', file.size); // Vérifiez la taille du fichier
+  console.log('File type:', file.type); // Vérifiez le type du fichier
 
   try {
-    const response = await axios.post('public/storage/upload', formData, {
+    console.log('Sending request to backend...'); // Log pour vérifier que la requête est envoyée
+    const response = await axios.post<{ id: number }>('public/storage/upload', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'multipart/form-data', // En-tête requis pour les fichiers
       },
     });
-    console.log('File uploaded successfully:', response.data);
+
+    console.log('Backend response:', response); // Log pour vérifier la réponse complète du backend
 
     // Assurez-vous que la réponse contient un ID
     if (response.data && response.data.id) {
+      console.log('Upload successful, file ID:', response.data.id); // Log pour vérifier l'ID
       return { id: response.data.id };
     } else {
+      console.error('No ID returned from server:', response.data); // Log supplémentaire
       return { error: 'No ID returned from server' };
     }
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file:', error); // Log pour afficher l'erreur complète
     return { error: 'Failed to upload file' };
   }
 };
-
 const uploadFiles = async (files: File[]): Promise<number[]> => {
   const uploadIds: number[] = [];
 
   for (const file of files) {
-    const result = await uploadFile(file);
+    const result = await uploadFile(file); // Utilise uploadFile pour chaque fichier
 
     if (result.id) {
-      uploadIds.push(result.id); // Ajoutez l'ID si l'upload a réussi
+      uploadIds.push(result.id); // Ajoute l'ID si l'upload a réussi
     } else {
       console.error(`Failed to upload file: ${file.name}`); // Log l'erreur
     }

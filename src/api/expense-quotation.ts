@@ -179,28 +179,47 @@ const create = async (quotation: CreateExpenseQuotationDto, files: File[]): Prom
 */
 
 const create = async (quotation: CreateExpensQuotationDto, files: File[]): Promise<ExpenseQuotation> => {
-  let referenceDocId = quotation.pdfFileId;
+  let pdfFileId = quotation.pdfFileId; // Utilisez directement pdfFileId
 
-  // Vérifie si un fichier PDF est présent et l'upload
+  // Étape 1: Uploader le fichier PDF s'il est présent
   if (quotation.pdfFile) {
-    const [uploadId] = await uploadQuotationFiles([quotation.pdfFile]); // Destructure le premier ID du tableau
-    referenceDocId = uploadId; // Met à jour referenceDocId avec l'ID uploadé
+    try {
+      const [uploadId] = await uploadQuotationFiles([quotation.pdfFile]); // Destructure le premier ID du tableau
+      pdfFileId = uploadId; // Met à jour pdfFileId avec l'ID uploadé
+      console.log('PDF File Uploaded, ID:', pdfFileId); // Log l'ID du fichier uploadé
+    } catch (error) {
+      console.error('Error uploading PDF file:', error);
+      throw new Error('Failed to upload PDF file');
+    }
   }
 
-  // Upload les autres fichiers
-  const uploadIds = await uploadQuotationFiles(files);
+  // Étape 2: Uploader les autres fichiers
+  let uploadIds: number[] = [];
+  if (files.length > 0) {
+    try {
+      uploadIds = await uploadQuotationFiles(files); // Upload les fichiers et récupère leurs IDs
+      console.log('Other Files Uploaded, IDs:', uploadIds); // Log les IDs des fichiers uploadés
+    } catch (error) {
+      console.error('Error uploading other files:', error);
+      throw new Error('Failed to upload other files');
+    }
+  }
 
-  // Envoie les données à l'API
-  const response = await axios.post<ExpenseQuotation>('public/expensquotation/save', {
-    ...quotation, // Copie toutes les propriétés de l'objet invoice
-    referenceDocId, // Ajoute referenceDocId
-    uploads: uploadIds.map((id) => ({ uploadId: id })), // Transforme les IDs en objets { uploadId: id }
-  });
+  // Étape 3: Envoyer les données à l'API
+  try {
+    const response = await axios.post<ExpenseQuotation>('public/expensquotation/save', {
+      ...quotation, // Copie toutes les propriétés de l'objet quotation
+      pdfFileId, // Ajoute pdfFileId directement
+      uploads: uploadIds.map((id) => ({ uploadId: id })), // Transforme les IDs en objets { uploadId: id }
+    });
 
-  // Retourne les données de la réponse
-  return response.data;
+    console.log('Quotation created successfully:', response.data); // Log la réponse de l'API
+    return response.data; // Retourne les données de la réponse
+  } catch (error) {
+    console.error('Error creating quotation:', error);
+    throw new Error('Failed to create quotation');
+  }
 };
-
 
 const getQuotationUploads = async (quotation: ExpenseQuotation): Promise<ExpensQuotationUploadedFile[]> => {
   if (!quotation?.uploads) return [];

@@ -20,7 +20,6 @@ import { useExpenseInvoiceManager } from '../hooks/useExpenseInvoiceManager';
 import { Card } from '@/components/ui/card';
 import { UploadCloud, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FileUploader } from '@/components/ui/file-uploader';
 import { toast } from 'sonner';
 import { api } from '@/api';
 
@@ -113,52 +112,52 @@ export const ExpenseInvoiceGeneralInformation = ({
         {/* Section Pièces jointes */}
         <div className="w-1/2">
           <Label className="text-xs font-semibold mb-1">{tInvoicing('invoice.attributes.files')}</Label>
-          <Card className="p-1 border border-dashed border-blue-400 bg-gray-50 rounded-md">
-            <div className="flex flex-col items-center p-1 bg-white rounded-sm border-dashed border border-blue-300">
-              <UploadCloud className="text-blue-500 mb-1" size={18} />
-              <p className="text-gray-500 text-xs mb-1">{tInvoicing('invoice.attributes.dragAndDrop')}</p>
-              <p className="text-xs text-gray-400">Supported formats: XLS, XLSX, PDF, DOCX, PNG, JPG</p>
-              <FileUploader
-                accept={{ 'application/pdf': [], 'application/vnd.ms-excel': [], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [], 'application/msword': [], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [], 'image/png': [], 'image/jpeg': [] }}
-                className="my-1"
-                maxFileCount={1}
-                value={invoiceManager.pdfFile ? [invoiceManager.pdfFile] : []}
-                onValueChange={handlePdfFileChange}
-                disabled={!!invoiceManager.pdfFile || !!invoiceManager.uploadPdfField}
-              />
-              <label htmlFor="file-upload" className="text-blue-600 cursor-pointer text-xs">
-                {tCommon('chooseFile')}
-              </label>
-            </div>
-            {invoiceManager.uploadPdfField && (
-              <div className="mt-1 grid grid-cols-1 gap-1">
-                <div className="flex flex-col items-center p-1 border rounded-md bg-white max-w-[200px]">
-                  <div className="w-full h-12 overflow-hidden mb-1">
-                    <div className="flex justify-center items-center w-full h-full bg-gray-200 text-gray-500 text-xs">
-                      <p>PDF</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-center text-gray-600 truncate">{invoiceManager.uploadPdfField.filename}</p>
-                  <div className="mt-1 flex justify-between gap-1 w-full">
-                    <Button
-                      variant="outline"
-                      className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                      onClick={handleRemovePdfFile}
-                    >
-                      Remove
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                      onClick={handleDownload}
-                    >
-                      <Download className="mr-1" size={14} /> Download
-                    </Button>
+          <div className="grid w-full max-w-sm items-center gap-1.5">
+            <Label htmlFor="file-upload" className="text-xs font-semibold mb-1">
+              {tInvoicing('invoice.attributes.files')}
+            </Label>
+            <Input
+              id="file-upload"
+              type="file"
+              accept="application/pdf, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, image/png, image/jpeg"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  const newFile = e.target.files[0];
+                  handlePdfFileChange([newFile]);
+                }
+              }}
+              disabled={!!invoiceManager.pdfFile || !!invoiceManager.uploadPdfField}
+            />
+          </div>
+
+          {invoiceManager.uploadPdfField && (
+            <div className="mt-2 grid grid-cols-1 gap-1">
+              <div className="flex flex-col items-center p-2 border rounded-md bg-white max-w-[200px]">
+                <div className="w-full h-12 overflow-hidden mb-1">
+                  <div className="flex justify-center items-center w-full h-full bg-gray-200 text-gray-500 text-xs">
+                    <p>PDF</p>
                   </div>
                 </div>
+                <p className="text-xs text-center text-gray-600 truncate">{invoiceManager.uploadPdfField.filename}</p>
+                <div className="mt-1 flex justify-between gap-1 w-full">
+                  <Button
+                    variant="outline"
+                    className="text-gray-500 border-gray-300 text-xs p-1 h-6"
+                    onClick={handleRemovePdfFile}
+                  >
+                    Remove
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-gray-500 border-gray-300 text-xs p-1 h-6"
+                    onClick={handleDownload}
+                  >
+                    <Download className="mr-1" size={14} /> Download
+                  </Button>
+                </div>
               </div>
-            )}
-          </Card>
+            </div>
+          )}
         </div>
 
         {/* Section Date et Échéance */}

@@ -200,13 +200,13 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
   const [submitted, setSubmitted] = React.useState(false);  // Nouveau state pour gérer la soumission
 
   const onSubmit = async (status: EXPENSQUOTATION_STATUS) => {
-    setSubmitted(true); // Mark the submission attempt
+    setSubmitted(true);
   
     // Convert articles to DTO
     const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
       id: article?.id,
       article: {
-        id: article?.article?.id ?? 0, // Ensure the ID exists
+        id: article?.article?.id ?? 0,
         title: article?.article?.title,
         description: !controlManager.isArticleDescriptionHidden ? article?.article?.description : '',
       },
@@ -222,16 +222,23 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
   
     // If a new PDF file is uploaded, upload it and get its ID
     if (quotationManager.pdfFile) {
-      const [uploadedPdfFileId] = await api.upload.uploadFiles([quotationManager.pdfFile]);
-      pdfFileId = uploadedPdfFileId; // Update the PDF file ID
+      try {
+        console.log('Uploading PDF file:', quotationManager.pdfFile); // Log pour vérifier le fichier
+        const { id, error } = await api.upload.uploadFile(quotationManager.pdfFile); // Utilisez uploadFile ici
+  
+        if (error || !id) {
+          console.error('Upload failed:', error); // Log supplémentaire
+          throw new Error(error || 'Failed to upload PDF file: No ID returned');
+        }
+  
+        pdfFileId = id; // Update pdfFileId avec l'ID retourné
+        console.log('PDF File Uploaded, ID:', pdfFileId); // Log the uploaded file ID
+      } catch (error) {
+        console.error('Error uploading PDF file:', error);
+        toast.error('Failed to upload PDF file');
+        return; // Stop further execution if PDF upload fails
+      }
     }
-  
-    // Upload additional files
-    const additionalFiles = quotationManager.uploadedFiles
-      .filter((u) => !u.upload) // Additional files not yet uploaded
-      .map((u) => u.file);
-  
-    const uploadIds = await api.upload.uploadFiles(additionalFiles);
   
     // Create the quotation object
     const quotation: CreateExpensQuotationDto = {
@@ -247,12 +254,12 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
       bankAccountId: !controlManager?.isBankAccountDetailsHidden
         ? quotationManager?.bankAccount?.id
         : undefined,
-      status: status, // Use the status passed as a parameter
+      status: status,
       generalConditions: !controlManager.isGeneralConditionsHidden
         ? quotationManager?.generalConditions
         : '',
-      pdfFileId, // PDF file ID
-      uploads: uploadIds.map((id) => ({ uploadId: id })),
+      pdfFileId, // Ensure this is correctly set
+      uploads: [], // Add uploads if needed
       notes: quotationManager?.notes,
       articleQuotationEntries: articlesDto,
       discount: quotationManager?.discount,
@@ -274,13 +281,10 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
     if (validation.message) {
       toast.error(validation.message);
     } else {
-      // Remove optional fields if necessary
-      if (controlManager.isGeneralConditionsHidden) delete quotation.generalConditions;
-  
       // Call the mutation to create the quotation
       createQuotation({
         quotation,
-        files: additionalFiles, // Extract files
+        files: [],
       });
   
       // Reset the form

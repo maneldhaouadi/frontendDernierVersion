@@ -133,56 +133,6 @@ export const ExpensePaymentGeneralInformation = ({
       {/* Section Pièces jointes et Date */}
       <div className="grid grid-cols-2 gap-4">
         {/* Pièces jointes */}
-        <div className="flex flex-col gap-2">
-          <Label className="text-xs font-semibold mb-1">{tInvoicing('payment.attributes.files')}</Label>
-          <Card className="p-4 border border-dashed border-blue-400 bg-gray-50 rounded-md">
-            <div className="flex flex-col items-center p-4 bg-white rounded-sm border-dashed border border-blue-300">
-              <UploadCloud className="text-blue-100 mb-2" size={18} />
-              <p className="text-gray-500 text-xs mb-2">{tInvoicing('payment.attributes.dragAndDrop')}</p>
-              <p className="text-xs text-gray-400">Supported formats: XLS, XLSX, PDF, DOCX, PNG, JPG</p>
-              <FileUploader
-                accept={{ 'application/pdf': [] }}
-                className="my-2"
-                maxFileCount={1}
-                value={paymentManager.pdfFile ? [paymentManager.pdfFile] : []}
-                onValueChange={handlePdfFileChange}
-                disabled={!!paymentManager.pdfFile || !!paymentManager.uploadPdfField}
-              />
-              <label htmlFor="file-upload" className="text-blue-600 cursor-pointer text-xs">
-                {tCommon('chooseFile')}
-              </label>
-            </div>
-            {paymentManager.uploadPdfField && (
-              <div className="mt-2 flex flex-col items-center p-2 border rounded-md bg-white">
-                <div className="w-full h-12 overflow-hidden mb-2">
-                  <div className="flex justify-center items-center w-full h-full bg-gray-200 text-gray-500 text-xs">
-                    <p>PDF</p>
-                  </div>
-                </div>
-                <p className="text-xs text-center text-gray-600 truncate">
-                  {paymentManager.uploadPdfField.filename}
-                </p>
-                <div className="mt-2 flex justify-between gap-2 w-full">
-                  <Button
-                    variant="outline"
-                    className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                    onClick={handleRemovePdfFile}
-                  >
-                    Remove
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                    onClick={handleDownload}
-                  >
-                    <Download className="mr-1" size={14} /> Download
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-
         {/* Date */}
         <div className="flex flex-col gap-2">
           <Label>{tInvoicing('invoice.attributes.date')} (*)</Label>

@@ -18,9 +18,8 @@ import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useExpenseQuotationManager } from '../hooks/useExpenseQuotationManager';
 import { Card } from '@/components/ui/card';
-import { Download, UploadCloud } from 'lucide-react';
+import { Download, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FileUploader } from '@/components/ui/file-uploader';
 import { toast } from 'sonner';
 import { api } from '@/api';
 
@@ -45,13 +44,24 @@ export const ExpenseQuotationGeneralInformation = ({
     (entry) => entry?.isMain
   );
 
-  const handlePdfFileChange = (files: File[]) => {
-    if (files.length > 0) {
+  const handlePdfFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const newFile = files[0];
+  
+      // Vérifiez que le fichier est bien un PDF
+      if (newFile.type !== 'application/pdf') {
+        toast.error(tInvoicing('quotation.only_pdf_files_allowed'));
+        return;
+      }
+  
+      // Vérifiez si un fichier PDF est déjà présent
       if (quotationManager.pdfFile || quotationManager.uploadPdfField) {
         toast.warning(tInvoicing('quotation.pdf_file_cannot_be_modified'));
         return;
       }
-      const newFile = files[0];
+  
+      console.log('New PDF file:', newFile); // Log pour vérifier le fichier
       quotationManager.set('pdfFile', newFile);
       quotationManager.set('uploadPdfField', { filename: newFile.name, file: newFile });
     }
@@ -62,6 +72,7 @@ export const ExpenseQuotationGeneralInformation = ({
       if (quotationManager.pdfFileId) {
         if (typeof quotationManager.id === 'number') {
           await api.expense_quotation.deletePdfFile(quotationManager.id);
+          console.log('PDF file removed successfully'); // Log pour vérifier la suppression
           quotationManager.set('pdfFile', null);
           quotationManager.set('pdfFileId', null);
           quotationManager.set('uploadPdfField', null);
@@ -81,7 +92,7 @@ export const ExpenseQuotationGeneralInformation = ({
   const handleDownload = async () => {
     try {
       let fileToDownload: File | Blob | undefined;
-
+  
       if (quotationManager.pdfFile) {
         fileToDownload = quotationManager.pdfFile;
       } else if (quotationManager.uploadPdfField?.filename) {
@@ -93,7 +104,8 @@ export const ExpenseQuotationGeneralInformation = ({
         toast.error(tInvoicing('quotation.no_file_to_download'));
         return;
       }
-
+  
+      console.log('File to download:', fileToDownload); // Log pour vérifier le fichier
       const url = URL.createObjectURL(fileToDownload);
       const link = document.createElement('a');
       link.href = url;
@@ -107,60 +119,35 @@ export const ExpenseQuotationGeneralInformation = ({
       toast.error(tInvoicing('quotation.download_failed'));
     }
   };
-
   return (
     <div className={cn(className, 'space-y-2')}>
-      {/* Section Pièces jointes et Dates */}
-      <div className="flex gap-4">
-        {/* Section Pièces jointes */}
-        <div className="w-1/2">
-          <Label className="text-xs font-semibold mb-1">{tInvoicing('quotation.attributes.files')}</Label>
-          <Card className="p-1 border border-dashed border-blue-400 bg-gray-50 rounded-md">
-            <div className="flex flex-col items-center p-1 bg-white rounded-sm border-dashed border border-blue-300">
-              <UploadCloud className="text-blue-500 mb-1" size={18} />
-              <p className="text-gray-500 text-xs mb-1">{tInvoicing('quotation.attributes.dragAndDrop')}</p>
-              <p className="text-xs text-gray-400">Supported formats: XLS, XLSX, PDF, DOCX, PNG, JPG</p>
-              <FileUploader
-                accept={{ 'application/pdf': [], 'application/vnd.ms-excel': [], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [], 'application/msword': [], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [], 'image/png': [], 'image/jpeg': [] }}
-                className="my-1"
-                maxFileCount={1}
-                value={quotationManager.pdfFile ? [quotationManager.pdfFile] : []}
-                onValueChange={handlePdfFileChange}
-                disabled={!!quotationManager.pdfFile || !!quotationManager.uploadPdfField}
-              />
-              <label htmlFor="file-upload" className="text-blue-600 cursor-pointer text-xs">
-                {tCommon('chooseFile')}
-              </label>
+    {/* Section Pièces jointes et Dates */}
+    <div className="flex gap-4">
+      {/* Section Pièces jointes */}
+      <div className="w-1/2">
+        <Label className="text-xs font-semibold mb-1">{tInvoicing('quotation.attributes.files')}</Label>
+        <div className="grid w-full max-w-sm items-center gap-1.5">
+          <Input
+            id="pdfFile"
+            type="file"
+            accept="application/pdf"
+            onChange={handlePdfFileChange}
+            disabled={!!quotationManager.pdfFile || !!quotationManager.uploadPdfField}
+          />
+          {quotationManager.uploadPdfField && (
+            <div className="mt-2 flex items-center gap-2">
+              <p className="text-sm text-gray-600 truncate">{quotationManager.uploadPdfField.filename}</p>
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="mr-2" size={14} />
+                {tCommon('download')}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleRemovePdfFile}>
+                <Trash className="mr-2" size={14} />
+                {tCommon('remove')}
+              </Button>
             </div>
-            {quotationManager.uploadPdfField && (
-              <div className="mt-1 grid grid-cols-1 gap-1">
-                <div className="flex flex-col items-center p-1 border rounded-md bg-white max-w-[200px]">
-                  <div className="w-full h-12 overflow-hidden mb-1">
-                    <div className="flex justify-center items-center w-full h-full bg-gray-200 text-gray-500 text-xs">
-                      <p>PDF</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-center text-gray-600 truncate">{quotationManager.uploadPdfField.filename}</p>
-                  <div className="mt-1 flex justify-between gap-1 w-full">
-                    <Button
-                      variant="outline"
-                      className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                      onClick={handleRemovePdfFile}
-                    >
-                      Remove
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                      onClick={handleDownload}
-                    >
-                      <Download className="mr-1" size={14} /> Download
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
+          )}
+        </div>
         </div>
 
         {/* Section Date et Échéance */}
