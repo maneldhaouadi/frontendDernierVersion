@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { api, article } from '@/api';
 import { Article } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/common/Spinner';
+import { Edit, Save, X } from 'lucide-react'; // Import des icônes
 
 const ArticleDetails: React.FC = () => {
   const router = useRouter();
@@ -42,6 +49,9 @@ const ArticleDetails: React.FC = () => {
   // Basculer entre les modes "lecture seule" et "édition"
   const toggleEditMode = () => {
     setIsEditing((prev) => !prev);
+    if (isEditing) {
+      setFormData(articleDetails || {}); // Réinitialiser les modifications si on annule
+    }
   };
 
   // Soumettre les modifications
@@ -57,160 +67,173 @@ const ArticleDetails: React.FC = () => {
     }
   };
 
-  if (loading) return <p>Chargement...</p>;
+  if (loading) return <Spinner size="medium" show={loading} />;
   if (error) return <p className="text-red-500">{error}</p>;
   if (!articleDetails) return <p>Aucun article trouvé.</p>;
 
   return (
-    <div className="p-3 bg-white shadow-md rounded-lg overflow-y-auto h-screen">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold text-gray-800">Détails de l'article</h1>
-        <button
-          type="button"
+    <div className="p-6 bg-white rounded-lg shadow-sm">
+      {/* En-tête de la section */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">Détails de l'article</h1>
+        <Button
+          variant={isEditing ? 'secondary' : 'default'}
           onClick={toggleEditMode}
-          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+          className="flex items-center gap-2"
         >
-          {isEditing ? 'Annuler' : 'Modifier'}
-        </button>
+          {isEditing ? (
+            <>
+              <X className="h-4 w-4" />
+              Annuler
+            </>
+          ) : (
+            <>
+              <Edit className="h-4 w-4" />
+              Modifier
+            </>
+          )}
+        </Button>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        {/* Champ Titre */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Titre</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+      {/* Formulaire de détails */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Grille pour les champs du formulaire */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Colonne de gauche */}
+              <div className="space-y-4">
+                {/* Champ : Titre */}
+                <div>
+                  <Label htmlFor="title">Titre</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
 
-        {/* Champ Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <textarea
-            name="description"
-            value={formData.description || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+                {/* Champ : Description */}
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={formData.description || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
 
-        {/* Champ Catégorie */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Catégorie</label>
-          <input
-            type="text"
-            name="category"
-            value={formData.category || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+                {/* Champ : Catégorie */}
+                <div>
+                  <Label htmlFor="category">Catégorie</Label>
+                  <Input
+                    id="category"
+                    name="category"
+                    value={formData.category || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
 
-        {/* Champ Sous-catégorie */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Sous-catégorie</label>
-          <input
-            type="text"
-            name="subCategory"
-            value={formData.subCategory || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+                {/* Champ : Sous-catégorie */}
+                <div>
+                  <Label htmlFor="subCategory">Sous-catégorie</Label>
+                  <Input
+                    id="subCategory"
+                    name="subCategory"
+                    value={formData.subCategory || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
+              </div>
 
-        {/* Champ Prix d'achat */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Prix d'achat</label>
-          <input
-            type="number"
-            name="purchasePrice"
-            value={formData.purchasePrice || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+              {/* Colonne de droite */}
+              <div className="space-y-4">
+                {/* Champ : Prix d'achat */}
+                <div>
+                  <Label htmlFor="purchasePrice">Prix d'achat</Label>
+                  <Input
+                    id="purchasePrice"
+                    name="purchasePrice"
+                    type="number"
+                    value={formData.purchasePrice || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
 
-        {/* Champ Prix de vente */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Prix de vente</label>
-          <input
-            type="number"
-            name="salePrice"
-            value={formData.salePrice || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+                {/* Champ : Prix de vente */}
+                <div>
+                  <Label htmlFor="salePrice">Prix de vente</Label>
+                  <Input
+                    id="salePrice"
+                    name="salePrice"
+                    type="number"
+                    value={formData.salePrice || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
 
-        {/* Champ Quantité en stock */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Quantité en stock</label>
-          <input
-            type="number"
-            name="quantityInStock"
-            value={formData.quantityInStock || ''}
-            onChange={handleInputChange}
-            readOnly={!isEditing}
-            className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              !isEditing ? 'bg-gray-100' : ''
-            }`}
-          />
-        </div>
+                {/* Champ : Quantité en stock */}
+                <div>
+                  <Label htmlFor="quantityInStock">Quantité en stock</Label>
+                  <Input
+                    id="quantityInStock"
+                    name="quantityInStock"
+                    type="number"
+                    value={formData.quantityInStock || ''}
+                    onChange={handleInputChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-gray-100' : ''}
+                  />
+                </div>
 
-        {/* Champ Code-barres (lecture seule) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Code-barres</label>
-          <input
-            type="text"
-            name="barcode"
-            value={formData.barcode || ''}
-            readOnly
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
-          />
-        </div>
+                {/* Champ : Code-barres (lecture seule) */}
+                <div>
+                  <Label htmlFor="barcode">Code-barres</Label>
+                  <Input
+                    id="barcode"
+                    name="barcode"
+                    value={formData.barcode || ''}
+                    readOnly
+                    className="bg-gray-100"
+                  />
+                </div>
 
-        {/* Champ QR Code (lecture seule) */}
-        {articleDetails.qrCode && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">QR Code</label>
-            <img src={articleDetails.qrCode} alt="QR Code" className="mt-1 w-32 h-32" />
-          </div>
-        )}
+                {/* Champ : QR Code (lecture seule) */}
+                {articleDetails.qrCode && (
+                  <div>
+                    <Label>QR Code</Label>
+                    <img src={articleDetails.qrCode} alt="QR Code" className="mt-1 w-32 h-32" />
+                  </div>
+                )}
+              </div>
+            </div>
 
-        {/* Bouton Valider en mode édition */}
-        {isEditing && (
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Valider
-            </button>
-          </div>
-        )}
-      </form>
+            {/* Bouton Valider en mode édition */}
+            {isEditing && (
+              <div className="flex justify-end">
+                <Button type="submit" className="flex items-center gap-2">
+                  <Save className="h-4 w-4" />
+                  Valider
+                </Button>
+              </div>
+            )}
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

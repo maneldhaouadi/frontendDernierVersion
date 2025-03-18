@@ -1,0 +1,18 @@
+{
+  "menu": {
+    "inventory": "Inventory",
+    "submenu": {
+      "articles": "Articles"
+    }
+  },
+  "article": {
+    "plural": "Articles",
+    "list_description": "This page allows you to manage and track articles...",
+    "singular": "Article",
+    "card_description": "Manage your articles here.",
+    "action_remove_success": "Article deleted successfully.",
+    "action_remove_failure": "Failed to delete the article.",
+    "action_duplicate_success": "Article duplicated successfully.",
+    "action_duplicate_failure": "Failed to duplicate the article."
+  }
+}

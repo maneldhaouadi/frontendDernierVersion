@@ -72,6 +72,7 @@
     "react-qr-reader": "^3.0.0-beta-1",
     "react-qr-scanner": "^1.0.0-alpha.11",
     "react-quick-pinch-zoom": "^5.1.0",
+    "react-swipeable": "^7.0.2",
     "sharp": "^0.33.5",
     "socket.io-client": "^4.7.5",
     "sonner": "^1.7.1",

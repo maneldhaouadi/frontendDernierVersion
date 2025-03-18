@@ -1,0 +1,18 @@
+{
+  "menu": {
+    "inventory": "Inventaire",
+    "submenu": {
+      "articles": "Articles"
+    }
+  },
+  "article": {
+    "plural": "Articles",
+    "list_description": "Cette page vous permet de gérer et de suivre les articles...",
+    "singular": "Article",
+    "card_description": "Gérez vos articles ici.",
+    "action_remove_success": "Article supprimé avec succès.",
+    "action_remove_failure": "Échec de la suppression de l'article.",
+    "action_duplicate_success": "Article dupliqué avec succès.",
+    "action_duplicate_failure": "Échec de la duplication de l'article."
+  }
+}
