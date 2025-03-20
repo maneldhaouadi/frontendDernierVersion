@@ -1,31 +1,65 @@
-import { Column } from '@tanstack/react-table';
+import * as React from 'react';
+import { Row } from '@tanstack/react-table';
+import { Article } from '@/types';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, CaretSortIcon } from '@radix-ui/react-icons';
+import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'react-i18next';
+import { Trash2, Eye, Settings2, History } from 'lucide-react'; // Icônes pour les actions
+import { useArticleActions } from '../hooks/ArticleManager';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'; // Utilisez votre design existant
 
-interface DataTableColumnHeaderProps<TData, TValue> {
-  column: Column<TData, TValue>;
-  title: string;
+interface DataTableRowActionsProps {
+  row: Row<Article>;
 }
 
-export function DataTableColumnHeader<TData, TValue>({
-  column,
-  title,
-}: DataTableColumnHeaderProps<TData, TValue>) {
-  const sortDirection = column.getIsSorted();
+export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const article = row.original;
+  const { t: tCommon } = useTranslation('common');
+  const router = useRouter();
+  const { openDeleteDialog } = useArticleActions();
 
   return (
-    <Button
-      variant="ghost"
-      onClick={() => column.toggleSorting(sortDirection === 'asc')}
-    >
-      {title}
-      {sortDirection === 'asc' ? (
-        <ArrowUpIcon className="ml-2 h-4 w-4" />
-      ) : sortDirection === 'desc' ? (
-        <ArrowDownIcon className="ml-2 h-4 w-4" />
-      ) : (
-        <CaretSortIcon className="ml-2 h-4 w-4" />
-      )}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+        >
+          <DotsHorizontalIcon className="h-4 w-4" />
+          <span className="sr-only">Ouvrir le menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[160px]">
+        <DropdownMenuLabel className="text-center">{tCommon('commands.actions')}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {/* Inspecter l'article */}
+        <DropdownMenuItem onClick={() => router.push(`/inventory/article/${article.id}`)}>
+          <Eye className="h-4 w-4 mr-2" /> {tCommon('commands.inspect')}
+        </DropdownMenuItem>
+        {/* Modifier l'article */}
+        <DropdownMenuItem onClick={() => router.push(`/inventory/article/${article.id}/edit`)}>
+          <Settings2 className="h-4 w-4 mr-2" /> {tCommon('commands.modify')}
+        </DropdownMenuItem>
+        {/* Historique de l'article */}
+        <DropdownMenuItem onClick={() => router.push(`/inventory/article/${article.id}/history`)}>
+          <History className="h-4 w-4 mr-2" /> {tCommon('commands.history')}
+        </DropdownMenuItem>
+        {/* Supprimer l'article */}
+        <DropdownMenuItem
+          onClick={() => openDeleteDialog?.(article.id)}
+          className="text-red-600" // Style pour l'action de suppression
+        >
+          <Trash2 className="h-4 w-4 mr-2" /> {tCommon('commands.delete')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

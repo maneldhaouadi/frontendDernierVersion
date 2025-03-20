@@ -1,32 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { api, article } from '@/api';
-import { Article } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Article, UpdateArticleDto } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/common/Spinner';
-import { Edit, Save, X } from 'lucide-react'; // Import des icônes
+import { Edit, Save, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const ArticleDetails: React.FC = () => {
   const router = useRouter();
-  const { id } = router.query; // Récupérer l'ID de l'article depuis l'URL
+  const { id } = router.query;
   const [articleDetails, setArticleDetails] = useState<Article | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState<boolean>(false); // État pour gérer le mode d'édition
-  const [formData, setFormData] = useState<Partial<Article>>({}); // État pour stocker les modifications
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [formData, setFormData] = useState<UpdateArticleDto>({
+    title: '',
+    description: '',
+    category: '',
+    subCategory: '',
+    purchasePrice: 0,
+    salePrice: 0,
+    quantityInStock: 0,
+    status: '',
+  });
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!id) return; // Attendre que l'ID soit disponible
+    if (!id) return;
 
     const fetchArticleDetails = async () => {
       try {
-        const response = await article.findOne(Number(id)); // Utilisez l'ID pour récupérer l'article
+        const response = await article.findOne(Number(id));
         setArticleDetails(response);
-        setFormData(response); // Initialiser les données du formulaire
+        setFormData({
+          title: response.title,
+          description: response.description,
+          category: response.category,
+          subCategory: response.subCategory,
+          purchasePrice: response.purchasePrice,
+          salePrice: response.salePrice,
+          quantityInStock: response.quantityInStock,
+          status: response.status,
+        });
       } catch (error) {
         setError('Impossible de récupérer les détails de l\'article.');
       } finally {
@@ -37,7 +57,20 @@ const ArticleDetails: React.FC = () => {
     fetchArticleDetails();
   }, [id]);
 
-  // Gérer les changements dans les champs du formulaire
+  useEffect(() => {
+    if (id) {
+      const fetchHistory = async () => {
+        try {
+          const response = await api.article.getArticleHistory(Number(id));
+          setHistory(response);
+        } catch (error) {
+          console.error('Erreur lors de la récupération de l\'historique:', error);
+        }
+      };
+      fetchHistory();
+    }
+  }, [id]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -46,24 +79,33 @@ const ArticleDetails: React.FC = () => {
     }));
   };
 
-  // Basculer entre les modes "lecture seule" et "édition"
   const toggleEditMode = () => {
     setIsEditing((prev) => !prev);
     if (isEditing) {
-      setFormData(articleDetails || {}); // Réinitialiser les modifications si on annule
+      setFormData({
+        title: articleDetails?.title || '',
+        description: articleDetails?.description || '',
+        category: articleDetails?.category || '',
+        subCategory: articleDetails?.subCategory || '',
+        purchasePrice: articleDetails?.purchasePrice || 0,
+        salePrice: articleDetails?.salePrice || 0,
+        quantityInStock: articleDetails?.quantityInStock || 0,
+        status: articleDetails?.status || '',
+      });
     }
   };
 
-  // Soumettre les modifications
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Envoyer les modifications au serveur
       await api.article.update(Number(id), formData);
-      setArticleDetails(formData as Article); // Mettre à jour les détails de l'article
-      setIsEditing(false); // Revenir en mode "lecture seule"
+      setArticleDetails({ ...articleDetails, ...formData } as Article);
+      setIsEditing(false);
+      toast.success('Article mis à jour avec succès');
+      router.push(`/article/article-details/${id}`);
     } catch (error) {
-      setError('Erreur lors de la mise à jour de l\'article.');
+      console.error('Erreur lors de la mise à jour de l\'article:', error);
+      toast.error('Erreur lors de la mise à jour de l\'article');
     }
   };
 
@@ -73,7 +115,6 @@ const ArticleDetails: React.FC = () => {
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm">
-      {/* En-tête de la section */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Détails de l'article</h1>
         <Button
@@ -95,124 +136,103 @@ const ArticleDetails: React.FC = () => {
         </Button>
       </div>
 
-      {/* Formulaire de détails */}
       <Card>
         <CardContent className="space-y-4 pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Grille pour les champs du formulaire */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Colonne de gauche */}
               <div className="space-y-4">
-                {/* Champ : Titre */}
                 <div>
                   <Label htmlFor="title">Titre</Label>
                   <Input
                     id="title"
                     name="title"
-                    value={formData.title || ''}
+                    value={formData.title}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-
-                {/* Champ : Description */}
                 <div>
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
                     name="description"
-                    value={formData.description || ''}
+                    value={formData.description}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-
-                {/* Champ : Catégorie */}
                 <div>
                   <Label htmlFor="category">Catégorie</Label>
                   <Input
                     id="category"
                     name="category"
-                    value={formData.category || ''}
+                    value={formData.category}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-
-                {/* Champ : Sous-catégorie */}
                 <div>
                   <Label htmlFor="subCategory">Sous-catégorie</Label>
                   <Input
                     id="subCategory"
                     name="subCategory"
-                    value={formData.subCategory || ''}
+                    value={formData.subCategory}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
               </div>
-
-              {/* Colonne de droite */}
               <div className="space-y-4">
-                {/* Champ : Prix d'achat */}
                 <div>
                   <Label htmlFor="purchasePrice">Prix d'achat</Label>
                   <Input
                     id="purchasePrice"
                     name="purchasePrice"
                     type="number"
-                    value={formData.purchasePrice || ''}
+                    value={formData.purchasePrice}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-
-                {/* Champ : Prix de vente */}
                 <div>
                   <Label htmlFor="salePrice">Prix de vente</Label>
                   <Input
                     id="salePrice"
                     name="salePrice"
                     type="number"
-                    value={formData.salePrice || ''}
+                    value={formData.salePrice}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-
-                {/* Champ : Quantité en stock */}
                 <div>
                   <Label htmlFor="quantityInStock">Quantité en stock</Label>
                   <Input
                     id="quantityInStock"
                     name="quantityInStock"
                     type="number"
-                    value={formData.quantityInStock || ''}
+                    value={formData.quantityInStock}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-
-                {/* Champ : Code-barres (lecture seule) */}
                 <div>
                   <Label htmlFor="barcode">Code-barres</Label>
                   <Input
                     id="barcode"
                     name="barcode"
-                    value={formData.barcode || ''}
+                    value={articleDetails.barcode || ''}
                     readOnly
                     className="bg-gray-100"
                   />
                 </div>
-
-                {/* Champ : QR Code (lecture seule) */}
                 {articleDetails.qrCode && (
                   <div>
                     <Label>QR Code</Label>
@@ -221,8 +241,6 @@ const ArticleDetails: React.FC = () => {
                 )}
               </div>
             </div>
-
-            {/* Bouton Valider en mode édition */}
             {isEditing && (
               <div className="flex justify-end">
                 <Button type="submit" className="flex items-center gap-2">
@@ -234,6 +252,29 @@ const ArticleDetails: React.FC = () => {
           </form>
         </CardContent>
       </Card>
+
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Historique des modifications</h2>
+        {history.length > 0 ? (
+          <ul className="space-y-2">
+            {history.map((entry, index) => (
+              <li key={index} className="p-4 bg-gray-50 rounded-lg">
+                <p><strong>Version {entry.version}</strong></p>
+                <p>Date: {new Date(entry.date).toLocaleString()}</p>
+                <ul>
+                  {Object.entries(entry.changes).map(([key, value]) => (
+                    <li key={key}>
+                      {key}: {JSON.stringify(value)}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Aucun historique disponible.</p>
+        )}
+      </div>
     </div>
   );
 };

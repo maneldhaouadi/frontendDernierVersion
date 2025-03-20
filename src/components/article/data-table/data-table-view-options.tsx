@@ -1,57 +1,64 @@
+import * as React from 'react';
+import { Row } from '@tanstack/react-table';
+import { Article } from '@/types';
 import { Button } from '@/components/ui/button';
+import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'react-i18next';
+import { Trash2, Eye, Settings2, History } from 'lucide-react'; // Icônes pour les actions
+import { useArticleActions } from '../hooks/ArticleManager';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { MixerHorizontalIcon } from '@radix-ui/react-icons';
-import { Table } from '@tanstack/react-table';
-import { useTranslation } from 'react-i18next';
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'; // Utilisez votre design existant
 
-interface DataTableViewOptionsProps<TData> {
-  table: Table<TData>;
+interface DataTableRowActionsProps {
+  row: Row<Article>;
 }
 
-export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {
+export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const article = row.original;
   const { t: tCommon } = useTranslation('common');
-  const { t: tArticle } = useTranslation('article');
+  const router = useRouter();
+  const { openDeleteDialog } = useArticleActions();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
-          <MixerHorizontalIcon className="mr-2 h-4 w-4" />
-          {tCommon('commands.display')}
+        <Button
+          variant="ghost"
+          className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+        >
+          <DotsHorizontalIcon className="h-4 w-4" />
+          <span className="sr-only">Ouvrir le menu</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center">
-        <DropdownMenuLabel className="text-center">
-          {tCommon('table.visible_cols')}
-        </DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-[160px]">
+        <DropdownMenuLabel className="text-center">{tCommon('commands.actions')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {table
-          .getAllColumns()
-          .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
-          .map((column) => {
-            const translatedColumnTitle = tArticle(`article.attributes.${column.id}`, {
-              defaultValue: column.id,
-            });
-
-            return (
-              <DropdownMenuCheckboxItem
-                key={column.id}
-                className="capitalize"
-                checked={column.getIsVisible()}
-                onCheckedChange={(value: boolean) => column.toggleVisibility(!!value)}
-                onSelect={(event) => event.preventDefault()}
-              >
-                {translatedColumnTitle}
-              </DropdownMenuCheckboxItem>
-            );
-          })}
+        {/* Inspecter l'article */}
+        <DropdownMenuItem onClick={() => router.push(`/article/article-details/${article.id}`)}>
+          <Eye className="h-4 w-4 mr-2" /> {tCommon('commands.inspect')}
+        </DropdownMenuItem>
+        {/* Modifier l'article */}
+        <DropdownMenuItem onClick={() => router.push(`/inventory/article/${article.id}/edit`)}>
+          <Settings2 className="h-4 w-4 mr-2" /> {tCommon('commands.modify')}
+        </DropdownMenuItem>
+        {/* Historique de l'article */}
+        <DropdownMenuItem onClick={() => router.push(`/inventory/article/${article.id}/history`)}>
+          <History className="h-4 w-4 mr-2" /> {tCommon('commands.history')}
+        </DropdownMenuItem>
+        {/* Supprimer l'article */}
+        <DropdownMenuItem
+          onClick={() => openDeleteDialog?.(article.id)}
+          className="text-red-600" // Style pour l'action de suppression
+        >
+          <Trash2 className="h-4 w-4 mr-2" /> {tCommon('commands.delete')}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

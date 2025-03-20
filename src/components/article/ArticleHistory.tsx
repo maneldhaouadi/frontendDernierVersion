@@ -31,10 +31,11 @@ const ArticleHistoryList: React.FC<ArticleHistoryListProps> = ({ articleId }) =>
     // Mise à jour des breadcrumbs
     setRoutes([
       { title: 'menu.inventory', href: '/inventory' },
-      { title: 'submenu.articles', href: '/inventory/articles' }
+      { title: 'submenu.articles', href: '/inventory/articles' },
     ]);
   }, [router.locale]);
 
+  // Récupérer l'historique de l'article
   const fetchArticleHistory = async () => {
     try {
       const data = await articleHistory.getArticleHistory(articleId);
@@ -48,19 +49,12 @@ const ArticleHistoryList: React.FC<ArticleHistoryListProps> = ({ articleId }) =>
     }
   };
 
-  const handleViewPdf = async (articleId: number) => {
-    try {
-      const pdfUrl = await articleHistory.generatePdf(articleId);
-      window.open(pdfUrl, '_blank');
-    } catch (err) {
-      console.error("Erreur lors de l'ouverture du PDF:", err);
-      toast.error(tArticleHistory('error_viewing_pdf'));
-    }
-  };
 
-  const handleDownloadPdf = async (articleId: number) => {
+
+  // Télécharger le PDF pour une version spécifique
+  const handleDownloadPdf = async (articleId: number, version: number) => {
     try {
-      await articleHistory.downloadPdf(articleId);
+      await articleHistory.downloadPdf(articleId, version); // Utilisez la fonction du service
       toast.success(tArticleHistory('pdf_downloaded'));
     } catch (err) {
       console.error("Erreur lors du téléchargement du PDF:", err);
@@ -72,6 +66,7 @@ const ArticleHistoryList: React.FC<ArticleHistoryListProps> = ({ articleId }) =>
     fetchArticleHistory();
   }, [articleId]);
 
+  // Définition des colonnes du tableau
   const columns: ColumnDef<ResponseArticleHistoryDto>[] = [
     {
       accessorKey: 'version',
@@ -110,16 +105,9 @@ const ArticleHistoryList: React.FC<ArticleHistoryListProps> = ({ articleId }) =>
       header: tCommon('actions'),
       cell: ({ row }) => (
         <div className="flex space-x-1">
+          
           <Button
-            onClick={() => handleViewPdf(articleId)}
-            variant="outline"
-            size="sm"
-            className="h-8 px-2"
-          >
-            {tArticleHistory('view_pdf')}
-          </Button>
-          <Button
-            onClick={() => handleDownloadPdf(articleId)}
+            onClick={() => handleDownloadPdf(row.original.articleId, row.original.version)} // Télécharger le PDF
             variant="outline"
             size="sm"
             className="h-8 px-2"
@@ -131,38 +119,56 @@ const ArticleHistoryList: React.FC<ArticleHistoryListProps> = ({ articleId }) =>
     },
   ];
 
+  // Affichage du spinner pendant le chargement
   if (loading) {
-    return <div className="text-center text-gray-600 p-4"><Spinner /></div>;
+    return (
+      <div className="text-center text-gray-600 p-4">
+        <Spinner />
+      </div>
+    );
   }
 
+  // Affichage des erreurs
   if (error) {
-    return <div className="text-center text-red-500 p-4">{error}</div>;
+    return (
+      <div className="text-center text-red-500 p-4">
+        {error}
+      </div>
+    );
   }
 
+  // Affichage si aucun historique n'est trouvé
   if (history.length === 0) {
-    return <div className="text-center text-gray-600 p-4">{tArticleHistory('no_history_found')}</div>;
+    return (
+      <div className="text-center text-gray-600 p-4">
+        {tArticleHistory('no_history_found')}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-2 p-4"> {/* Réduction de l'espace global */}
+    <div className="space-y-2 p-4">
+      {/* En-tête de la page */}
       <PageHeader
         title={tArticleHistory('title')}
         description={tArticleHistory('description')}
         level="h1"
-        className="mb-2" // Réduction de la marge en bas
+        className="mb-2"
       />
 
-      {/* Affichage des breadcrumbs */}
-      <BreadcrumbCommon className="mb-2" /> {/* Réduction de la marge en bas */}
+      {/* Fil d'Ariane */}
+      <BreadcrumbCommon className="mb-2" />
 
+      {/* Carte contenant le tableau */}
       <Card>
-        <CardHeader className="p-2"> {/* Réduction du padding */}
+        <CardHeader className="p-2">
           <CardTitle className="text-lg">{tArticleHistory('title')}</CardTitle>
           <CardDescription className="text-sm">
             {tArticleHistory('description')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-2"> {/* Réduction du padding */}
+        <CardContent className="p-2">
+          {/* Tableau des historiques */}
           <DataTable
             data={history}
             columns={columns}

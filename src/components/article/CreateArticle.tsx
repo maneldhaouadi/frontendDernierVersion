@@ -24,8 +24,8 @@ const CreateArticle: React.FC = () => {
   // Configuration du fil d'Ariane
   useEffect(() => {
     setRoutes([
-      { title: tCommon('menu.inventory'), href: '/inventory' },
-      { title: tCommon('submenu.articles'), href: '/inventory/articles' },
+      { title: tCommon('menu.inventory'), href: '/article/article-Lists' },
+      { title: tCommon('submenu.articles'), href: '/article/article-Lists' },
       { title: tCommon('commands.create') },
     ]);
   }, [router.locale]);
@@ -83,7 +83,7 @@ const CreateArticle: React.FC = () => {
       const result = await article.createWithFilterTitle(formData);
       if (result) {
         toast.success(tArticle('article.action_create_success'));
-        router.push('/inventory/articles');
+        router.push('/article/article-Lists');
       } else {
         toast.error(tArticle('article.action_create_duplicate_title'));
       }

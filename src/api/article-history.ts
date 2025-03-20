@@ -55,14 +55,16 @@ const generatePdf = async (articleId: number): Promise<string> => {
   }
 };
 
+
 /**
- * Télécharge le fichier PDF pour un article spécifique.
+ * Télécharge le fichier PDF pour une version spécifique d'un article.
  * @param articleId - L'ID de l'article.
+ * @param version - La version de l'article.
  * @returns Le fichier PDF téléchargé.
  */
-const downloadPdf = async (articleId: number): Promise<void> => {
+const downloadPdf = async (articleId: number, version: number): Promise<void> => {
   try {
-    const response = await axios.get(`/public/article/${articleId}/download-pdf`, {
+    const response = await axios.get(`/public/article-history/${articleId}/version/${version}/download-pdf`, {
       responseType: 'blob', // Indique que la réponse est un fichier binaire (Blob)
     });
 
@@ -70,7 +72,7 @@ const downloadPdf = async (articleId: number): Promise<void> => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `article_${articleId}_fiche.pdf`); // Nom du fichier
+    link.setAttribute('download', `article_${articleId}_version_${version}.pdf`); // Nom du fichier
     document.body.appendChild(link);
     link.click();
 
@@ -82,6 +84,7 @@ const downloadPdf = async (articleId: number): Promise<void> => {
     throw new Error("Impossible de télécharger le PDF.");
   }
 };
+
 
 export const articleHistory = {
   createHistoryEntry,
