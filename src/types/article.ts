@@ -11,8 +11,6 @@ export interface Article extends DatabaseEntity {
   purchasePrice: number;
   salePrice: number;
   quantityInStock: number;
-  qrCode?: string; // Ajout du champ QR Code
-  barcode?: string; // Ajout du champ code-barres
   status?: string; // Ajout du champ statut (ex: "draft", "available")
   version?: number; // Ajout du champ version pour le suivi des modifications
   history?: Array<{ // Ajout du champ historique des modifications

@@ -39,7 +39,6 @@ const CreateArticle: React.FC = () => {
     purchasePrice: 0,
     salePrice: 0,
     quantityInStock: 0,
-    barcode: '',
     status: '',
   });
   const [loading, setLoading] = useState(false);
@@ -106,7 +105,6 @@ const CreateArticle: React.FC = () => {
       purchasePrice: 0,
       salePrice: 0,
       quantityInStock: 0,
-      barcode: '',
       status: '',
     });
     setError(null);
@@ -221,17 +219,7 @@ const CreateArticle: React.FC = () => {
                   />
                 </div>
 
-                {/* Champ : Code-barres */}
-                <div>
-                  <Label htmlFor="barcode">{tArticle('article.attributes.barcode')}</Label>
-                  <Input
-                    id="barcode"
-                    name="barcode"
-                    value={formData.barcode}
-                    onChange={handleChange}
-                    placeholder={tArticle('article.attributes.barcode_placeholder')}
-                  />
-                </div>
+
 
                 {/* Champ : Statut */}
                 <div>

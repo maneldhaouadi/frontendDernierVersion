@@ -79,19 +79,6 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
     }
   };
 
-  const handleBarcodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({
-      ...article,
-      barcode: e.target.value
-    });
-  };
-
-  const handleQrCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({
-      ...article,
-      qrCode: e.target.value
-    });
-  };
 
   const handleStatusChange = (value: string) => {
     onChange({
@@ -196,32 +183,8 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
         </div>
       </div>
       <div className="w-3/12 flex flex-col h-full">
-        {/* Barcode */}
-        <div className="my-auto">
-          <Label className="mx-1">{tArticle('article.attributes.barcode')}</Label>
-          {edit ? (
-            <Input
-              placeholder="Barcode"
-              value={article.barcode}
-              onChange={handleBarcodeChange}
-            />
-          ) : (
-            <UneditableInput value={article.barcode} />
-          )}
-        </div>
-        {/* QR Code */}
-        <div className="my-auto">
-          <Label className="mx-1">{tArticle('article.attributes.qrCode')}</Label>
-          {edit ? (
-            <Input
-              placeholder="QR Code"
-              value={article.qrCode}
-              onChange={handleQrCodeChange}
-            />
-          ) : (
-            <UneditableInput value={article.qrCode} />
-          )}
-        </div>
+
+
         {/* Status */}
         <div className="my-auto">
           <Label className="mx-1">{tArticle('article.attributes.status')}</Label>

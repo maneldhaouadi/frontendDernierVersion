@@ -84,6 +84,7 @@ const generateQrCode = async (data: string): Promise<string> => {
 // Mettre à jour un article
 const update = async (id: number, updateArticleDto: UpdateArticleDto): Promise<Article> => {
   try {
+    console.log('Données envoyées:', updateArticleDto); // Afficher les données dans la console
     const response = await axios.put<Article>(`/public/article/update/${id}`, updateArticleDto);
     return response.data;
   } catch (error) {

@@ -28,8 +28,8 @@ const ArticleDetails: React.FC = () => {
     quantityInStock: 0,
     status: '',
   });
-  const [history, setHistory] = useState<any[]>([]);
 
+  // Fetch article details
   useEffect(() => {
     if (!id) return;
 
@@ -49,6 +49,7 @@ const ArticleDetails: React.FC = () => {
         });
       } catch (error) {
         setError('Impossible de récupérer les détails de l\'article.');
+        toast.error('Erreur lors de la récupération des détails de l\'article.');
       } finally {
         setLoading(false);
       }
@@ -57,31 +58,22 @@ const ArticleDetails: React.FC = () => {
     fetchArticleDetails();
   }, [id]);
 
-  useEffect(() => {
-    if (id) {
-      const fetchHistory = async () => {
-        try {
-          const response = await api.article.getArticleHistory(Number(id));
-          setHistory(response);
-        } catch (error) {
-          console.error('Erreur lors de la récupération de l\'historique:', error);
-        }
-      };
-      fetchHistory();
-    }
-  }, [id]);
-
+  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
-      [name]: value,
+      [name]: name === 'purchasePrice' || name === 'salePrice' || name === 'quantityInStock'
+        ? Number(value) // Convertir en nombre pour les champs numériques
+        : value,
     }));
   };
 
+  // Toggle edit mode
   const toggleEditMode = () => {
     setIsEditing((prev) => !prev);
     if (isEditing) {
+      // Reset form data to original article details when canceling edit mode
       setFormData({
         title: articleDetails?.title || '',
         description: articleDetails?.description || '',
@@ -95,22 +87,54 @@ const ArticleDetails: React.FC = () => {
     }
   };
 
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.article.update(Number(id), formData);
-      setArticleDetails({ ...articleDetails, ...formData } as Article);
+      console.log('Données envoyées:', formData); // Afficher les données dans la console
+
+      // Convertir les champs numériques en nombres
+      const payload = {
+        ...formData,
+        purchasePrice: Number(formData.purchasePrice),
+        salePrice: Number(formData.salePrice),
+        quantityInStock: Number(formData.quantityInStock),
+      };
+
+      // Appeler l'API pour mettre à jour l'article
+      const updatedArticle = await api.article.update(Number(id), payload);
+
+      // Mettre à jour l'état local avec les nouvelles données
+      setArticleDetails(updatedArticle);
+      setFormData({
+        title: updatedArticle.title,
+        description: updatedArticle.description,
+        category: updatedArticle.category,
+        subCategory: updatedArticle.subCategory,
+        purchasePrice: updatedArticle.purchasePrice,
+        salePrice: updatedArticle.salePrice,
+        quantityInStock: updatedArticle.quantityInStock,
+        status: updatedArticle.status,
+      });
+
+      // Désactiver le mode édition
       setIsEditing(false);
+
+      // Afficher un message de succès
       toast.success('Article mis à jour avec succès');
-      router.push(`/article/article-details/${id}`);
     } catch (error) {
       console.error('Erreur lors de la mise à jour de l\'article:', error);
-      toast.error('Erreur lors de la mise à jour de l\'article');
+      toast.error('Erreur lors de la mise à jour de l\'article.');
     }
   };
 
+  // Display loading spinner
   if (loading) return <Spinner size="medium" show={loading} />;
+
+  // Display error message
   if (error) return <p className="text-red-500">{error}</p>;
+
+  // Display message if no article is found
   if (!articleDetails) return <p>Aucun article trouvé.</p>;
 
   return (
@@ -223,22 +247,6 @@ const ArticleDetails: React.FC = () => {
                     className={!isEditing ? 'bg-gray-100' : ''}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="barcode">Code-barres</Label>
-                  <Input
-                    id="barcode"
-                    name="barcode"
-                    value={articleDetails.barcode || ''}
-                    readOnly
-                    className="bg-gray-100"
-                  />
-                </div>
-                {articleDetails.qrCode && (
-                  <div>
-                    <Label>QR Code</Label>
-                    <img src={articleDetails.qrCode} alt="QR Code" className="mt-1 w-32 h-32" />
-                  </div>
-                )}
               </div>
             </div>
             {isEditing && (
@@ -252,29 +260,6 @@ const ArticleDetails: React.FC = () => {
           </form>
         </CardContent>
       </Card>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Historique des modifications</h2>
-        {history.length > 0 ? (
-          <ul className="space-y-2">
-            {history.map((entry, index) => (
-              <li key={index} className="p-4 bg-gray-50 rounded-lg">
-                <p><strong>Version {entry.version}</strong></p>
-                <p>Date: {new Date(entry.date).toLocaleString()}</p>
-                <ul>
-                  {Object.entries(entry.changes).map(([key, value]) => (
-                    <li key={key}>
-                      {key}: {JSON.stringify(value)}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>Aucun historique disponible.</p>
-        )}
-      </div>
     </div>
   );
 };
