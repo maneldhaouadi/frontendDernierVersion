@@ -6,6 +6,8 @@ const find = async (): Promise<Currency[]> => {
   return response.data;
 };
 
+
+
 const factory = (): Currency => {
   return {
     id: undefined,
