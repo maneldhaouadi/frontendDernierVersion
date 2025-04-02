@@ -57,7 +57,6 @@ export const ExpensePaymentEmbeddedMain: React.FC<ExpensePaymentEmbeddedMainProp
   const { value: debouncedSearchTerm, loading: searching } = useDebounce<string>(searchTerm, 500);
 
   const [deleteDialog, setDeleteDialog] = React.useState(false);
-  const [downloadDialog, setDownloadDialog] = React.useState(false);
 
   const {
     isPending: isFetchPending,
@@ -93,7 +92,6 @@ export const ExpensePaymentEmbeddedMain: React.FC<ExpensePaymentEmbeddedMainProp
   const context = {
     //dialogs
     openDeleteDialog: () => setDeleteDialog(true),
-    openDownloadDialog: () => setDownloadDialog(true),
     //search, filtering, sorting & paging
     searchTerm,
     setSearchTerm,

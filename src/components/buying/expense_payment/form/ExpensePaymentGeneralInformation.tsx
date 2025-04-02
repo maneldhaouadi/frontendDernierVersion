@@ -19,7 +19,7 @@ import { EXPENSE_PAYMENT_MODE } from '@/types/expense-payment';
 import { useExpensePaymentInvoiceManager } from '../hooks/useExpensePaymentInvoiceManager';
 import { EXPENSE_INVOICE_STATUS, ExpenseInvoice } from '@/types/expense_invoices';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, Download } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 import { FileUploader } from '@/components/ui/file-uploader';
 import { toast } from 'sonner';
 import { api } from '@/api';
@@ -86,35 +86,7 @@ export const ExpensePaymentGeneralInformation = ({
     }
   };
 
-  const handleDownload = async () => {
-    try {
-      let fileToDownload: File | Blob | undefined;
-
-      if (paymentManager.pdfFile) {
-        fileToDownload = paymentManager.pdfFile;
-      } else if (paymentManager.uploadPdfField?.filename) {
-        const response = await fetch(paymentManager.uploadPdfField.filename);
-        if (!response.ok) throw new Error('Failed to fetch the file');
-        const blob = await response.blob();
-        fileToDownload = blob;
-      } else {
-        toast.error(tInvoicing('payment.no_file_to_download'));
-        return;
-      }
-
-      const url = URL.createObjectURL(fileToDownload);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = paymentManager.uploadPdfField?.filename || 'document.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      toast.error(tInvoicing('payment.download_failed'));
-    }
-  };
+  
 
   return (
     <div className={cn('flex flex-col gap-8', className)}>

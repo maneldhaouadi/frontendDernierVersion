@@ -11,7 +11,7 @@ import {
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { Download, Settings2, Telescope, Trash2 } from 'lucide-react';
+import { Settings2, Telescope, Trash2 } from 'lucide-react';
 import { ExpenseInvoice } from '@/types/expense_invoices';
 import { useExpensePaymentActions } from './ActionsContext';
 import { useExpensePaymentManager } from '../hooks/useExpensePaymentManager';
@@ -25,7 +25,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t: tCommon } = useTranslation('common');
   const router = useRouter();
   const paymentManager = useExpensePaymentManager();
-  const { openDeleteDialog, openDownloadDialog } = useExpensePaymentActions();
+  const { openDeleteDialog } = useExpensePaymentActions();
 
   const targetInvoice = () => {
     paymentManager.set('id', payment?.id);
@@ -46,13 +46,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <Telescope className="h-5 w-5 mr-2" /> {tCommon('commands.inspect')}
         </DropdownMenuItem>
         {/* Print */}
-        <DropdownMenuItem
-          onClick={() => {
-            targetInvoice();
-            openDownloadDialog();
-          }}>
-          <Download className="h-5 w-5 mr-2" /> {tCommon('commands.download')}
-        </DropdownMenuItem>
+       
         {/* Duplicate */}
         {/* <DropdownMenuItem
           onClick={() => {

@@ -1,94 +1,176 @@
-import { api } from '@/api';
 import { useState, useEffect } from 'react';
+import { api } from '@/api';
 
 type DocumentDetails = {
+  number?: string;
   amount?: number;
-  dueDate?: string;
-  paidAmount?: number;
   date?: string;
-  currency?: string; // Ajout pour gérer les devises
+  dueDate?: string;
+  status?: string;
+  articleCount?: number;
 };
 
 type DialogflowResponse = {
   fulfillmentText: string;
-  fulfillmentMessages?: {
-    text: {
-      text: string[];
+  outputContexts?: Array<{
+    name: string;
+    lifespanCount: number;
+    parameters?: {
+      currentStep?: string;
+      quotationData?: any;
+      [key: string]: any;
     };
-  }[];
+  }>;
   payload?: {
-    type: 'invoice' | 'quotation' | 'currency';
-    number?: string;
-    status?: string;
-    statusMessage?: string;
+    type: 'invoice' | 'quotation';
     details?: DocumentDetails;
-    timestamp?: string;
-    currency?: { // Ajout pour le payload des devises
-      code: string;
-      label: string;
-      symbol: string;
-    };
   };
 };
 
 const DialogflowTable = () => {
-  const [languageCode, setLanguageCode] = useState<'es' | 'en' | 'fr'>('es');
+  const [languageCode, setLanguageCode] = useState<'fr' | 'en' | 'es'>('fr');
   const [queryText, setQueryText] = useState('');
   const [sessionId, setSessionId] = useState('');
-  const [messages, setMessages] = useState<{ 
-    sender: string; 
-    text: string; 
+  const [messages, setMessages] = useState<{
+    sender: 'user' | 'bot';
+    text: string;
     details?: DocumentDetails;
-    type?: 'invoice' | 'quotation' | 'currency';
-    currency?: { // Ajout pour les messages de devise
-      code: string;
-      label: string;
-      symbol: string;
-    };
+    type?: 'invoice' | 'quotation';
   }[]>([]);
+  const [currentContexts, setCurrentContexts] = useState<any[]>([]);
 
   useEffect(() => {
-    const generatedSessionId = `session_${Date.now()}`;
-    setSessionId(generatedSessionId);
-    setMessages([{ 
-      sender: 'bot', 
-      text: languageCode === 'es' 
-        ? '¡Hola! ¿En qué puedo ayudarte hoy? Puedes crear facturas, devisos o gestionar divisas.' 
+    const newSessionId = `session-${Date.now()}`;
+    setSessionId(newSessionId);
+    setMessages([{
+      sender: 'bot',
+      text: languageCode === 'fr' 
+        ? 'Bonjour ! Comment puis-je vous aider ? Dites "créer un devis" pour commencer.' 
         : languageCode === 'en' 
-        ? 'Hello! How can I help you today? You can create invoices, quotations or manage currencies.' 
-        : 'Bonjour ! Comment puis-je vous aider ? Vous pouvez créer des factures, devis ou gérer des devises.' 
+        ? 'Hello! How can I help you? Say "create quotation" to start.'
+        : '¡Hola! ¿Cómo puedo ayudarte? Di "crear presupuesto" para empezar.'
     }]);
   }, [languageCode]);
+
+  const handleDialogflowResponse = (response: DialogflowResponse) => {
+    if (response.outputContexts) {
+      setCurrentContexts(response.outputContexts);
+    }
+
+    setMessages(prev => [...prev, {
+      sender: 'bot',
+      text: response.fulfillmentText,
+      type: response.payload?.type,
+      details: response.payload?.details
+    }]);
+  };
+
+  const isInQuotationFlow = () => {
+    return currentContexts.some(ctx => ctx.name.includes('awaiting_quotation'));
+  };
+
+  const getCurrentStep = () => {
+    const context = currentContexts.find(ctx => ctx.name.includes('awaiting_quotation'));
+    return context?.parameters?.currentStep || '';
+  };
+
+  const getInputPlaceholder = () => {
+    if (!isInQuotationFlow()) {
+      return languageCode === 'fr' 
+        ? 'Tapez votre message...' 
+        : languageCode === 'en' 
+        ? 'Type your message...'
+        : 'Escribe tu mensaje...';
+    }
+
+    const step = getCurrentStep();
+    const placeholders = {
+      'sequentialNumbr': languageCode === 'fr' ? 'Numéro séquentiel (ex: QUO-123456)' : 'Sequential number (ex: QUO-123456)',
+      'object': languageCode === 'fr' ? 'Objet du devis' : 'Quotation subject',
+      'firmId': languageCode === 'fr' ? 'ID de la firme (nombre entier)' : 'Firm ID (integer)',
+      'interlocutorId': languageCode === 'fr' ? 'ID interlocuteur (nombre entier)' : 'Interlocutor ID (integer)',
+      'date': languageCode === 'fr' ? 'Date (JJ-MM-AAAA)' : 'Date (DD-MM-YYYY)',
+      'duedate': languageCode === 'fr' ? 'Date échéance (JJ-MM-AAAA)' : 'Due date (DD-MM-YYYY)',
+      'status': languageCode === 'fr' ? 'Statut (Brouillon, En attente, Validé, Refusé)' : 'Status (Draft, Pending, Validated, Rejected)',
+      'articleId': languageCode === 'fr' ? 'ID article (nombre entier)' : 'Article ID (integer)',
+      'quantity': languageCode === 'fr' ? 'Quantité (nombre entier)' : 'Quantity (integer)',
+      'unitPrice': languageCode === 'fr' ? 'Prix unitaire (nombre décimal ou "défaut")' : 'Unit price (decimal or "default")',
+      'discount': languageCode === 'fr' ? 'Remise (nombre décimal ou pourcentage, ex: 10 ou 10%)' : 'Discount (decimal or percentage, ex: 10 or 10%)',
+      'moreArticles': languageCode === 'fr' ? 'Ajouter un autre article ? (Oui/Non)' : 'Add another item? (Yes/No)',
+      'finalize': languageCode === 'fr' ? 'Confirmer la création ? (Oui/Non)' : 'Confirm creation? (Yes/No)'
+    };
+
+    return placeholders[step] || (languageCode === 'fr' ? 'Répondez à la question...' : 'Answer the question...');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!queryText.trim()) return;
 
-    // Ajouter le message de l'utilisateur
     setMessages(prev => [...prev, { sender: 'user', text: queryText }]);
 
     try {
-      const response = await api.dialogflow.sendRequest(languageCode, queryText, sessionId);
-      
-      // Ajouter la réponse du bot avec les détails
-      setMessages(prev => [
-        ...prev, 
-        { 
-          sender: 'bot', 
-          text: response.fulfillmentText,
-          details: response.payload?.details,
-          type: response.payload?.type,
-          currency: response.payload?.currency
+      const currentStep = getCurrentStep();
+      let parameters = {};
+
+      // Structure les paramètres selon l'étape en cours
+      if (isInQuotationFlow()) {
+        switch (currentStep) {
+          case 'sequentialNumbr':
+            parameters = { sequentialNumbr: queryText };
+            break;
+          case 'object':
+            parameters = { object: queryText };
+            break;
+          case 'firmId':
+          case 'interlocutorId':
+          case 'articleId':
+          case 'quantity':
+            parameters = { [currentStep]: parseInt(queryText) || 0 };
+            break;
+          case 'date':
+          case 'duedate':
+            parameters = { [currentStep]: queryText };
+            break;
+          case 'status':
+            parameters = { status: queryText };
+            break;
+          case 'unitPrice':
+            parameters = { unitPrice: queryText.toLowerCase() === 'défaut' ? 'défaut' : parseFloat(queryText) };
+            break;
+          case 'discount':
+            parameters = { 
+              discount: parseFloat(queryText.replace('%', '')),
+              discountType: queryText.includes('%') ? 'PERCENTAGE' : 'AMOUNT'
+            };
+            break;
+          case 'moreArticles':
+          case 'finalize':
+            parameters = { queryText: queryText };
+            break;
+          default:
+            parameters = { queryText: queryText };
         }
-      ]);
+      }
+
+      const response = await api.dialogflow.sendRequest({
+        languageCode,
+        queryText,
+        sessionId,
+        parameters,
+        outputContexts: currentContexts
+      });
+
+      handleDialogflowResponse(response);
 
     } catch (error) {
-      const errorMessage = languageCode === 'es' 
-        ? 'Error al procesar la solicitud' 
-        : languageCode === 'en' 
-        ? 'Error processing request' 
-        : 'Erreur de traitement';
-      setMessages(prev => [...prev, { sender: 'bot', text: errorMessage }]);
+      console.error('API Error:', error);
+      setMessages(prev => [...prev, {
+        sender: 'bot',
+        text: languageCode === 'fr' 
+          ? 'Erreur de communication avec le serveur'
+          : 'Server communication error'
+      }]);
     } finally {
       setQueryText('');
     }
@@ -96,132 +178,55 @@ const DialogflowTable = () => {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString(languageCode, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString(languageCode);
   };
 
-  const formatCurrency = (amount?: number, currencyCode: string = 'EUR') => {
+  const formatCurrency = (amount?: number) => {
     if (amount === undefined) return 'N/A';
-    return new Intl.NumberFormat(languageCode, {
+    return new Intl.NumberFormat(languageCode === 'fr' ? 'fr-FR' : languageCode === 'es' ? 'es-ES' : 'en-US', {
       style: 'currency',
-      currency: currencyCode
+      currency: 'EUR'
     }).format(amount);
   };
 
   return (
-    <div style={{ 
-      maxWidth: '800px',
-      margin: '0 auto',
-      padding: '20px',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <h1 style={{ textAlign: 'center' }}>
-        {languageCode === 'es' ? 'Sistema de Facturas y Divisas' : 
-         languageCode === 'en' ? 'Invoice and Currency System' : 'Système de Facturation et Devises'}
-      </h1>
-
-      <div style={{ 
-        height: '500px',
-        overflowY: 'auto',
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '20px',
-        backgroundColor: '#fafafa'
-      }}>
-        {messages.map((message, index) => (
-          <div key={index} style={{ 
-            marginBottom: '15px',
-            padding: '10px',
-            borderRadius: '8px',
-            backgroundColor: message.sender === 'user' ? '#e3f2fd' : '#f5f5f5',
-            borderLeft: `4px solid ${message.sender === 'user' ? '#2196f3' : '#4caf50'}`
-          }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-              {message.sender === 'user' 
-                ? languageCode === 'es' ? 'Tú' : languageCode === 'en' ? 'You' : 'Vous'
-                : languageCode === 'es' ? 'Sistema' : languageCode === 'en' ? 'System' : 'Système'}
+    <div className="dialogflow-container">
+      <div className="messages-container">
+        {messages.map((msg, index) => (
+          <div key={index} className={`message ${msg.sender}`}>
+            <div className="message-sender">
+              {msg.sender === 'user' 
+                ? languageCode === 'fr' ? 'Vous' : languageCode === 'en' ? 'You' : 'Tú'
+                : 'Système'}
             </div>
-            <div>{message.text}</div>
+            <div className="message-text">{msg.text}</div>
             
-            {/* Affichage des détails si disponibles */}
-            {(message.details || message.currency) && (
-              <div style={{ 
-                marginTop: '10px',
-                padding: '10px',
-                backgroundColor: '#fff',
-                borderRadius: '4px',
-                border: '1px solid #eee'
-              }}>
-                {message.type === 'currency' && message.currency && (
-                  <>
-                    <h4 style={{ marginBottom: '8px' }}>
-                      {languageCode === 'es' ? 'Detalles de la divisa' : 
-                       languageCode === 'en' ? 'Currency details' : 'Détails de la devise'}
-                    </h4>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Código:' : 
-                              languageCode === 'en' ? 'Code:' : 'Code :'}</strong> 
-                      {message.currency.code}
-                    </div>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Nombre:' : 
-                              languageCode === 'en' ? 'Name:' : 'Nom :'}</strong> 
-                      {message.currency.label}
-                    </div>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Símbolo:' : 
-                              languageCode === 'en' ? 'Symbol:' : 'Symbole :'}</strong> 
-                      {message.currency.symbol}
-                    </div>
-                  </>
+            {msg.details && (
+              <div className="document-details">
+                <h4>
+                  {msg.type === 'quotation'
+                    ? languageCode === 'fr' 
+                      ? 'Détails du devis' 
+                      : languageCode === 'en' 
+                      ? 'Quotation details'
+                      : 'Detalles del presupuesto'
+                    : languageCode === 'fr'
+                    ? 'Détails de la facture'
+                    : languageCode === 'en'
+                    ? 'Invoice details'
+                    : 'Detalles de la factura'}
+                </h4>
+                <p><strong>{languageCode === 'fr' ? 'Numéro' : 'Number'}:</strong> {msg.details.number || 'N/A'}</p>
+                <p><strong>{languageCode === 'fr' ? 'Montant' : 'Amount'}:</strong> {formatCurrency(msg.details.amount)}</p>
+                <p><strong>{languageCode === 'fr' ? 'Date' : 'Date'}:</strong> {formatDate(msg.details.date)}</p>
+                {msg.details.dueDate && (
+                  <p><strong>{languageCode === 'fr' ? 'Échéance' : 'Due date'}:</strong> {formatDate(msg.details.dueDate)}</p>
                 )}
-                
-                {message.type === 'invoice' && message.details && (
-                  <>
-                    <h4 style={{ marginBottom: '8px' }}>
-                      {languageCode === 'es' ? 'Detalles de la factura' : 
-                       languageCode === 'en' ? 'Invoice details' : 'Détails de la facture'}
-                    </h4>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Monto total:' : 
-                              languageCode === 'en' ? 'Total amount:' : 'Montant total:'}</strong> 
-                      {formatCurrency(message.details.amount, message.details.currency)}
-                    </div>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Monto pagado:' : 
-                              languageCode === 'en' ? 'Paid amount:' : 'Montant payé:'}</strong> 
-                      {formatCurrency(message.details.paidAmount, message.details.currency)}
-                    </div>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Fecha vencimiento:' : 
-                              languageCode === 'en' ? 'Due date:' : 'Date d\'échéance:'}</strong> 
-                      {formatDate(message.details.dueDate)}
-                    </div>
-                  </>
+                {msg.details.status && (
+                  <p><strong>{languageCode === 'fr' ? 'Statut' : 'Status'}:</strong> {msg.details.status}</p>
                 )}
-                
-                {message.type === 'quotation' && message.details && (
-                  <>
-                    <h4 style={{ marginBottom: '8px' }}>
-                      {languageCode === 'es' ? 'Detalles del presupuesto' : 
-                       languageCode === 'en' ? 'Quotation details' : 'Détails du devis'}
-                    </h4>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Monto:' : 
-                              languageCode === 'en' ? 'Amount:' : 'Montant:'}</strong> 
-                      {formatCurrency(message.details.amount, message.details.currency)}
-                    </div>
-                    <div>
-                      <strong>{languageCode === 'es' ? 'Fecha creación:' : 
-                              languageCode === 'en' ? 'Creation date:' : 'Date de création:'}</strong> 
-                      {formatDate(message.details.date)}
-                    </div>
-                  </>
+                {msg.details.articleCount !== undefined && (
+                  <p><strong>{languageCode === 'fr' ? 'Articles' : 'Items'}:</strong> {msg.details.articleCount}</p>
                 )}
               </div>
             )}
@@ -229,44 +234,97 @@ const DialogflowTable = () => {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+      <form onSubmit={handleSubmit} className="input-form">
         <select
           value={languageCode}
-          onChange={(e) => setLanguageCode(e.target.value as 'es' | 'en' | 'fr')}
-          style={{ padding: '8px', borderRadius: '4px' }}
+          onChange={(e) => setLanguageCode(e.target.value as 'fr' | 'en' | 'es')}
+          className="language-selector"
         >
-          <option value="es">Español</option>
-          <option value="en">English</option>
           <option value="fr">Français</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
         </select>
-        
+
         <input
           type="text"
           value={queryText}
           onChange={(e) => setQueryText(e.target.value)}
-          placeholder={
-            languageCode === 'es' ? 'Escribe tu mensaje (ej: "Nueva divisa [code:USD] [label:Dólar americano] [symbol:$]")...' :
-            languageCode === 'en' ? 'Type your message (ex: "New currency [code:USD] [label:US Dollar] [symbol:$]")...' :
-            'Tapez votre message (ex: "Nouvelle devise [code:USD] [label:Dollar américain] [symbol:$]")...'
-          }
-          style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+          placeholder={getInputPlaceholder()}
+          className="message-input"
         />
-        
-        <button 
-          type="submit" 
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: '#4caf50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {languageCode === 'es' ? 'Enviar' : 
-           languageCode === 'en' ? 'Send' : 'Envoyer'}
+
+        <button type="submit" className="send-button">
+          {languageCode === 'fr' ? 'Envoyer' : languageCode === 'en' ? 'Send' : 'Enviar'}
         </button>
       </form>
+
+      <style jsx>{`
+        .dialogflow-container {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+        }
+        .messages-container {
+          height: 500px;
+          overflow-y: auto;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 20px;
+          background: #fafafa;
+        }
+        .message {
+          margin-bottom: 15px;
+          padding: 10px;
+          border-radius: 8px;
+        }
+        .message.user {
+          background: #e3f2fd;
+          border-left: 4px solid #2196f3;
+        }
+        .message.bot {
+          background: #f5f5f5;
+          border-left: 4px solid #4caf50;
+        }
+        .message-sender {
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .document-details {
+          margin-top: 10px;
+          padding: 10px;
+          background: white;
+          border-radius: 4px;
+          border: 1px solid #eee;
+        }
+        .input-form {
+          display: flex;
+          gap: 10px;
+        }
+        .language-selector {
+          padding: 8px;
+          border-radius: 4px;
+          border: 1px solid #ddd;
+        }
+        .message-input {
+          flex: 1;
+          padding: 8px;
+          border-radius: 4px;
+          border: 1px solid #ddd;
+        }
+        .send-button {
+          padding: 8px 16px;
+          background: #4caf50;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .send-button:hover {
+          background: #43a047;
+        }
+      `}</style>
     </div>
   );
 };

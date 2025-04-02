@@ -3,21 +3,32 @@ import axios from './axios';
 
 type DialogflowResponse = {
   fulfillmentText: string;
-  intent: string;
+  outputContexts?: Array<{
+    name: string;
+    lifespanCount: number;
+    parameters?: any;
+  }>;
+  intent?: string;
   parameters?: any;
   payload?: any;
 };
 
-const sendRequest = async (languageCode: string, queryText: string, sessionId: string): Promise<DialogflowResponse> => {
+type DialogflowRequestParams = {
+  languageCode: string;
+  queryText: string;
+  sessionId: string;
+  parameters?: any;
+  outputContexts?: any[];
+};
+
+const sendRequest = async (
+  params: DialogflowRequestParams
+): Promise<DialogflowResponse> => {
   try {
-    const response = await axios.post('http://localhost:3001/dialogflow', {
-      languageCode,
-      queryText,
-      sessionId,
-    }, {
+    const response = await axios.post('http://localhost:3001/dialogflow', params, {
       headers: {
         'Content-Type': 'application/json',
-        'Accept-Language': languageCode
+        'Accept-Language': params.languageCode
       }
     });
 
@@ -25,34 +36,37 @@ const sendRequest = async (languageCode: string, queryText: string, sessionId: s
   } catch (error) {
     console.error('Error calling backend:', error);
     return {
-      fulfillmentText: languageCode === 'es' 
-        ? 'Error al conectar con el servidor' 
-        : 'Error connecting to server',
-      intent: 'Error'
+      fulfillmentText: params.languageCode === 'fr' 
+        ? 'Erreur de connexion au serveur' 
+        : 'Error connecting to server'
     };
   }
 };
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const { languageCode = 'es', queryText, sessionId } = req.body;
-
-    console.log('Request received:', { languageCode, queryText, sessionId });
+    const requestParams: DialogflowRequestParams = {
+      languageCode: req.body.languageCode || 'fr',
+      queryText: req.body.queryText,
+      sessionId: req.body.sessionId,
+      parameters: req.body.parameters,
+      outputContexts: req.body.outputContexts
+    };
 
     try {
-      const data = await sendRequest(languageCode, queryText, sessionId);
+      const data = await sendRequest(requestParams);
       res.status(200).json(data);
     } catch (error) {
       console.error('Server error:', error);
       res.status(500).json({ 
-        fulfillmentText: 'Internal Server Error',
-        intent: 'Error'
+        fulfillmentText: requestParams.languageCode === 'fr' 
+          ? 'Erreur interne du serveur' 
+          : 'Internal Server Error'
       });
     }
   } else {
     res.status(405).json({ 
-      fulfillmentText: 'Method Not Allowed',
-      intent: 'Error'
+      fulfillmentText: 'Method Not Allowed'
     });
   }
 };
