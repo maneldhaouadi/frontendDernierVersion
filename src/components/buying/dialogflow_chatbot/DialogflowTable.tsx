@@ -74,34 +74,51 @@ const DialogflowTable = () => {
     return context?.parameters?.currentStep || '';
   };
 
-  const getInputPlaceholder = () => {
-    if (!isInQuotationFlow()) {
-      return languageCode === 'fr' 
-        ? 'Tapez votre message...' 
-        : languageCode === 'en' 
-        ? 'Type your message...'
-        : 'Escribe tu mensaje...';
-    }
+  // First, define a type for the placeholders keys
+type QuotationStep = 
+| 'sequentialNumbr' 
+| 'object' 
+| 'firmId' 
+| 'interlocutorId' 
+| 'date' 
+| 'duedate' 
+| 'status' 
+| 'articleId' 
+| 'quantity' 
+| 'unitPrice' 
+| 'discount' 
+| 'moreArticles' 
+| 'finalize';
 
-    const step = getCurrentStep();
-    const placeholders = {
-      'sequentialNumbr': languageCode === 'fr' ? 'Numéro séquentiel (ex: QUO-123456)' : 'Sequential number (ex: QUO-123456)',
-      'object': languageCode === 'fr' ? 'Objet du devis' : 'Quotation subject',
-      'firmId': languageCode === 'fr' ? 'ID de la firme (nombre entier)' : 'Firm ID (integer)',
-      'interlocutorId': languageCode === 'fr' ? 'ID interlocuteur (nombre entier)' : 'Interlocutor ID (integer)',
-      'date': languageCode === 'fr' ? 'Date (JJ-MM-AAAA)' : 'Date (DD-MM-YYYY)',
-      'duedate': languageCode === 'fr' ? 'Date échéance (JJ-MM-AAAA)' : 'Due date (DD-MM-YYYY)',
-      'status': languageCode === 'fr' ? 'Statut (Brouillon, En attente, Validé, Refusé)' : 'Status (Draft, Pending, Validated, Rejected)',
-      'articleId': languageCode === 'fr' ? 'ID article (nombre entier)' : 'Article ID (integer)',
-      'quantity': languageCode === 'fr' ? 'Quantité (nombre entier)' : 'Quantity (integer)',
-      'unitPrice': languageCode === 'fr' ? 'Prix unitaire (nombre décimal ou "défaut")' : 'Unit price (decimal or "default")',
-      'discount': languageCode === 'fr' ? 'Remise (nombre décimal ou pourcentage, ex: 10 ou 10%)' : 'Discount (decimal or percentage, ex: 10 or 10%)',
-      'moreArticles': languageCode === 'fr' ? 'Ajouter un autre article ? (Oui/Non)' : 'Add another item? (Yes/No)',
-      'finalize': languageCode === 'fr' ? 'Confirmer la création ? (Oui/Non)' : 'Confirm creation? (Yes/No)'
-    };
+// Then update the getInputPlaceholder function
+const getInputPlaceholder = () => {
+if (!isInQuotationFlow()) {
+  return languageCode === 'fr' 
+    ? 'Tapez votre message...' 
+    : languageCode === 'en' 
+    ? 'Type your message...'
+    : 'Escribe tu mensaje...';
+}
 
-    return placeholders[step] || (languageCode === 'fr' ? 'Répondez à la question...' : 'Answer the question...');
-  };
+const step = getCurrentStep() as QuotationStep; // Cast to the correct type
+const placeholders: Record<QuotationStep, string> = {
+  'sequentialNumbr': languageCode === 'fr' ? 'Numéro séquentiel (ex: QUO-123456)' : 'Sequential number (ex: QUO-123456)',
+  'object': languageCode === 'fr' ? 'Objet du devis' : 'Quotation subject',
+  'firmId': languageCode === 'fr' ? 'ID de la firme (nombre entier)' : 'Firm ID (integer)',
+  'interlocutorId': languageCode === 'fr' ? 'ID interlocuteur (nombre entier)' : 'Interlocutor ID (integer)',
+  'date': languageCode === 'fr' ? 'Date (JJ-MM-AAAA)' : 'Date (DD-MM-YYYY)',
+  'duedate': languageCode === 'fr' ? 'Date échéance (JJ-MM-AAAA)' : 'Due date (DD-MM-YYYY)',
+  'status': languageCode === 'fr' ? 'Statut (Brouillon, En attente, Validé, Refusé)' : 'Status (Draft, Pending, Validated, Rejected)',
+  'articleId': languageCode === 'fr' ? 'ID article (nombre entier)' : 'Article ID (integer)',
+  'quantity': languageCode === 'fr' ? 'Quantité (nombre entier)' : 'Quantity (integer)',
+  'unitPrice': languageCode === 'fr' ? 'Prix unitaire (nombre décimal ou "défaut")' : 'Unit price (decimal or "default")',
+  'discount': languageCode === 'fr' ? 'Remise (nombre décimal ou pourcentage, ex: 10 ou 10%)' : 'Discount (decimal or percentage, ex: 10 or 10%)',
+  'moreArticles': languageCode === 'fr' ? 'Ajouter un autre article ? (Oui/Non)' : 'Add another item? (Yes/No)',
+  'finalize': languageCode === 'fr' ? 'Confirmer la création ? (Oui/Non)' : 'Confirm creation? (Yes/No)'
+};
+
+return placeholders[step] || (languageCode === 'fr' ? 'Répondez à la question...' : 'Answer the question...');
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
