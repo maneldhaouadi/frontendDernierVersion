@@ -210,7 +210,7 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
                   />
                   <div className="w-1/3 my-auto">
                     {/* Final Financial Information */}
-                    <ExpensePaymentFinancialInformation currency={currency} />
+                    <ExpensePaymentFinancialInformation />
                   </div>
                 </div>
               </CardContent>

@@ -152,15 +152,80 @@ const deletePdfFile = async (paymentId: number): Promise<void> => {
   }
 };
 
-const validate = (payment: Partial<ExpensePayment>, used: number, paid: number): ToastValidation => {
+const validate = (
+  payment: Partial<ExpensePayment>, 
+  used: number, 
+  paid: number,
+  invoices: Array<{
+    amount: number;
+    expenseInvoice: {
+      currencyId: number;
+      total: number;
+      amountPaid: number;
+    };
+    exchangeRate?: number;
+  }> = [],
+  paymentCurrencyId?: number,
+  allCurrencies: Array<{id: number, code: string}> = []
+): ToastValidation => {
+  // Validations de base
   if (!payment.date) return { message: 'La date doit être définie' };
   if (!payment?.amount || payment?.amount <= 0)
     return { message: 'Le montant doit être supérieur à 0' };
   if (payment?.fee == null || payment?.fee < 0)
-    return { message: 'Le frais doit être supérieur ou égal à 0' };
-  if (payment?.fee > payment?.amount) return { message: 'Le frais doit être inférieur au montant' };
-  if (paid !== used)
-    return { message: 'Le montant total doit être égal à la somme des montants des factures' };
+    return { message: 'Les frais doivent être supérieurs ou égaux à 0' };
+  if (payment?.fee > payment?.amount) 
+    return { message: 'Les frais doivent être inférieurs au montant total' };
+
+  // Validation des montants des factures
+  if (invoices.length > 0) {
+    for (const invoiceEntry of invoices) {
+      const invoice = invoiceEntry.expenseInvoice;
+      const remainingAmount = invoice.total - (invoice.amountPaid || 0);
+      
+      // Trouver les devises
+      const invoiceCurrency = allCurrencies.find(c => c.id === invoice.currencyId);
+      const paymentCurrency = paymentCurrencyId 
+        ? allCurrencies.find(c => c.id === paymentCurrencyId)
+        : null;
+
+      // Si devises différentes, vérifier le taux de change
+      if (invoice.currencyId !== paymentCurrencyId) {
+        if (!invoiceEntry.exchangeRate || invoiceEntry.exchangeRate <= 0) {
+          return { 
+            message: `Un taux de change valide est requis pour la facture en ${invoiceCurrency?.code || 'devise inconnue'}`
+          };
+        }
+
+        const maxAllowed = remainingAmount / invoiceEntry.exchangeRate;
+        if (invoiceEntry.amount > maxAllowed + 0.01) { // Tolérance pour les arrondis
+          return {
+            message: `Le montant pour la facture (${invoiceEntry.amount} ${paymentCurrency?.code || ''}) ` +
+                     `dépasse le maximum autorisé (${maxAllowed.toFixed(2)} ${paymentCurrency?.code || ''}) ` +
+                     `pour un reste de ${remainingAmount} ${invoiceCurrency?.code || ''} ` +
+                     `au taux de ${invoiceEntry.exchangeRate}`
+          };
+        }
+      } else {
+        // Même devise - validation simple
+        if (invoiceEntry.amount > remainingAmount + 0.01) {
+          return {
+            message: `Le montant pour la facture (${invoiceEntry.amount}) ` +
+                     `dépasse le reste à payer (${remainingAmount})`
+          };
+        }
+      }
+    }
+  }
+
+  // Validation du montant total
+  if (Math.abs(paid - used) > 0.01) { // Tolérance pour les arrondis
+    return { 
+      message: `Le montant total (${paid}) doit correspondre à la somme des factures (${used})`,
+      position: 'bottom-right'
+    };
+  }
+
   return { message: '', position: 'bottom-right' };
 };
 

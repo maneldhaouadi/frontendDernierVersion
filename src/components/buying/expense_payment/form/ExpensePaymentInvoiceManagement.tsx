@@ -36,6 +36,7 @@ interface ExpensePaymentInvoiceManagementProps {
   className?: string;
   loading?: boolean;
 }
+
 export const ExpensePaymentInvoiceManagement: React.FC<ExpensePaymentInvoiceManagementProps> = ({
   className,
   loading
@@ -55,23 +56,44 @@ export const ExpensePaymentInvoiceManagement: React.FC<ExpensePaymentInvoiceMana
     if (active.id !== over.id) {
       const oldIndex = invoiceManager.invoices.findIndex((item) => item.id === active.id);
       const newIndex = invoiceManager.invoices.findIndex((item) => item.id === over.id);
+      
+      // Créer une devise par défaut si paymentManager.currency est undefined
+      const defaultCurrency: Currency = {
+        id: 0,
+        code: 'USD',
+        symbol: '$',
+        digitAfterComma: 2,
+      };
+      
       invoiceManager.setInvoices(
         arrayMove(
           invoiceManager.invoices.map((item) => item.invoice),
           oldIndex,
           newIndex
         ),
-        paymentManager.currency || ({} as Currency),
-        paymentManager.convertionRate
+        paymentManager.currency || defaultCurrency,
+        paymentManager.convertionRate || 1
       );
     }
   }
-  if (invoiceManager.invoices.length == 0)
+
+  const unpaidInvoices = React.useMemo(() => {
+    return invoiceManager.invoices.filter(item => {
+      const total = item.invoice.expenseInvoice?.total || 0;
+      const paid = item.invoice.expenseInvoice?.amountPaid || 0;
+      const tax = item.invoice.expenseInvoice?.taxWithholdingAmount || 0;
+      return (total - paid - tax) > 0.01;
+    });
+  }, [invoiceManager.invoices]);
+
+  if (unpaidInvoices.length === 0) {
     return (
       <div className="flex items-center justify-center gap-2 font-bold h-24 text-center ">
-        {tInvoicing('payment.no_invoices')} <PackageOpen />
+        {tInvoicing('payment.no_unpaid_invoices')} <PackageOpen />
       </div>
     );
+  }
+
   return (
     <div className="border-b">
       <Card className={cn('w-full border-0 shadow-none', className)}>
@@ -91,16 +113,16 @@ export const ExpensePaymentInvoiceManagement: React.FC<ExpensePaymentInvoiceMana
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
             modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
-            <SortableContext items={invoiceManager.invoices} strategy={verticalListSortingStrategy}>
+            <SortableContext items={unpaidInvoices} strategy={verticalListSortingStrategy}>
               {loading && <Skeleton className="h-24 mr-2 my-5" />}
               {!loading &&
-                invoiceManager.invoices.map((item) => (
+                unpaidInvoices.map((item) => (
                   <SortableLinks key={item.id} id={item}>
                     <ExpensePaymentInvoiceItem
                       invoiceEntry={item.invoice}
                       onChange={(invoice) => invoiceManager.update(item.id, invoice)}
-                      currency={paymentManager.currency}
-                      convertionRate={paymentManager.convertionRate}
+                      currency={paymentManager.currency || undefined}
+                      paymentConvertionRate={paymentManager.convertionRate || 1}
                     />
                   </SortableLinks>
                 ))}

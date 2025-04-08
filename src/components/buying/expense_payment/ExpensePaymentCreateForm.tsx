@@ -19,10 +19,11 @@ import { useExpensePaymentManager } from './hooks/useExpensePaymentManager';
 import { useExpensePaymentInvoiceManager } from './hooks/useExpensePaymentInvoiceManager';
 import { ExpenseCreatePaymentDto, ExpensePaymentInvoiceEntry } from '@/types/expense-payment';
 import { ExpensePaymentGeneralInformation } from './form/ExpensePaymentGeneralInformation';
-import { ExpensePaymentInvoiceManagement } from './form/ExpensePaymentInvoiceManagement';
 import { ExpensePaymentExtraOptions } from './form/ExpensePaymentExtraOptions';
 import { ExpensePaymentFinancialInformation } from './form/ExpensePaymentFinancialInformation';
 import { ExpensePaymentControlSection } from './form/ExpensePaymentControlSection';
+import { Currency } from 'lucide-react';
+import { ExpensePaymentInvoiceManagement } from './form/ExpensePaymentInvoiceManagement';
 
 interface ExpensePaymentFormProps {
   className?: string;
@@ -95,7 +96,8 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
       .getInvoices()
       .map((invoice: ExpensePaymentInvoiceEntry) => ({
         expenseInvoiceId: invoice.expenseInvoice?.id,
-        amount: invoice.amount
+        amount: invoice.amount,
+        exchangeRate: invoice.exchangeRate // Ajoutez cette ligne
       }));
 
     const used = invoiceManager.calculateUsedAmount();
@@ -131,12 +133,14 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
       notes: paymentManager.notes,
       currencyId: paymentManager.currencyId,
       firmId: paymentManager.firmId,
-      sequentialNumbr: paymentManager.sequentialNumbr, 
+      sequentialNumbr: paymentManager.sequentialNumbr,
       sequential: '', // Assurez-vous que sequentialNumbr est bien défini ici
       // Include sequential number
       pdfFileId, // Include PDF file ID
       uploads: uploadIds.map((id) => ({ uploadId: id })), // Include upload IDs
-      invoices
+      invoices,
+      targetCurrency: undefined,
+      targetCurrencyId: 0
     };
 
     const validation = api.expensepayment.validate(payment, used, paid);
@@ -189,7 +193,7 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
                   />
                   <div className="w-1/3 my-auto">
                     {/* Final Financial Information */}
-                    <ExpensePaymentFinancialInformation currency={currency} />
+                    <ExpensePaymentFinancialInformation/>
                   </div>
                 </div>
               </CardContent>

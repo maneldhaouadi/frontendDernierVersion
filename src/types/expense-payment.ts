@@ -28,6 +28,10 @@ export interface ExpensePaymentInvoiceEntry extends DatabaseEntity {
   expensePaymentId?: number;
   payment?: ExpensePayment;
   amount?: number;
+  exchangeRate?: number;
+  originalAmount?: number;
+  originalCurrencyId?: number;
+  digitAfterComma?: number;
 }
 
 export interface ExpensePayment extends DatabaseEntity {
@@ -49,6 +53,8 @@ export interface ExpensePayment extends DatabaseEntity {
   pdfFileId?: number;
   pdfFile?:File;
   uploadPdfField?:Upload;
+  targetCurrency?:Currency;
+  targetCurrencyId?:number;
 }
 
 export interface ExpenseCreatePaymentDto
@@ -62,6 +68,7 @@ export interface ExpenseCreatePaymentDto
 
 export interface ExpenseUpdatePaymentDto extends ExpenseCreatePaymentDto {
   id?: number;
+  currencyId?:number
 }
 
 export interface ExpensePagedPayment extends PagedResponse<ExpensePayment> {}

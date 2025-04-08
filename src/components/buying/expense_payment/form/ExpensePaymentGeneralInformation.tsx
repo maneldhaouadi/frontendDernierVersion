@@ -155,6 +155,10 @@ export const ExpensePaymentGeneralInformation = ({
                       amount: 0,
                       expenseInvoiceId: invoice.id,
                       expenseInvoice: invoice,
+                      exchangeRate: 0,
+                      originalAmount: 0,
+                      originalCurrencyId: 0,
+                      digitAfterComma: 0
                     });
                   }
                 });
