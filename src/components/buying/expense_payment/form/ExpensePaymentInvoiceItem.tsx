@@ -72,54 +72,70 @@ export const ExpensePaymentInvoiceItem: React.FC<ExpensePaymentInvoiceItemProps>
     invoiceEntry.exchangeRate || paymentConvertionRate
   );
 
-  // Modifiez le calcul du maxAllowedAmount et currentRemainingAmount
-const maxAllowedAmount = React.useMemo(() => {
-  if (isSameCurrency) {
-    return remainingAmount.toUnit();
-  }
-  const convertedAmount = remainingAmount.divide(effectiveExchangeRate);
-  // Ajouter une petite marge pour compenser les arrondis
-  return Math.min(
-    convertedAmount.toUnit() + 0.01, // Petite marge
-    remainingAmount.toUnit() // Ne pas dépasser le montant original
-  );
-}, [remainingAmount, isSameCurrency, effectiveExchangeRate]);
-
-const currentRemainingAmount = React.useMemo(() => {
-  if (!invoiceEntry.amount) return remainingAmount;
-  
-  const amountInInvoiceCurrency = isSameCurrency
-    ? invoiceEntry.amount
-    : invoiceEntry.amount * effectiveExchangeRate;
-
-  const amount = createDinero(amountInInvoiceCurrency, invoiceCurrency?.code || 'USD');
-  let newRemaining = remainingAmount.subtract(amount);
-  
-  // Si le montant restant est très petit (moins de 0.01), le considérer comme 0
-  if (newRemaining.toUnit() < 0.01) {
-    newRemaining = createDinero(0, invoiceCurrency?.code || 'USD');
-  }
-  
-  return newRemaining;
-}, [remainingAmount, invoiceEntry, isSameCurrency, effectiveExchangeRate, invoiceCurrency?.code, digitAfterComma]);
-  const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value ? parseFloat(e.target.value) : undefined;
+  // Calcul du montant maximum autorisé
+  const maxAllowedAmount = React.useMemo(() => {
+    if (isSameCurrency) return remainingAmount.toUnit();
     
-    if (inputValue !== undefined) {
-      if (inputValue < 0) return;
-      if (inputValue > maxAllowedAmount + 0.01) {
-        onChange({ ...invoiceEntry, amount: maxAllowedAmount });
-        return;
-      }
-    }
+    // Conversion du remaining amount dans la devise de paiement
+    return remainingAmount.toUnit() / effectiveExchangeRate;
+  }, [remainingAmount, isSameCurrency, effectiveExchangeRate]);
 
-    onChange({ ...invoiceEntry, amount: inputValue });
+  // Calcul du montant restant actuel après paiement
+  const currentRemainingAmount = React.useMemo(() => {
+    if (!invoiceEntry.amount) return remainingAmount;
+    
+    // Conversion du montant payé dans la devise de la facture
+    const amountInInvoiceCurrency = isSameCurrency
+      ? invoiceEntry.amount
+      : invoiceEntry.amount * effectiveExchangeRate;
+
+    const amount = createDinero(amountInInvoiceCurrency, invoiceCurrency?.code || 'USD');
+    let newRemaining = remainingAmount.subtract(amount);
+    
+    // Tolérance de 0.01 comme dans le backend
+    if (newRemaining.lessThanOrEqual(createDinero(0.01))) {
+      newRemaining = createDinero(0, invoiceCurrency?.code || 'USD');
+    }
+    
+    return newRemaining;
+  }, [remainingAmount, invoiceEntry, isSameCurrency, effectiveExchangeRate]);
+
+  // Gestion de la saisie du montant payé
+  const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    
+    if (rawValue === '') {
+      onChange({ ...invoiceEntry, amount: undefined });
+      return;
+    }
+    
+    const numberValue = parseFloat(parseFloat(rawValue).toFixed(currency?.digitAfterComma || 2));
+    if (isNaN(numberValue)) return;
+    
+    if (numberValue < 0) return;
+    
+    // Comparaison avec le maximum autorisé
+    const roundedMax = parseFloat(maxAllowedAmount.toFixed(currency?.digitAfterComma || 2));
+    if (numberValue > roundedMax) {
+      onChange({ ...invoiceEntry, amount: roundedMax });
+      return;
+    }
+    
+    onChange({ ...invoiceEntry, amount: numberValue });
   };
 
   const handleExchangeRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rate = e.target.value ? parseFloat(e.target.value) : undefined;
-    if (rate !== undefined && rate <= 0) return;
-    onChange({ ...invoiceEntry, exchangeRate: rate });
+    const rawValue = e.target.value;
+    
+    if (rawValue === '') {
+      onChange({ ...invoiceEntry, exchangeRate: undefined });
+      return;
+    }
+    
+    const rate = parseFloat(rawValue);
+    if (isNaN(rate) || rate <= 0) return;
+    
+    onChange({ ...invoiceEntry, exchangeRate: parseFloat(rate.toFixed(4)) });
   };
 
   return (
@@ -160,7 +176,12 @@ const currentRemainingAmount = React.useMemo(() => {
           type="number" 
           step="0.0001"
           min="0.0001"
-          value={invoiceEntry.exchangeRate || paymentConvertionRate || ''}
+          value={typeof invoiceEntry.exchangeRate === 'number' 
+            ? invoiceEntry.exchangeRate.toFixed(4) 
+            : (typeof paymentConvertionRate === 'number' 
+              ? paymentConvertionRate.toFixed(4) 
+              : '')
+          }
           onChange={handleExchangeRateChange}
           disabled={isSameCurrency}
           className="h-8 text-sm"
@@ -178,12 +199,12 @@ const currentRemainingAmount = React.useMemo(() => {
           {tInvoicing('invoice.attributes.payment')} ({currency?.code || 'DEV'})
         </Label>
         <Input 
-          type="number" 
-          onChange={handleAmountPaidChange} 
-          value={invoiceEntry.amount ?? ''}
+          type="number"
+          onChange={handleAmountPaidChange}
+          value={invoiceEntry.amount?.toFixed(currency?.digitAfterComma || 2) ?? ''}
           step="0.01"
           min="0"
-          max={maxAllowedAmount}
+          max={maxAllowedAmount.toFixed(currency?.digitAfterComma || 2)}
           className="h-8 text-sm"
         />
         <Label className="text-xs text-muted-foreground">

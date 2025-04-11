@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import InvoicePaymentsCard from './InvoicePaymentsCard';
 
 type DocumentDetails = {
   number?: string;
@@ -13,6 +14,43 @@ type DocumentDetails = {
   dueDate?: string;
   status?: string;
   articleCount?: number;
+};
+
+
+type LateInvoice = {
+  invoiceNumber: string;
+  amount: number;
+  amountPaid: number;
+  currency: string;
+  dueDate: string;
+  daysLate: number;
+  status: string;
+  remainingAmount: number;
+};
+
+type LateInvoicesResponse = {
+  success: boolean;
+  invoices: LateInvoice[];
+  count: number;
+  totalRemaining: number;
+  error?: string;
+};
+
+type ExpensePayment = {
+  amount?: number;
+  date: string | Date;
+  mode: string;
+  notes?: string;
+};
+type InvoicePaymentsResponse = {
+  success: boolean;
+  invoiceNumber: string;
+  total: number;
+  paidAmount: number;
+  remainingAmount: number;
+  currency: string;
+  payments: ExpensePayment[];
+  message?: string;
 };
 
 type DialogflowResponse = {
@@ -27,10 +65,15 @@ type DialogflowResponse = {
     };
   }>;
   payload?: {
-    type: 'invoice' | 'quotation';
+    type?: 'invoice' | 'quotation' | 'late_invoices' | 'invoice_payments';
     details?: DocumentDetails;
+    lateInvoices?: LateInvoicesResponse;
+    invoicePayments?: InvoicePaymentsResponse;
   };
 };
+
+
+
 
 const DialogflowTable = () => {
   const [languageCode, setLanguageCode] = useState<'fr' | 'en' | 'es'>('fr');
@@ -40,7 +83,9 @@ const DialogflowTable = () => {
     sender: 'user' | 'bot';
     text: string;
     details?: DocumentDetails;
-    type?: 'invoice' | 'quotation';
+    type?: 'invoice' | 'quotation' | 'late_invoices';
+    lateInvoices?: LateInvoicesResponse;
+    invoicePayments?: InvoicePaymentsResponse; // Ajoutez cette ligne
     timestamp: Date;
   }[]>([]);
   const [currentContexts, setCurrentContexts] = useState<any[]>([]);
@@ -70,14 +115,38 @@ const DialogflowTable = () => {
     if (response.outputContexts) {
       setCurrentContexts(response.outputContexts);
     }
-
-    setMessages(prev => [...prev, {
-      sender: 'bot',
+  
+    const newMessage = {
+      sender: 'bot' as const,
       text: response.fulfillmentText,
       type: response.payload?.type,
       details: response.payload?.details,
+      lateInvoices: response.payload?.lateInvoices,
+      invoicePayments: response.payload?.invoicePayments, // Ajout des paiements
       timestamp: new Date()
-    }]);
+    };
+  
+    setMessages(prev => [...prev, newMessage]);
+    const isInLateInvoicesFlow = currentContexts.some(ctx => 
+      ctx.name.includes('awaiting_firmId') || 
+      ctx.name.includes('awaiting_currency') ||
+      ctx.name.includes('awaiting_minAmount') ||
+      ctx.name.includes('awaiting_daysAhead')
+    );
+    
+    // Ajouter un message spécial pour les factures en retard
+    if (response.payload?.type === 'late_invoices' && response.payload.lateInvoices) {
+      const lateInvoicesMessage = {
+        sender: 'bot' as const,
+        text: '',
+        type: 'late_invoices' as const,
+        lateInvoices: response.payload.lateInvoices,
+        invoicePayments: response.payload.invoicePayments, // Ajoutez cette ligne
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, lateInvoicesMessage]);
+    }
+  
     setIsTyping(false);
   };
 
@@ -138,91 +207,176 @@ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!queryText.trim()) return;
 
-  const userMessage = { 
-    sender: 'user' as const, 
+  // Ajouter le message de l'utilisateur
+  const userMessage = {
+    sender: 'user' as const,
     text: queryText,
     timestamp: new Date()
   };
   setMessages(prev => [...prev, userMessage]);
-  setQueryText('');
-  setIsTyping(true);
 
-  if (typingTimeoutRef.current) {
-    clearTimeout(typingTimeoutRef.current);
-  }
+  // Préparer les paramètres à envoyer
+  let parameters: { fields: Record<string, any> } = { fields: {} };
+  const inQuotationFlow = isInQuotationFlow();
+  const inLateInvoicesFlow = currentContexts.some(ctx => 
+    ctx.name.includes('factures_impayees')
+  );
 
   try {
-    const currentStep = getCurrentStep();
-    let parameters = {};
+    if (inLateInvoicesFlow) {
+      // Trouver le contexte principal des factures impayées
+      const mainContext = currentContexts.find(ctx => 
+        ctx.name.includes('factures_impayees')
+      ) || { parameters: { fields: {} } };
 
-    if (isInQuotationFlow()) {
+      // Récupérer les paramètres existants
+      const existingFields = mainContext.parameters?.fields || {};
+      
+      // Déterminer l'ordre des paramètres attendus
+      const expectedParams = [
+        { name: 'firmId', type: 'number', required: true },
+        { name: 'currency', type: 'string', required: true },
+        { name: 'minAmount', type: 'number', required: true },
+        { name: 'daysAhead', type: 'number', required: true }
+      ];
+
+      // Trouver le premier paramètre manquant
+      const missingParam = expectedParams.find(param => {
+        const field = existingFields[param.name];
+        return !field || 
+               (param.type === 'number' && field.numberValue === 0) || 
+               (param.type === 'string' && field.stringValue === '');
+      });
+
+      if (missingParam) {
+        // Construire les paramètres pour le champ attendu
+        parameters.fields = { ...existingFields };
+
+        switch (missingParam.name) {
+          case 'firmId':
+            parameters.fields.firmId = { numberValue: parseInt(queryText) || 0 };
+            parameters.fields.firmId_original = { stringValue: queryText };
+            break;
+          case 'currency':
+            parameters.fields.currency = { stringValue: queryText.toUpperCase() };
+            parameters.fields.currency_original = { stringValue: queryText };
+            break;
+          case 'minAmount':
+            parameters.fields.minAmount = { numberValue: parseFloat(queryText) || 100 };
+            parameters.fields.minAmount_original = { stringValue: queryText };
+            break;
+          case 'daysAhead':
+            parameters.fields.daysAhead = { numberValue: parseInt(queryText) || 30 };
+            parameters.fields.daysAhead_original = { stringValue: queryText };
+            break;
+        }
+
+        // Réinitialiser les autres paramètres non encore saisis
+        expectedParams.forEach(param => {
+          if (param.name !== missingParam.name && !existingFields[param.name]) {
+            parameters.fields[`${param.name}_original`] = { stringValue: '' };
+          }
+        });
+      } else {
+        // Tous les paramètres sont fournis
+        parameters.fields = {
+          ...existingFields,
+          queryText: { stringValue: queryText }
+        };
+      }
+    }
+    else if (inQuotationFlow) {
+      // Réinitialiser fields pour le flux de devis
+      parameters.fields = {};
+
+      const currentStep = getCurrentStep();
       switch (currentStep) {
         case 'sequentialNumbr':
-          parameters = { sequentialNumbr: queryText };
+          parameters.fields.sequentialNumbr = { stringValue: queryText };
           break;
         case 'object':
-          parameters = { object: queryText };
+          parameters.fields.object = { stringValue: queryText };
           break;
-        case 'firmName': // Modifié
-        case 'InterlocutorName': // Modifié
-          parameters = { [currentStep]: queryText };
+        case 'firmName':
+        case 'InterlocutorName':
+          parameters.fields[currentStep] = { stringValue: queryText };
           break;
         case 'articleId':
         case 'quantity':
-          parameters = { [currentStep]: parseInt(queryText) || 0 };
+          parameters.fields[currentStep] = { numberValue: parseInt(queryText) || 0 };
           break;
         case 'date':
         case 'duedate':
-          parameters = { [currentStep]: queryText };
+          parameters.fields[currentStep] = { stringValue: queryText };
           break;
         case 'status':
-          parameters = { status: queryText };
+          parameters.fields.status = { stringValue: queryText };
           break;
         case 'unitPrice':
-          parameters = { unitPrice: queryText.toLowerCase() === 'défaut' ? 'défaut' : parseFloat(queryText) };
-          break;
-        case 'discount':
-          parameters = { 
-            discount: parseFloat(queryText.replace('%', '')),
-            discountType: queryText.includes('%') ? 'PERCENTAGE' : 'AMOUNT'
+          parameters.fields.unitPrice = { 
+            numberValue: queryText.toLowerCase() === 'défaut' ? 0 : parseFloat(queryText) 
           };
           break;
-        case 'moreArticles':
-        case 'finalize':
-          parameters = { queryText: queryText };
+        case 'discount':
+          parameters.fields.discount = { numberValue: parseFloat(queryText.replace('%', '')) };
+          parameters.fields.discountType = { 
+            stringValue: queryText.includes('%') ? 'PERCENTAGE' : 'AMOUNT' 
+          };
           break;
         default:
-          parameters = { queryText: queryText };
+          parameters.fields.queryText = { stringValue: queryText };
       }
+    } 
+    else {
+      // Cas général
+      parameters.fields = { queryText: { stringValue: queryText } };
     }
 
-    const typingDelay = 1000 + Math.random() * 2000; // 1-3 secondes
-    
-    typingTimeoutRef.current = setTimeout(async () => {
-      const response = await api.dialogflow.sendRequest({
-        languageCode,
-        queryText,
-        sessionId,
-        parameters,
-        outputContexts: currentContexts
-      });
+    // Préparer l'envoi
+    setQueryText('');
+    setIsTyping(true);
 
-      handleDialogflowResponse(response);
-    }, typingDelay);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await api.dialogflow.sendRequest({
+          languageCode,
+          queryText,
+          sessionId,
+          parameters,
+          outputContexts: currentContexts
+        });
+
+        handleDialogflowResponse(response);
+      } catch (error) {
+        console.error('API Error:', error);
+        setMessages(prev => [...prev, {
+          sender: 'bot',
+          text: languageCode === 'fr' 
+            ? 'Erreur de communication avec le serveur' 
+            : 'Server communication error',
+          timestamp: new Date()
+        }]);
+      } finally {
+        setIsTyping(false);
+      }
+    }, 1000 + Math.random() * 2000);
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('Error:', error);
     setMessages(prev => [...prev, {
       sender: 'bot',
       text: languageCode === 'fr' 
-        ? 'Erreur de communication avec le serveur'
-        : 'Server communication error',
+        ? 'Erreur de traitement de votre demande' 
+        : 'Error processing your request',
       timestamp: new Date()
     }]);
     setIsTyping(false);
   }
 };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(languageCode);
@@ -343,6 +497,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                     </CardContent>
                   </Card>
                 )}
+                
+{msg.invoicePayments && (
+  <InvoicePaymentsCard 
+    payments={msg.invoicePayments} 
+    languageCode={languageCode} 
+  />
+)}
               </div>
 
               {msg.sender === 'user' && (

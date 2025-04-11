@@ -14,6 +14,12 @@ type DialogflowResponse = {
   allRequiredParamsPresent?: boolean;
   quotationNumber?: string;
 };
+type LateInvoicesParams = {
+  firmId?: { numberValue: number };
+  currency?: { stringValue: string };
+  minAmount?: { numberValue: number };
+  daysAhead?: { numberValue: number };
+};
 
 type DialogflowRequestParams = {
   languageCode: string;
@@ -33,6 +39,10 @@ type DialogflowRequestParams = {
       unitPrice?: { numberValue: number };
       discount?: { numberValue: number };
       discountType?: { stringValue: string };
+      firmId?: { numberValue: number };
+      currency?: { stringValue: string };
+      minAmount?: { numberValue: number };
+      daysAhead?: { numberValue: number };
       [key: string]: any;
     };
     [key: string]: any;
@@ -76,9 +86,14 @@ const createParameterFields = (params: {
   unitPrice?: number;
   discount?: number;
   discountType?: string;
+  firmId?: number;
+  currency?: string;
+  minAmount?: number;
+  daysAhead?: number;
 }): any => {
   const fields: any = {};
-  
+  if (params.firmName) fields.firmName = { stringValue: params.firmName };
+  if (params.InterlocutorName) fields.InterlocutorName = { stringValue: params.InterlocutorName };
   if (params.firmName) fields.firmName = { stringValue: params.firmName };
   if (params.InterlocutorName) fields.InterlocutorName = { stringValue: params.InterlocutorName };
   if (params.sequentialNumbr) fields.sequentialNumbr = { stringValue: params.sequentialNumbr };
