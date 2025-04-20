@@ -39,25 +39,34 @@ interface ExpenseQuotationArticleManagementProps {
   isArticleDescriptionHidden: boolean;
   edit?: boolean;
   loading?: boolean;
+  isInspectMode?: boolean;
 }
+
 export const ExpenseQuotationArticleManagement: React.FC<ExpenseQuotationArticleManagementProps> = ({
   className,
   taxes = [],
   isArticleDescriptionHidden,
   edit = true,
-  loading
+  loading,
+  isInspectMode = false 
 }) => {
   const { t: tInvoicing } = useTranslation('invoicing');
   const quotationManager = useExpenseQuotationManager();
   const articleManager = useExpenseQuotationArticleManager();
+  
+  // Désactive les sensors en mode inspection
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+    }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
+      coordinateGetter: sortableKeyboardCoordinates,
+      enabled: !isInspectMode,
     })
   );
 
   function handleDragEnd(event: any) {
+    if (isInspectMode) return; // Ne fait rien en mode inspection
+    
     const { active, over } = event;
     if (active.id !== over.id) {
       const oldIndex = articleManager.articles.findIndex((item) => item.id === active.id);
@@ -73,25 +82,26 @@ export const ExpenseQuotationArticleManagement: React.FC<ExpenseQuotationArticle
   }
 
   function handleDelete(idToDelete: string) {
+    if (isInspectMode) return; // Ne fait rien en mode inspection
     if (articleManager.articles.length > 1) {
       articleManager.delete(idToDelete);
     }
   }
 
   const addNewItem = React.useCallback(() => {
+    if (isInspectMode) return; // Ne fait rien en mode inspection
     articleManager.add();
-  }, [articleManager.add]);
-  console.log("arttttttiiicllless",articleManager.articles)
-
+  }, [articleManager.add, isInspectMode]);
 
   return (
-    <div className="border-b">
+    <div className={cn("border-b", isInspectMode && "pointer-events-none opacity-75")}>
       <Card className={cn('w-full border-0 shadow-none', className)}>
         <CardHeader className="space-y-1 w-full">
           <div className="flex flex-row items-center">
             <div>
               <CardTitle className="text-2xl flex justify-between">
                 {tInvoicing('article.manager')}
+                {isInspectMode && <span className="text-sm text-gray-500">(Mode consultation)</span>}
               </CardTitle>
               <CardDescription>{tInvoicing('article.manager_statement_quotation')}</CardDescription>
             </div>
@@ -103,25 +113,33 @@ export const ExpenseQuotationArticleManagement: React.FC<ExpenseQuotationArticle
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
             modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
-            <SortableContext items={articleManager.articles} strategy={verticalListSortingStrategy}>
+            <SortableContext 
+              items={articleManager.articles} 
+              strategy={verticalListSortingStrategy}
+              disabled={isInspectMode} // Désactive le tri en mode inspection
+            >
               {loading && <Skeleton className="h-24 mr-2 my-5" />}
               {!loading &&
                 articleManager.articles.map((item) => (
-                  <SortableLinks key={item.id} id={item} onDelete={edit ? handleDelete : undefined}>
+                  <SortableLinks 
+                    key={item.id} 
+                    id={item} 
+                    onDelete={edit && !isInspectMode ? handleDelete : undefined}
+                  >
                     <ExpenseQuotationArticleItem
                       article={item.article}
-                      onChange={(article) => articleManager.update(item.id, article)}
+                      onChange={(article) => !isInspectMode && articleManager.update(item.id, article)}
                       taxes={taxes}
                       showDescription={!isArticleDescriptionHidden}
                       currency={quotationManager.currency}
-                      edit={edit}
+                      edit={edit && !isInspectMode} // Désactive l'édition en mode inspection
                     />
                   </SortableLinks>
                 ))}
             </SortableContext>
           </DndContext>
           {/* Button allow to add an item in the DnD list */}
-          {edit && (
+          {edit && !isInspectMode && ( // Cache le bouton en mode inspection
             <Button variant={'outline'} className="h-10 w-fit" onClick={addNewItem}>
               <div className="flex gap-2 items-center w-full justify-center">
                 <Plus size={20} />
@@ -133,7 +151,5 @@ export const ExpenseQuotationArticleManagement: React.FC<ExpenseQuotationArticle
         <CardFooter></CardFooter>
       </Card>
     </div>
-    
   );
-
 };

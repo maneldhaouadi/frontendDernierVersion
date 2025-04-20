@@ -196,19 +196,45 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
 
   const onSubmit = async (status: EXPENSE_INVOICE_STATUS) => {
     // Convertir les articles en DTO
-    const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
-      id: article?.id,
-      article: {
-        id: article?.article?.id ?? 0,
-        title: article?.article?.title || '',
-        description: !controlManager.isArticleDescriptionHidden ? article?.article?.description || '' : '',
-      },
-      quantity: article?.quantity || 0,
-      unit_price: article?.unit_price || 0,
-      discount: article?.discount || 0,
-      discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id),
-    }));
+    const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => {
+      // Valeurs par défaut pour l'article
+      const defaultArticle = {
+        id: 0,
+        title: '',
+        description: '',
+        category: '',
+        subCategory: '',
+        purchasePrice: 0,
+        salePrice: 0,
+        quantityInStock: 0
+      };
+    
+      // Article complet avec valeurs par défaut et valeurs existantes
+      const fullArticle = article?.article ? {
+        ...defaultArticle,
+        ...article.article,
+        // Surcharge des valeurs spécifiques
+        id: article.article.id ?? 0,
+        title: article.article.title || '',
+        description: !controlManager.isArticleDescriptionHidden 
+          ? article.article.description || '' 
+          : ''
+      } : defaultArticle;
+    
+      return {
+        id: article?.id,
+        article: fullArticle,
+        quantity: article?.quantity || 0,
+        unit_price: article?.unit_price || 0,
+        discount: article?.discount || 0,
+        discount_type: article?.discount_type === 'PERCENTAGE' 
+          ? DISCOUNT_TYPE.PERCENTAGE 
+          : DISCOUNT_TYPE.AMOUNT,
+        taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id).filter(Boolean) as number[],
+        // Ajout des autres propriétés obligatoires de ExpenseArticleInvoiceEntry si nécessaire
+        expenseArticleInvoiceEntryTaxes: article?.expenseArticleInvoiceEntryTaxes || []
+      };
+    }) || []; // Gestion du cas où getArticles() retourne undefined
   
     // Gestion des fichiers uploadés
     let pdfFileId = invoiceManager.pdfFileId; // ID du fichier PDF existant
@@ -337,10 +363,11 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
                   currencies={currencies}
                   taxWithholdings={taxWithholdings}
                   handleSubmitDraft={() => onSubmit(EXPENSE_INVOICE_STATUS.Draft)}
-                  handleSubmitValidated={() => onSubmit(EXPENSE_INVOICE_STATUS.Validated)}
                   reset={globalReset}
-                  loading={debounceLoading}
-                />
+                  hideValidateButton={true}
+                  loading={debounceLoading} handleSubmitValidated={function (): void {
+                    throw new Error('Function not implemented.');
+                  } }                />
               </CardContent>
             </Card>
           </ScrollArea>

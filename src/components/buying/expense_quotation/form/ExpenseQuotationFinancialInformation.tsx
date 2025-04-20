@@ -24,6 +24,7 @@ interface ExpenseQuotationFinancialInformationProps {
   currency?: Currency;
   loading?: boolean;
   edit?: boolean;
+  isInspectMode?: boolean; 
 }
 
 export const ExpenseQuotationFinancialInformation = ({
@@ -32,7 +33,8 @@ export const ExpenseQuotationFinancialInformation = ({
   total,
   currency,
   loading,
-  edit = true
+  edit = true,
+  isInspectMode = false 
 }: ExpenseQuotationFinancialInformationProps) => {
   const { t: tInvoicing } = useTranslation('invoicing');
 
@@ -45,7 +47,7 @@ export const ExpenseQuotationFinancialInformation = ({
     quotationManager.discount_type === DISCOUNT_TYPE.PERCENTAGE ? 'PERCENTAGE' : 'AMOUNT';
 
   return (
-    <div className={cn(className)}>
+    <div className={cn(className, isInspectMode && "pointer-events-none opacity-75")}>
       <div className="flex flex-col w-full border-b">
         <div className="flex my-2">
           <Label className="mr-auto">{tInvoicing('quotation.attributes.sub_total')}</Label>
@@ -65,7 +67,7 @@ export const ExpenseQuotationFinancialInformation = ({
           );
         })}
         {/* discount */}
-        {edit && (
+        {edit && !isInspectMode && ( // Masqué en mode inspection
           <div className="flex items-center my-2">
             <Label className="mr-auto">{tInvoicing('quotation.attributes.discount')}</Label>
             <div className="flex items-center gap-2">
@@ -73,18 +75,22 @@ export const ExpenseQuotationFinancialInformation = ({
                 className="ml-auto w-2/5 text-right"
                 type="number"
                 value={discount}
-                onChange={(e) => quotationManager.set('discount', parseFloat(e.target.value))}
+                onChange={(e) => !isInspectMode && quotationManager.set('discount', parseFloat(e.target.value))}
                 isPending={loading || false}
+                disabled={isInspectMode}
               />
               <SelectShimmer isPending={loading || false} className="-mt-0.5 w-1/5">
                 <Select
                   onValueChange={(value: string) => {
+                    if (isInspectMode) return;
                     quotationManager.set(
                       'discount_type',
                       value === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT
                     );
                   }}
-                  value={discountType}>
+                  value={discountType}
+                  disabled={isInspectMode}
+                >
                   <SelectTrigger className="w-fit">
                     <SelectValue placeholder="%" />
                   </SelectTrigger>
@@ -97,7 +103,7 @@ export const ExpenseQuotationFinancialInformation = ({
             </div>
           </div>
         )}
-        {!edit && discount && (
+        {(discount && (!edit || isInspectMode)) && ( // Toujours afficher en mode inspection si discount existe
           <div className="flex flex-col w-full">
             <div className="flex my-2">
               <Label className="mr-auto">{tInvoicing('quotation.attributes.discount')}</Label>
@@ -113,12 +119,17 @@ export const ExpenseQuotationFinancialInformation = ({
       </div>
       <div className="flex flex-col w-full mt-2">
         <div className="flex my-2">
-          <Label className="mr-auto">{tInvoicing('quotation.attributes.total')}</Label>
-          <Label className="ml-auto" isPending={loading || false}>
+          <Label className="mr-auto font-bold">{tInvoicing('quotation.attributes.total')}</Label>
+          <Label className="ml-auto font-bold" isPending={loading || false}>
             {total?.toFixed(digitAfterComma)} {currencySymbol}
           </Label>
         </div>
       </div>
+      {isInspectMode && (
+        <div className="text-sm text-gray-500 mt-2">
+          Mode consultation - Les modifications sont désactivées
+        </div>
+      )}
     </div>
   );
 };

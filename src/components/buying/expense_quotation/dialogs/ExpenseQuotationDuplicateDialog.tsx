@@ -47,7 +47,7 @@ export const ExpenseQuotationDuplicateDialog: React.FC<ExpenseQuotationDuplicate
 
   const header = (
     <Label className="leading-5">
-      Voulez-vous vraiment dupliquer le devis N°{id} ?
+      Voulez-vous vraiment dupliquer le devis?
     </Label>
   );
 

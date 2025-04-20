@@ -44,10 +44,9 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <DropdownMenuLabel className="text-center">{tCommon('commands.actions')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {/* Inspect */}
-        <DropdownMenuItem onClick={() => router.push('/buying/expense_invoice/' + invoice.id)}>
-          <Telescope className="h-5 w-5 mr-2" /> {tCommon('commands.inspect')}
-        </DropdownMenuItem>
-        {/* Print */}
+        <DropdownMenuItem onClick={() => router.push('/buying/expense_invoice/' + invoice.id + '?mode=inspect')}>
+  <Telescope className="h-5 w-5 mr-2" /> {tCommon('commands.inspect')}
+</DropdownMenuItem>{/* Print */}
         {/* Duplicate */}
         <DropdownMenuItem
           onClick={() => {

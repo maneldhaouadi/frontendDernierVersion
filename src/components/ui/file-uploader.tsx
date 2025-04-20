@@ -127,28 +127,29 @@ export function FileUploader(props: FileUploaderProps) {
           toast.warning(tCommon('files.rejected_empty_file_warning', { name: file.name }));
         });
       }
-
+  
       // Filter non-empty files
       const validFiles = acceptedFiles.filter((file) => file.size > 0);
-
+  
       if (!multiple && maxFileCount === 1 && validFiles.length > 1) {
         toast.error(tCommon('files.max_one_per_upload_warning'));
         return;
       }
-
+  
       if ((files?.length ?? 0) + validFiles.length > maxFileCount) {
         toast.error(tCommon('files.max_file_warning', { count: maxFileCount }));
         return;
       }
-
-      const newFiles = validFiles.map((file) =>
-        Object.assign(file, {
+  
+      const newFiles = validFiles.map((file) => {
+        const fileWithPreview: FileWithPreview = Object.assign(file, {
           preview: URL.createObjectURL(file)
-        })
-      );
-
+        });
+        return fileWithPreview;
+      });
+  
       const updatedFiles = files ? [...files, ...newFiles] : newFiles;
-
+  
       setFiles(updatedFiles);
 
       // Handle already rejected files
@@ -176,8 +177,7 @@ export function FileUploader(props: FileUploaderProps) {
         });
       }
     },
-    [files, maxFileCount, multiple, onUpload, setFiles]
-  );
+    [files, maxFileCount, multiple, onUpload, setFiles]  );
 
   function onRemove(index: number) {
     if (!files) return;
@@ -269,15 +269,33 @@ export function FileUploader(props: FileUploaderProps) {
 
 interface FileCardProps {
   key: number;
-  file: File;
+  file: FileWithPreview;
   onRemove: () => void;
   progress?: number;
 }
 
+interface FilePreviewProps {
+  file: FileWithPreview;
+}
+interface FileWithPreview extends File {
+  preview?: string;
+}
+
 function FileCard({ file, progress, onRemove }: FileCardProps) {
+  // Add null check
+  if (!file) return null;
+
+  // Clean up object URLs when component unmounts
+  React.useEffect(() => {
+    return () => {
+      if (file.preview) {
+        URL.revokeObjectURL(file.preview);
+      }
+    };
+  }, [file]);
+
   // Trigger download when clicking on the file
   const handleFileDownload = () => {
-    //@ts-ignore
     const url = file.preview || URL.createObjectURL(file);
     const a = document.createElement('a');
     a.href = url;
@@ -286,7 +304,6 @@ function FileCard({ file, progress, onRemove }: FileCardProps) {
     a.click();
     document.body.removeChild(a);
 
-    //@ts-ignore
     if (!file.preview) {
       URL.revokeObjectURL(url);
     }
@@ -295,7 +312,7 @@ function FileCard({ file, progress, onRemove }: FileCardProps) {
   return (
     <div className="relative flex items-center gap-2.5 hover:bg-slate-200 dark:hover:bg-slate-800 p-1 rounded-lg">
       <div className="flex flex-1 gap-2.5">
-        {file && <FilePreview file={file} />}
+        <FilePreview file={file} />
         <div className="flex w-full flex-col gap-2 ">
           <div className="flex flex-col gap-px">
             <p className="line-clamp-1 text-sm font-medium text-foreground/80">{file.name}</p>
@@ -321,9 +338,7 @@ function FileCard({ file, progress, onRemove }: FileCardProps) {
   );
 }
 
-interface FilePreviewProps {
-  file: File;
-}
+
 
 function FilePreview({ file }: FilePreviewProps) {
   const ext = file?.name?.split('.').pop()?.trim().toLowerCase() || '';

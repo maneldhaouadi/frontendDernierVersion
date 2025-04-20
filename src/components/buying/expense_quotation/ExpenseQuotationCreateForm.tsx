@@ -75,7 +75,7 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
           ]
     );
   }, [router.locale, firmId]);
-  console.log("fiiiiiiiiiirmmmmmmmmmmmm",firmId)
+
 
   // Fetch options
   const { firms, isFetchFirmsPending } = useFirmChoice([
@@ -168,9 +168,12 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
       else router.push(`/contacts/firm/${firmId}/?tab=quotations`);
       toast.success('Devis créé avec succès');
     },
-    onError: (error) => {
-      const message = getErrorMessage('invoicing', error, 'Erreur lors de la création de devis');
-      toast.error(message);
+    onError: (error: any) => {
+      if (error.response?.status === 409) { // 409 est le code pour CONFLICT
+        toast.error('Ce numéro de devis existe déjà');
+      } else {
+        toast.error("Erreur lors de la création du devis");
+      }
     }
   });
 
@@ -203,48 +206,78 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
     setSubmitted(true);
   
     // Convert articles to DTO
-    const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
-      id: article?.id,
-      article: {
-        id: article?.article?.id ?? 0,
-        title: article?.article?.title,
-        description: !controlManager.isArticleDescriptionHidden ? article?.article?.description : '',
-      },
-      quantity: article?.quantity,
-      unit_price: article?.unit_price,
-      discount: article?.discount,
-      discount_type:
-        article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => entry?.tax?.id),
-    }));
+    const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => {
+      const defaultArticle = {
+        id: 0,
+        title: '',
+        description: '',
+        category: '',
+        subCategory: '',
+        purchasePrice: 0,
+        salePrice: 0,
+        quantityInStock: 0
+      };
+    
+      return {
+        id: article?.id,
+        article: {
+          ...defaultArticle,
+          id: article?.article?.id ?? 0,
+          title: article?.article?.title || '',
+          description: !controlManager.isArticleDescriptionHidden 
+            ? article?.article?.description || '' 
+            : '',
+          // Ajout des autres propriétés obligatoires
+          category: article?.article?.category || '',
+          subCategory: article?.article?.subCategory || '',
+          purchasePrice: article?.article?.purchasePrice || 0,
+          salePrice: article?.article?.salePrice || 0,
+          quantityInStock: article?.article?.quantityInStock || 0
+        },
+        quantity: article?.quantity || 0,
+        unit_price: article?.unit_price || 0,
+        discount: article?.discount || 0, // Correction de la faute de frappe (discount au lieu de discount)
+        discount_type: article?.discount_type === 'PERCENTAGE' 
+          ? DISCOUNT_TYPE.PERCENTAGE 
+          : DISCOUNT_TYPE.AMOUNT,
+        taxes: article?.articleExpensQuotationEntryTaxes
+          ?.map((entry) => entry?.tax?.id)
+          .filter((id): id is number => id !== undefined) || [],
+        // Ajout des propriétés manquantes de ExpenseArticleQuotationEntry si nécessaire
+        articleExpensQuotationEntryTaxes: article?.articleExpensQuotationEntryTaxes || []
+      };
+    }) || [];
   
-    let pdfFileId = quotationManager.pdfFileId; // Existing PDF file ID
+    // Gestion du fichier PDF
+    let pdfFileId = quotationManager.pdfFileId; // ID du fichier PDF existant
   
-    // If a new PDF file is uploaded, upload it and get its ID
+    // Upload du nouveau fichier PDF s'il existe
     if (quotationManager.pdfFile) {
       try {
-        console.log('Uploading PDF file:', quotationManager.pdfFile); // Log pour vérifier le fichier
-        const { id, error } = await api.upload.uploadFile(quotationManager.pdfFile); // Utilisez uploadFile ici
-  
-        if (error || !id) {
-          console.error('Upload failed:', error); // Log supplémentaire
-          throw new Error(error || 'Failed to upload PDF file: No ID returned');
-        }
-  
-        pdfFileId = id; // Update pdfFileId avec l'ID retourné
-        console.log('PDF File Uploaded, ID:', pdfFileId); // Log the uploaded file ID
+        const [uploadedPdfFileId] = await api.upload.uploadFiles([quotationManager.pdfFile]);
+        pdfFileId = uploadedPdfFileId;
+        console.log('PDF File Uploaded, ID:', pdfFileId);
       } catch (error) {
         console.error('Error uploading PDF file:', error);
         toast.error('Failed to upload PDF file');
-        return; // Stop further execution if PDF upload fails
+        return;
       }
     }
   
-    // Create the quotation object
+    // Upload des fichiers supplémentaires
+    const additionalFiles = quotationManager.uploadedFiles
+      .filter((u) => !u.upload) // Fichiers non encore uploadés
+      .map((u) => u.file);
+  
+    const uploadIds = additionalFiles.length > 0 
+      ? await api.upload.uploadFiles(additionalFiles) 
+      : [];
+  
+    // Création de l'objet devis
     const quotation: CreateExpensQuotationDto = {
       date: quotationManager?.date?.toString(),
       dueDate: quotationManager?.dueDate?.toString(),
-      object: quotationManager?.object,
+      object: quotationManager?.object || '',
       sequentialNumbr: quotationManager?.sequentialNumbr,
       sequential: '',
       cabinetId: quotationManager?.firm?.cabinetId,
@@ -256,13 +289,13 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
         : undefined,
       status: status,
       generalConditions: !controlManager.isGeneralConditionsHidden
-        ? quotationManager?.generalConditions
+        ? quotationManager?.generalConditions || ''
         : '',
-      pdfFileId, // Ensure this is correctly set
-      uploads: [], // Add uploads if needed
-      notes: quotationManager?.notes,
+      pdfFileId, // ID du fichier PDF
+      uploads: uploadIds.map((id) => ({ uploadId: id })), // IDs des fichiers supplémentaires
+      notes: quotationManager?.notes || '',
       articleQuotationEntries: articlesDto,
-      discount: quotationManager?.discount,
+      discount: quotationManager?.discount || 0,
       discount_type:
         quotationManager?.discount_type === 'PERCENTAGE'
           ? DISCOUNT_TYPE.PERCENTAGE
@@ -274,20 +307,24 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
       },
     };
   
-    console.log("Quotation after creation:", quotation);
+    console.log("Quotation before validation:", quotation);
   
-    // Validate the quotation
+    // Validation du devis
     const validation = api.expense_quotation.validate(quotation);
     if (validation.message) {
       toast.error(validation.message);
     } else {
-      // Call the mutation to create the quotation
+      if (controlManager.isGeneralConditionsHidden) {
+        delete quotation.generalConditions;
+      }
+  
+      // Appel de la mutation pour créer le devis
       createQuotation({
         quotation,
-        files: [],
+        files: additionalFiles,
       });
   
-      // Reset the form
+      // Réinitialisation du formulaire
       globalReset();
     }
   };
@@ -351,7 +388,6 @@ export const ExpenseQuotationCreateForm = ({ className, firmId }: ExpenseQuotati
                   currencies={currencies}
                   invoices={[]}
                   handleSubmitDraft={() => onSubmit(EXPENSQUOTATION_STATUS.Draft)}
-                  handleSubmitValidated={() => onSubmit(EXPENSQUOTATION_STATUS.Validated)}
                   handleSubmitExpired={() => onSubmit(EXPENSQUOTATION_STATUS.Expired)}
 
                   reset={globalReset}

@@ -211,75 +211,106 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
 
   // Update handler
   const onSubmit = async (status: EXPENSQUOTATION_STATUS) => {
-    const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
-      article: {
-        id: article?.article?.id ?? 0,
-        title: article?.article?.title,
-        description: controlManager.isArticleDescriptionHidden ? '' : article?.article?.description,
-      },
-      quantity: article?.quantity || 0,
-      unit_price: article?.unit_price || 0,
-      discount: article?.discount || 0,
-      discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => entry?.tax?.id) || [],
-    }));
+    try {
+      // 1. Préparation des articles
+      const articlesDto: ExpenseArticleQuotationEntry[] = articleManager.getArticles()?.map((article) => ({
+        article: {
+          id: article?.article?.id ?? 0,
+          title: article?.article?.title,
+          description: controlManager.isArticleDescriptionHidden ? '' : article?.article?.description,
+        },
+        quantity: article?.quantity || 0,
+        unit_price: article?.unit_price || 0,
+        discount: article?.discount || 0,
+        discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+        taxes: article?.articleExpensQuotationEntryTaxes?.map((entry) => entry?.tax?.id) || [],
+      }));
   
-    let pdfFileId = quotationManager.pdfFileId;
+      // 2. Gestion du fichier PDF
+      let pdfFileId = quotationManager.pdfFileId;
+      if (quotationManager.pdfFile) {
+        console.log('Upload du nouveau fichier PDF...');
+        const [uploadedPdfFileId] = await api.upload.uploadFiles([quotationManager.pdfFile]);
+        pdfFileId = uploadedPdfFileId;
+        console.log('Nouveau PDF uploadé avec ID:', pdfFileId);
+      }
   
-    // Upload new PDF file if provided
-    if (quotationManager.pdfFile) {
-      const [uploadedPdfFileId] = await api.upload.uploadFiles([quotationManager.pdfFile]);
-      pdfFileId = uploadedPdfFileId;
-    }
+      // 3. Gestion des fichiers uploadés supplémentaires
+      const additionalFiles = quotationManager.uploadedFiles
+        .filter((u) => !u.upload)
+        .map((u) => u.file);
   
-    // Upload additional files
-    const additionalFiles = quotationManager.uploadedFiles
-      .filter((u) => !u.upload)
-      .map((u) => u.file);
+      console.log('Fichiers supplémentaires à uploader:', additionalFiles.length);
+      
+      let uploadIds: number[] = [];
+      if (additionalFiles.length > 0) {
+        uploadIds = await api.upload.uploadFiles(additionalFiles);
+        console.log('Fichiers supplémentaires uploadés avec IDs:', uploadIds);
+      }
   
-    const uploadIds = await api.upload.uploadFiles(additionalFiles);
+      // 4. Préparation des données d'upload pour le backend
+      const uploadsForBackend = [
+        // Fichiers existants (inclure l'ID pour identification)
+        ...quotationManager.uploadedFiles
+          .filter((u) => !!u.upload)
+          .map((u) => ({ 
+            id: u.upload.id, // Important pour les fichiers existants
+            uploadId: u.upload.id 
+          })),
+        // Nouveaux fichiers (seulement uploadId)
+        ...uploadIds.map((id) => ({ uploadId: id }))
+      ];
   
-    const quotation: UpdateExpensQuotationDto = {
-      id: quotationManager.id,
-      date: quotationManager.date?.toString(),
-      dueDate: quotationManager.dueDate?.toString(),
-      sequentialNumbr: quotationManager.sequentialNumbr,
-      sequential: '',
-      object: quotationManager.object,
-      cabinetId: quotationManager.firm?.cabinetId,
-      firmId: quotationManager.firm?.id,
-      interlocutorId: quotationManager.interlocutor?.id,
-      currencyId: quotationManager.currency?.id,
-      bankAccountId: !controlManager.isBankAccountDetailsHidden ? quotationManager.bankAccount?.id : null,
-      status,
-      generalConditions: !controlManager.isGeneralConditionsHidden ? quotationManager.generalConditions : '',
-      notes: quotationManager.notes,
-      articleQuotationEntries: articlesDto,
-      discount: quotationManager.discount,
-      discount_type: quotationManager.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-      pdfFileId,
-      uploads: [
-        ...quotationManager.uploadedFiles.filter((u) => !!u.upload).map((u) => ({ uploadId: u.upload.id })),
-        ...uploadIds.map((id) => ({ uploadId: id })),
-      ],
-      expensequotationMetaData: {
-        showArticleDescription: !controlManager.isArticleDescriptionHidden,
-        hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
-        hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
-      },
-    };
+      console.log('Données uploads pour le backend:', uploadsForBackend);
   
-    // Ajouter un console.log pour vérifier la valeur de uploads
-    console.log('Valeur de uploads:', quotation.uploads);
+      // 5. Construction de l'objet quotation complet
+      const quotation: UpdateExpensQuotationDto = {
+        id: quotationManager.id,
+        date: quotationManager.date?.toString(),
+        dueDate: quotationManager.dueDate?.toString(),
+        sequentialNumbr: quotationManager.sequentialNumbr,
+        sequential: '',
+        object: quotationManager.object,
+        cabinetId: quotationManager.firm?.cabinetId,
+        firmId: quotationManager.firm?.id,
+        interlocutorId: quotationManager.interlocutor?.id,
+        currencyId: quotationManager.currency?.id,
+        bankAccountId: !controlManager.isBankAccountDetailsHidden ? quotationManager.bankAccount?.id : null,
+        status,
+        generalConditions: !controlManager.isGeneralConditionsHidden ? quotationManager.generalConditions : '',
+        notes: quotationManager.notes,
+        articleQuotationEntries: articlesDto,
+        discount: quotationManager.discount,
+        discount_type: quotationManager.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
+        pdfFileId,
+        uploads: uploadsForBackend,
+        expensequotationMetaData: {
+          showArticleDescription: !controlManager.isArticleDescriptionHidden,
+          hasBankingDetails: !controlManager.isBankAccountDetailsHidden,
+          hasGeneralConditions: !controlManager.isGeneralConditionsHidden,
+        },
+      };
   
-    const validation = api.expense_quotation.validate(quotation);
-    if (validation.message) {
-      toast.error(validation.message, { position: validation.position || 'bottom-right' });
-    } else {
-      updateQuotation({ quotation, files: additionalFiles });
+      console.log('Données complètes du devis:', quotation);
+  
+      // 6. Validation avant envoi
+      const validation = api.expense_quotation.validate(quotation);
+      if (validation.message) {
+        toast.error(validation.message, { position: validation.position || 'bottom-right' });
+        return;
+      }
+  
+      // 7. Envoi au backend
+      console.log('Envoi des données au backend...');
+      await updateQuotation({ 
+        quotation, 
+        files: additionalFiles 
+      });
+  
+    } catch (error) {
+    console.log("erreur d'ajout de fichier")
     }
   };
-
   // Component representation
   if (debounceFetching) return <Spinner className="h-screen" />;
   return (
@@ -294,6 +325,8 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
                   firms={firms}
                   edit={editMode}
                   loading={debounceFetching}
+                  isInspectMode={router.query.mode === 'inspect'} 
+
                 />
                 <ExpenseQuotationArticleManagement
                   className="my-5"
@@ -301,10 +334,13 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
                   edit={editMode}
                   isArticleDescriptionHidden={controlManager.isArticleDescriptionHidden}
                   loading={debounceFetching}
+                  isInspectMode={router.query.mode === 'inspect'} 
+
                 />
                 <ExpensequotationExtraOptions
                   onUploadAdditionalFiles={(files) => quotationManager.set('uploadedFiles', files)}
                   onUploadPdfFile={(file) => quotationManager.set('pdfFile', file)}
+                  isInspectMode={router.query.mode === 'inspect'} 
                 />
                 <div className="flex gap-10 m-5">
                   <ExpenseQuotationGeneralConditions
@@ -313,6 +349,8 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
                     hidden={controlManager.isGeneralConditionsHidden}
                     defaultCondition={defaultCondition}
                     edit={editMode}
+                    isInspectMode={router.query.mode === 'inspect'} 
+
                   />
                   <div className="w-1/3 my-auto">
                     <ExpenseQuotationFinancialInformation
@@ -321,6 +359,8 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
                       currency={quotationManager.currency}
                       loading={debounceFetching}
                       edit={editMode}
+                      isInspectMode={router.query.mode === 'inspect'} 
+
                     />
                   </div>
                 </div>
@@ -340,14 +380,12 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
                   invoices={quotation?.invoices || []}
                   handleSubmit={() => onSubmit(quotationManager.status)}
                   handleSubmitDraft={() => onSubmit(EXPENSQUOTATION_STATUS.Draft)}
-                  handleSubmitValidated={() => onSubmit(EXPENSQUOTATION_STATUS.Validated)}
                   handleSubmitExpired={() => onSubmit(EXPENSQUOTATION_STATUS.Expired)}
-                  
-                  
                   loading={debounceFetching}
                   refetch={refetchQuotation}
                   reset={globalReset}
                   edit={editMode}
+                  isInspectMode={router.query.mode === 'inspect'} 
                 />
               </CardContent>
             </Card>

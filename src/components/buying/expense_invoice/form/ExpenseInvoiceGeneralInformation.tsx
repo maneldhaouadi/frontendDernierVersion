@@ -25,9 +25,11 @@ import { api } from '@/api';
 
 interface ExpenseInvoiceGeneralInformationProps {
   className?: string;
-  firms: Firm[];
+  firms: any[];
   edit?: boolean;
   loading?: boolean;
+  isInspectMode?: boolean;
+  includeFiles?: boolean;
 }
 
 export const ExpenseInvoiceGeneralInformation = ({
@@ -35,6 +37,8 @@ export const ExpenseInvoiceGeneralInformation = ({
   firms,
   edit = true,
   loading,
+  isInspectMode = false,
+  includeFiles = true, // Par défaut à true pour la rétro-compatibilité
 }: ExpenseInvoiceGeneralInformationProps) => {
   const { t: tCommon } = useTranslation('common');
   const { t: tInvoicing } = useTranslation('invoicing');
@@ -42,7 +46,13 @@ export const ExpenseInvoiceGeneralInformation = ({
   const invoiceManager = useExpenseInvoiceManager();
   const mainInterlocutor = invoiceManager.firm?.interlocutorsToFirm?.find((entry) => entry?.isMain);
 
+  const validateSequentialNumber = (value: string) => {
+    const sequentialNumberRegex = /^INV-\d{4,5}$/;
+    return sequentialNumberRegex.test(value);
+  };
+
   const handlePdfFileChange = (files: File[]) => {
+    if (isInspectMode || !includeFiles) return;
     if (files.length > 0) {
       if (invoiceManager.pdfFile || invoiceManager.uploadPdfField) {
         toast.warning(tInvoicing('invoice.pdf_file_cannot_be_modified'));
@@ -55,6 +65,7 @@ export const ExpenseInvoiceGeneralInformation = ({
   };
 
   const handleDownload = async () => {
+    if (isInspectMode || !includeFiles) return;
     try {
       let fileToDownload: File | Blob | undefined;
 
@@ -85,6 +96,7 @@ export const ExpenseInvoiceGeneralInformation = ({
   };
 
   const handleRemovePdfFile = async () => {
+    if (isInspectMode || !includeFiles) return;
     try {
       if (invoiceManager.pdfFileId) {
         if (typeof invoiceManager.id === 'number') {
@@ -107,58 +119,63 @@ export const ExpenseInvoiceGeneralInformation = ({
 
   return (
     <div className={cn(className, 'space-y-2')}>
-      {/* Section Pièces jointes et Dates */}
       <div className="flex gap-4">
-        {/* Section Pièces jointes */}
-        <div className="w-1/2">
-          <Label className="text-xs font-semibold mb-1">{tInvoicing('invoice.attributes.files')}</Label>
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="file-upload" className="text-xs font-semibold mb-1">
-              {tInvoicing('invoice.attributes.files')}
-            </Label>
-            <Input
-              id="file-upload"
-              type="file"
-              accept="application/pdf, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, image/png, image/jpeg"
-              onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  const newFile = e.target.files[0];
-                  handlePdfFileChange([newFile]);
-                }
-              }}
-              disabled={!!invoiceManager.pdfFile || !!invoiceManager.uploadPdfField}
-            />
-          </div>
+        {/* Section Pièces jointes - Conditionnée par includeFiles */}
+        {includeFiles && (
+          <div className="w-1/2">
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="file-upload" className="text-xs font-semibold mb-1">
+                {tInvoicing('invoice.attributes.files')}
+              </Label>
+              <Input
+                id="file-upload"
+                type="file"
+                accept="application/pdf, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, image/png, image/jpeg"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    const newFile = e.target.files[0];
+                    handlePdfFileChange([newFile]);
+                  }
+                }}
+                disabled={!!invoiceManager.pdfFile || !!invoiceManager.uploadPdfField || !includeFiles}
+              />
+            </div>
 
-          {invoiceManager.uploadPdfField && (
-            <div className="mt-2 grid grid-cols-1 gap-1">
-              <div className="flex flex-col items-center p-2 border rounded-md bg-white max-w-[200px]">
-                <div className="w-full h-12 overflow-hidden mb-1">
-                  <div className="flex justify-center items-center w-full h-full bg-gray-200 text-gray-500 text-xs">
-                    <p>PDF</p>
+            {/* Affichage conditionnel du fichier PDF */}
+            {includeFiles && invoiceManager.uploadPdfField && (
+              <div className="mt-2 grid grid-cols-1 gap-1">
+                <div className="flex flex-col items-center p-2 border rounded-md bg-white max-w-[200px]">
+                  <div className="w-full h-12 overflow-hidden mb-1">
+                    <div className="flex justify-center items-center w-full h-full bg-gray-200 text-gray-500 text-xs">
+                      <p>PDF</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-center text-gray-600 truncate">
+                    {invoiceManager.uploadPdfField.filename}
+                  </p>
+                  <div className="mt-1 flex justify-between gap-1 w-full">
+                    <Button
+                      variant="outline"
+                      className="text-gray-500 border-gray-300 text-xs p-1 h-6"
+                      onClick={handleRemovePdfFile}
+                      disabled={!includeFiles}
+                    >
+                      Remove
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-gray-500 border-gray-300 text-xs p-1 h-6"
+                      onClick={handleDownload}
+                      disabled={!includeFiles}
+                    >
+                      <Download className="mr-1" size={14} /> Download
+                    </Button>
                   </div>
                 </div>
-                <p className="text-xs text-center text-gray-600 truncate">{invoiceManager.uploadPdfField.filename}</p>
-                <div className="mt-1 flex justify-between gap-1 w-full">
-                  <Button
-                    variant="outline"
-                    className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                    onClick={handleRemovePdfFile}
-                  >
-                    Remove
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-gray-500 border-gray-300 text-xs p-1 h-6"
-                    onClick={handleDownload}
-                  >
-                    <Download className="mr-1" size={14} /> Download
-                  </Button>
-                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Section Date et Échéance */}
         <div className="w-1/2 flex flex-col gap-2">
@@ -208,20 +225,38 @@ export const ExpenseInvoiceGeneralInformation = ({
           )}
         </div>
         <div className="w-1/3">
-          <Label className="text-xs font-semibold mb-1">{tInvoicing('invoice.singular')} N°</Label>
-          {edit ? (
-            <Input
-              className="w-full h-8"
-              placeholder="Numéro de Facture"
-              value={invoiceManager.sequentialNumbr || ''}
-              onChange={(e) => invoiceManager.set('sequentialNumbr', e.target.value)}
-              isPending={loading}
-            />
-          ) : (
-            <UneditableInput value={invoiceManager.sequentialNumbr || ''} />
-          )}
-        </div>
-      </div>
+  <Label className="text-xs font-semibold mb-1">{tInvoicing('invoice.singular')} N°</Label>
+  {edit ? (
+    <>
+      <Input
+        className={cn(
+          "w-full h-8",
+          (!invoiceManager.sequentialNumbr || 
+          (invoiceManager.sequentialNumbr && 
+          !validateSequentialNumber(invoiceManager.sequentialNumbr))) && 
+          "border-red-500 focus-visible:ring-red-500"
+        )}
+        placeholder="Format: INV-1234"
+        value={invoiceManager.sequentialNumbr || ''}
+        onChange={(e) => invoiceManager.set('sequentialNumbr', e.target.value)}
+        isPending={loading}
+      />
+      {!invoiceManager.sequentialNumbr ? (
+        <p className="text-xs text-red-500 mt-1">
+          Le numéro de facture est requis
+        </p>
+      ) : invoiceManager.sequentialNumbr && 
+         !validateSequentialNumber(invoiceManager.sequentialNumbr) ? (
+        <p className="text-xs text-red-500 mt-1">
+          Format invalide. Format attendu: INV-12345
+        </p>
+      ) : null}
+    </>
+  ) : (
+    <UneditableInput value={invoiceManager.sequentialNumbr || ''} />
+  )}
+</div>
+</div>
 
       {/* Section Firm et Interlocutor */}
       <div className="flex gap-1">

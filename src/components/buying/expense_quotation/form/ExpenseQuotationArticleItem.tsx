@@ -76,39 +76,81 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
   }, [articles]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const currentArticle = article?.article || {
+      id: 0,
+      title: '',
+      description: '',
+      category: '',
+      subCategory: '',
+      purchasePrice: 0,
+      salePrice: 0,
+      quantityInStock: 0
+    };
+  
     onChange({
       ...article,
       article: {
-        id: article?.article?.id ?? 0,  // Assurez-vous que l'ID existe (vous pouvez choisir une valeur par défaut ici)
-        ...article.article,
+        ...currentArticle,
         title: e.target.value,
-      },
+        // Les autres propriétés obligatoires sont conservées
+        id: currentArticle.id // On conserve l'ID existant
+      }
     });
   };
 
   const handleSelectArticle = (value: string) => {
     const selectedArticle = articles.find((art) => art.id === parseInt(value));
     if (selectedArticle) {
+      const currentArticle = article?.article || {
+        id: 0,
+        title: '',
+        description: '',
+        category: '',
+        subCategory: '',
+        purchasePrice: 0,
+        salePrice: 0,
+        quantityInStock: 0
+      };
+  
       onChange({
         ...article,
         article: {
-          ...article.article,
-          id: article?.article?.id ?? 0,  // Assurez-vous que l'ID existe (vous pouvez choisir une valeur par défaut ici)
+          ...currentArticle,
+          ...selectedArticle, // On écrase avec toutes les propriétés de l'article sélectionné
+          id: selectedArticle.id, // On utilise l'ID de l'article sélectionné
+          // On s'assure que les propriétés obligatoires sont toutes présentes
           title: selectedArticle.title,
           description: selectedArticle.description,
-        },
+          category: selectedArticle.category,
+          subCategory: selectedArticle.subCategory,
+          purchasePrice: selectedArticle.purchasePrice,
+          salePrice: selectedArticle.salePrice,
+          quantityInStock: selectedArticle.quantityInStock
+        }
       });
     }
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const currentArticle = article?.article || {
+      id: 0,
+      title: '',
+      description: '',
+      category: '',
+      subCategory: '',
+      purchasePrice: 0,
+      salePrice: 0,
+      quantityInStock: 0
+    };
+  
     onChange({
       ...article,
       article: {
-        ...article.article,
-        id: article?.article?.id ?? 0,  // Assurez-vous que l'ID existe (vous pouvez choisir une valeur par défaut ici)
+        ...currentArticle,
         description: e.target.value,
-      },
+        // On conserve toutes les autres propriétés obligatoires
+        id: currentArticle.id // On conserve l'ID existant
+      }
     });
   };
 

@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import React from 'react';
-
 import { useExpenseQuotationManager } from '../hooks/useExpenseQuotationManager';
 
 interface ExpensequotationExtraOptionsProps {
@@ -19,20 +18,20 @@ interface ExpensequotationExtraOptionsProps {
   loading?: boolean;
   onUploadAdditionalFiles: (files: File[]) => void;
   onUploadPdfFile?: (file: File | undefined) => void;
+  isInspectMode?: boolean; // Ajout de la nouvelle prop
 }
 
 export const ExpensequotationExtraOptions = ({
   className,
   loading,
+  isInspectMode = false, // Valeur par défaut
 }: ExpensequotationExtraOptionsProps) => {
   const { t: tInvoicing } = useTranslation('invoicing');
   const quotationManager = useExpenseQuotationManager();
 
-  // Gestion du fichier PDF unique
-  
-
-  // Gestion des fichiers supplémentaires
   const handleAdditionalFilesChange = (files: File[]) => {
+    if (isInspectMode) return; // Ne rien faire en mode inspection
+    
     if (files.length > quotationManager.uploadedFiles.length) {
       // Ajouter de nouveaux fichiers
       const newFiles = files.filter(
@@ -51,11 +50,14 @@ export const ExpensequotationExtraOptions = ({
     }
   };
 
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!isInspectMode) {
+      quotationManager.set('notes', e.target.value);
+    }
+  };
+
   return (
     <Accordion type="multiple" className={cn(className, 'mx-1 border-b')}>
-      {/* Section pour le fichier PDF */}
-      
-
       {/* Section pour les fichiers supplémentaires */}
       <AccordionItem value="item-2">
         <AccordionTrigger>
@@ -74,9 +76,10 @@ export const ExpensequotationExtraOptions = ({
               'application/vnd.ms-excel': [],
             }}
             className="my-5"
-            maxFileCount={Infinity} // Permettre plusieurs fichiers
-            value={quotationManager.uploadedFiles?.map((d) => d.file)} // Afficher les fichiers existants
+            maxFileCount={Infinity}
+            value={quotationManager.uploadedFiles?.map((d) => d.file)}
             onValueChange={handleAdditionalFilesChange}
+            disabled={isInspectMode || loading} // Désactiver en mode inspection ou pendant le chargement
           />
         </AccordionContent>
       </AccordionItem>
@@ -94,8 +97,8 @@ export const ExpensequotationExtraOptions = ({
             placeholder={tInvoicing('quotation.attributes.notes')}
             className="resize-none"
             value={quotationManager.notes}
-            onChange={(e) => quotationManager.set('notes', e.target.value)}
-            isPending={loading}
+            onChange={handleNotesChange}
+            disabled={isInspectMode || loading} // Désactiver en mode inspection ou pendant le chargement
             rows={7}
           />
         </AccordionContent>

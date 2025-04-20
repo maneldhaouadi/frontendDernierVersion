@@ -19,7 +19,7 @@ export const EXPENSE_INVOICE_LIFECYCLE_ACTIONS: Record<string, ExpenseInvoiceLif
     }
   },
   draft: {
-    label: 'commands.draft',
+    label: 'Ajouter',
     variant: 'default',
 
     icon: <Save className="h-5 w-5" />,
@@ -32,16 +32,7 @@ export const EXPENSE_INVOICE_LIFECYCLE_ACTIONS: Record<string, ExpenseInvoiceLif
     icon: <FilePlus className="h-5 w-5" />,
     when: {
       membership: 'IN',
-      set: [undefined, EXPENSE_INVOICE_STATUS.Draft, EXPENSE_INVOICE_STATUS.Sent]
-    }
-  },
-  sent: {
-    label: 'commands.send',
-    variant: 'default',
-    icon: <Send className="h-5 w-5" />,
-    when: {
-      membership: 'IN',
-      set: [undefined, EXPENSE_INVOICE_STATUS.Draft, EXPENSE_INVOICE_STATUS.Validated]
+      set: [undefined, EXPENSE_INVOICE_STATUS.Draft]
     }
   },
   duplicate: {

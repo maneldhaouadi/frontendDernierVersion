@@ -35,6 +35,8 @@ export const ExpenseInvoiceEmbeddedMain: React.FC<ExpenseInvoiceEmbeddedMainProp
   const router = useRouter();
   const { t: tCommon } = useTranslation('common');
   const { t: tInvoicing } = useTranslation('invoicing');
+  const [isDuplicatedWithFiles, setIsDuplicatedWithFiles] = React.useState(true);
+
 
   const { setRoutes } = useBreadcrumb();
   React.useEffect(() => {
@@ -130,21 +132,25 @@ export const ExpenseInvoiceEmbeddedMain: React.FC<ExpenseInvoiceEmbeddedMainProp
   const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({
     mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
       const duplicateInvoiceDto: ExpenseDuplicateInvoiceDto = {
-        id, // ID de la facture à dupliquer
-        includeFiles, // Inclure ou non les fichiers
+        id,
+        includeFiles,
       };
-      return api.expense_invoice.duplicate(duplicateInvoiceDto); // Appel API pour dupliquer la facture
+      return api.expense_invoice.duplicate(duplicateInvoiceDto);
     },
-    onSuccess: async (data) => {
-      // Afficher un message de succès
+    onSuccess: async (data, variables) => {
       toast.success(tInvoicing('expense_invoice.action_duplicate_success'));
-      // Rediriger vers la nouvelle facture dupliquée
+      
+      // Réinitialiser les fichiers dans le state manager si nécessaire
+      if (!variables.includeFiles) {
+        invoiceManager.set('uploadPdfField', null);
+        invoiceManager.set('pdfFile', null);
+        invoiceManager.set('uploadedFiles', []);
+      }
+  
       await router.push('/buying/expense_invoice/' + data.id);
-      // Fermer la boîte de dialogue de duplication
       setDuplicateDialog(false);
     },
     onError: (error) => {
-      // Afficher un message d'erreur en cas d'échec
       toast.error(
         getErrorMessage('invoicing', error, tInvoicing('expense_invoice.action_duplicate_failure'))
       );

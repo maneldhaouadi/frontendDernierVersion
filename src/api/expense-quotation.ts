@@ -262,78 +262,92 @@ const duplicate = async (
   duplicateQuotationDto: DuplicateExpensQuotationDto
 ): Promise<ExpenseQuotation> => {
   try {
-    console.log("Sending duplicate request with DTO:", duplicateQuotationDto);
+    console.log("Duplicating with options:", {
+      id: duplicateQuotationDto.id,
+      includeFiles: duplicateQuotationDto.includeFiles
+    });
+
     const response = await axios.post<ExpenseQuotation>(
       '/public/expensquotation/duplicate',
-      duplicateQuotationDto
+      duplicateQuotationDto,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     );
 
-    console.log("Response Status:", response.status);
-    console.log("Response Data:", response.data);
+    // Vérification stricte du résultat
+    if (response.status === 200 || response.status === 201) {
+      console.log("Duplication successful. Result:", {
+        newId: response.data.id,
+        hasPdf: !!response.data.pdfFileId,
+        expectedPdf: duplicateQuotationDto.includeFiles
+      });
 
-    if ((response.status === 200 || response.status === 201) && response.data) {
-      console.log("Duplicated Quotation:", response.data); // Log du devis dupliqué
+      if (!duplicateQuotationDto.includeFiles && response.data.pdfFileId) {
+        console.warn("WARNING: PDF was duplicated but includeFiles was false!");
+      }
+
       return response.data;
-    } else {
-      throw new Error('Failed to duplicate quotation');
     }
+    throw new Error(`HTTP ${response.status}`);
+    
   } catch (error) {
-    console.error('Error duplicating quotation:', error);
+    console.error('Duplication error:', {
+    });
     throw error;
   }
 };
 
 const update = async (quotation: UpdateExpensQuotationDto, files: File[]): Promise<ExpenseQuotation> => {
-  let pdfFileId = quotation.pdfFileId; // ID du fichier PDF existant
-  console.log('ID du fichier PDF existant:', pdfFileId); // Log de l'ID du fichier PDF existant
-
-  // Upload du nouveau fichier PDF s'il est fourni
+  // 1. Upload du fichier PDF si fourni
+  let pdfFileId = quotation.pdfFileId;
   if (quotation.pdfFile) {
     try {
       const [uploadedPdfFileId] = await uploadQuotationFiles([quotation.pdfFile]);
-      pdfFileId = uploadedPdfFileId; // Mettre à jour l'ID du fichier PDF
-      console.log('Nouveau fichier PDF uploadé. ID:', uploadedPdfFileId); // Log du nouvel ID du fichier PDF
+      pdfFileId = uploadedPdfFileId;
     } catch (error) {
-      console.error('Erreur lors de l\'upload du fichier PDF:', error);
+      console.error('Erreur PDF upload:', error);
       throw error;
     }
   }
 
-  // Upload des fichiers supplémentaires (exclure le fichier PDF)
+  // 2. Upload des fichiers supplémentaires
   let uploadIds: number[] = [];
   if (files.length > 0) {
     try {
       uploadIds = await uploadQuotationFiles(files);
-      console.log('Fichiers supplémentaires uploadés. IDs:', uploadIds); // Log des IDs des fichiers supplémentaires
     } catch (error) {
-      console.error('Erreur lors de l\'upload des fichiers supplémentaires:', error);
+      console.error('Erreur fichiers supplémentaires:', error);
       throw error;
     }
   }
 
-  // Préparer les données pour la mise à jour
-  const updatedQuotation = {
+  // 3. Préparation des données pour le backend
+  const updateData = {
     ...quotation,
-    pdfFileId, // Inclure l'ID du fichier PDF (nouveau ou existant)
+    pdfFileId,
     uploads: [
-      ...(quotation.uploads || []), // Inclure les fichiers existants
-      ...uploadIds.map((id) => ({ uploadId: id })), // Ajouter les nouveaux fichiers
-    ],
+      // Fichiers existants à conserver
+      ...(quotation.uploads?.map(u => ({ 
+        uploadId: u.uploadId,
+        id: u.id // Important: inclure l'ID pour les fichiers existants
+      }))) || [],
+      // Nouveaux fichiers uploadés
+      ...uploadIds.map(uploadId => ({ uploadId }))
+    ]
   };
 
-  console.log('Données du devis mises à jour:', updatedQuotation); // Log des données du devis
-
+  // 4. Envoi au backend
   try {
-    // Envoyer les données au backend
-    console.log('Envoi des données au backend pour la mise à jour...');
     const response = await axios.put<ExpenseQuotation>(
       `public/expensquotation/${quotation.id}`,
-      updatedQuotation
+      updateData
     );
-    console.log('Devis mis à jour avec succès:', response.data); // Log de la réponse du backend
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du devis:', error);
+    console.error('Erreur mise à jour devis:', error);
     throw error;
   }
 };

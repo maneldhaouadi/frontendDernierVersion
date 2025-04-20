@@ -26,15 +26,12 @@ import {
   TaxWithholding
 } from '@/types';
 import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
-import { EXPENSE_INVOICE_STATUS, ExpenseDuplicateInvoiceDto } from '@/types/expense_invoices';
+import { EXPENSE_INVOICE_STATUS} from '@/types/expense_invoices';
 import { EXPENSE_INVOICE_LIFECYCLE_ACTIONS } from '@/constants/expense_invoice.lifecycle';
 import { useExpenseInvoiceManager } from '../hooks/useExpenseInvoiceManager';
 import { useExpenseInvoiceControlManager } from '../hooks/useExpenseInvoiceControlManager';
 import { useExpenseInvoiceArticleManager } from '../hooks/useExpenseInvoiceArticleManager';
-import { useMutation } from '@tanstack/react-query';
 import { ExpenseInvoiceActionDialog } from '../dialogs/ExpenseInvoiceActionDialog';
-import { ExpenseInvoiceDuplicateDialog } from '../dialogs/ExpenseInvoiceDuplicateDialog';
-import { ExpenseInvoiceDeleteDialog } from '../dialogs/ExpenseInvoiceDeleteDialog';
 import { ExpenseInvoicePaymentList } from './ExpenseInvoicePaymentList';
 import { ExpensePaymentInvoiceEntry } from '@/types/expense-payment';
 
@@ -63,11 +60,12 @@ interface ExpenseInvoiceControlSectionProps {
   handleSubmit?: () => void;
   handleSubmitDraft: () => void;
   handleSubmitValidated: () => void;
-  handleSubmitDuplicate?: () => void;
   handleSubmitExpired?: () => void;
   reset: () => void;
   loading?: boolean;
   edit?: boolean;
+  isInspectMode?: boolean; 
+  hideValidateButton?: boolean;
 }
 
 export const ExpenseInvoiceControlSection = ({
@@ -82,11 +80,11 @@ export const ExpenseInvoiceControlSection = ({
   handleSubmit,
   handleSubmitDraft,
   handleSubmitValidated,
-  handleSubmitDuplicate,
-  handleSubmitExpired,
   reset,
   loading,
-  edit = true
+  edit = true,
+  isInspectMode = false,
+  hideValidateButton = false,
 }:ExpenseInvoiceControlSectionProps) => {
   const router = useRouter();
   const { t: tInvoicing } = useTranslation('invoicing');
@@ -103,48 +101,12 @@ export const ExpenseInvoiceControlSection = ({
   const [actionName, setActionName] = React.useState<string>();
   const [action, setAction] = React.useState<() => void>(() => {});
 
-
-
-
-  //duplicate dialog
-  const [duplicateDialog, setDuplicateDialog] = React.useState(false);
-
-  //Duplicate Invoice
-  const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({
-    mutationFn: (duplicateInvoiceDto: ExpenseDuplicateInvoiceDto) =>
-      api.expense_invoice.duplicate(duplicateInvoiceDto),
-    onSuccess: async (data) => {
-      toast.success(tInvoicing('expense_invoice.action_duplicate_success'));
-      await router.push('/buying/expense_invoice/' + data.id);
-      setDuplicateDialog(false);
-    },
-    onError: (error) => {
-      toast.error(
-        getErrorMessage('invoicing', error, tInvoicing('expense_invoice.action_duplicate_failure'))
-      );
-    }
-  });
-
-  //delete dialog
-  const [deleteDialog, setDeleteDialog] = React.useState(false);
-
-  //Delete Invoice
-  const { mutate: removeInvoice, isPending: isDeletePending } = useMutation({
-    mutationFn: (id: number) => api.expense_invoice.remove(id),
-    onSuccess: () => {
-      toast.success(tInvoicing('expense_invoice.action_remove_success'));
-      router.push('/buying/expense_invoices');
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage('', error, tInvoicing('expense_invoice.action_remove_failure')));
-    }
-  });
-
   const buttonsWithHandlers: ExpenseInvoiceLifecycle[] = [
     {
       ...EXPENSE_INVOICE_LIFECYCLE_ACTIONS.save,
       key: 'save',
       onClick: () => {
+        if (isInspectMode) return;
         setActionName(tCommon('commands.save'));
         !!handleSubmit &&
           setAction(() => {
@@ -167,35 +129,20 @@ export const ExpenseInvoiceControlSection = ({
       },
       loading: false
     },
-    {
-      ...EXPENSE_INVOICE_LIFECYCLE_ACTIONS.validated,
-      key: 'validated',
-      onClick: () => {
-        setActionName(tCommon('commands.validate'));
-        !!handleSubmitValidated &&
-          setAction(() => {
-            return () => handleSubmitValidated();
-          });
-        setActionDialog(true);
-      },
-      loading: false
-    },
-    {
-      ...EXPENSE_INVOICE_LIFECYCLE_ACTIONS.duplicate,
-      key: 'duplicate',
-      onClick: () => {
-        setDuplicateDialog(true);
-      },
-      loading: false
-    },
-    {
-      ...EXPENSE_INVOICE_LIFECYCLE_ACTIONS.delete,
-      key: 'delete',
-      onClick: () => {
-        setDeleteDialog(true);
-      },
-      loading: false
-    },
+    
+      ...(!hideValidateButton ? [{
+        ...EXPENSE_INVOICE_LIFECYCLE_ACTIONS.validated,
+        key: 'validated',
+        onClick: () => {
+          setActionName(tCommon('commands.validate'));
+          !!handleSubmitValidated &&
+            setAction(() => {
+              return () => handleSubmitValidated();
+            });
+          setActionDialog(true);
+        },
+        loading: false
+      }] : []),
     {
       ...EXPENSE_INVOICE_LIFECYCLE_ACTIONS.reset,
       key: 'reset',
@@ -223,30 +170,7 @@ export const ExpenseInvoiceControlSection = ({
         isCallbackPending={loading}
         onClose={() => setActionDialog(false)}
       />
-      <ExpenseInvoiceDuplicateDialog
-  id={invoiceManager?.id || 0}
-  open={duplicateDialog}
-  duplicateInvoice={(includeFiles: boolean) => {
-    invoiceManager?.id &&
-      duplicateInvoice({
-        id: invoiceManager?.id,
-        includeFiles: includeFiles
-      });
-  }}
-  isDuplicationPending={isDuplicationPending}
-  onClose={() => setDuplicateDialog(false)}
-/>
-
-       <ExpenseInvoiceDeleteDialog
-        id={invoiceManager?.id || 0}
-        sequential={invoiceManager?.sequentialNumbr}
-        open={deleteDialog}
-        deleteInvoice={() => {
-          invoiceManager?.id && removeInvoice(invoiceManager?.id);
-        }}
-        isDeletionPending={isDeletePending}
-        onClose={() => setDeleteDialog(false)}
-      />
+  
 
       <div className={cn(className)}>
         <div className="flex flex-col border-b w-full gap-2 pb-5">
@@ -381,12 +305,14 @@ export const ExpenseInvoiceControlSection = ({
                   <SelectShimmer isPending={loading}>
                     <Select
                       key={invoiceManager.bankAccount?.id || 'bankAccount'}
-                      onValueChange={(e) =>
+                      onValueChange={(e) => {
+                        if (isInspectMode) return;
                         invoiceManager.set(
                           'bankAccount',
                           bankAccounts.find((account) => account.id == parseInt(e))
-                        )
-                      }
+                        );
+                      }}
+                      disabled={!edit || isInspectMode} // Désactive en mode inspection
                       defaultValue={invoiceManager?.bankAccount?.id?.toString() || ''}>
                       <SelectTrigger className="mty1 w-full">
                         <SelectValue placeholder={tInvoicing('controls.bank_select_placeholder')} />

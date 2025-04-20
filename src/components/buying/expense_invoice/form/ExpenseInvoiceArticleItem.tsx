@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Textarea } from '@/components/ui/textarea';
 import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
 import { ExpenseArticleInvoiceEntry, ExpenseInvoiceTaxEntry } from '@/types/expense_invoices';
-import {Currency, Tax } from '@/types';
+import {Article, Currency, Tax } from '@/types';
 import { ExpenseInvoiceTaxEntries } from './ExpenseInvoiceTaxEntries';
 
 interface ExpenseInvoiceArticleItemProps {
@@ -42,27 +42,53 @@ export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps>
   const digitAfterComma = currency?.digitAfterComma || 3;
   const currencySymbol = currency?.symbol || '$';
 
- const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-     onChange({
-       ...article,
-       article: {
-         ...article.article,
-         id:parseInt(e.target.value),
-         title: e.target.value
-       }
-     });
-   };
- 
-   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-     onChange({
-       ...article,
-       article: {
-         ...article.article,
-         id:parseInt(e.target.value),
-         description: e.target.value
-       }
-     });
-   };
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const currentArticle = article.article || {
+      id: 0,
+      title: '',
+      description: '',
+      category: '',
+      subCategory: '',
+      purchasePrice: 0,
+      salePrice: 0,
+      quantityInStock: 0
+    };
+  
+    onChange({
+      ...article,
+      article: {
+        ...currentArticle,
+        id: parseInt(e.target.value),
+        title: e.target.value
+      }
+    });
+  };
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!article.article) {
+      throw new Error("Article object is required");
+    }
+  
+    const requiredFields: (keyof Article)[] = [
+      'title', 'category', 'subCategory', 
+      'purchasePrice', 'salePrice', 'quantityInStock'
+    ];
+  
+    const missingFields = requiredFields.filter(
+      field => article.article![field] === undefined
+    );
+  
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+  
+    onChange({
+      ...article,
+      article: {
+        ...article.article,
+        description: e.target.value
+      }
+    });
+  };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const quantity = e.target.value;

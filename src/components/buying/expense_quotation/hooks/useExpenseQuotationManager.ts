@@ -32,10 +32,13 @@ type ExpenseQuotationManager = {
   notes: string;
   status: EXPENSQUOTATION_STATUS;
   generalConditions: string;
-  uploadedFiles: ExpensQuotationUploadedFile[]; // Include uploadPdfField and pdfFileId
-  pdfFile?: File; // Unique PDF file
-  pdfFileId?: number; // ID of the PDF file
+  uploadedFiles: ExpensQuotationUploadedFile[];
+  pdfFile?: File;
+  pdfFileId?: number;
   uploadPdfField?: Upload;
+  includeFiles: boolean;
+  // Errors
+  errors: Record<string, string | null>;
   // Utility data
   isInterlocutorInFirm: boolean;
   // Methods
@@ -46,9 +49,12 @@ type ExpenseQuotationManager = {
   setQuotation: (
     quotation: Partial<ExpenseQuotation & { files: ExpensQuotationUploadedFile[] }>,
     firms?: Firm[],
-    bankAccounts?: BankAccount[]
+    bankAccounts?: BankAccount[],
+    includeFiles?: boolean
   ) => void;
   reset: () => void;
+  setError: (field: string, message: string | null) => void;
+  validateSequentialNumber: () => boolean;
 };
 
 const getDateRangeAccordingToPaymentConditions = (paymentCondition: PaymentCondition) => {
@@ -62,9 +68,9 @@ const getDateRangeAccordingToPaymentConditions = (paymentCondition: PaymentCondi
     case 1:
       return { date: today, dueDate: today };
     case 2:
-      return { date: today, dueDate: new Date(year, month + 1, 0) }; // End of current month
+      return { date: today, dueDate: new Date(year, month + 1, 0) };
     case 3:
-      return { date: today, dueDate: new Date(year, month + 2, 0) }; // End of next month
+      return { date: today, dueDate: new Date(year, month + 2, 0) };
     case 4:
       return { date: today, dueDate: undefined };
     default:
@@ -74,7 +80,7 @@ const getDateRangeAccordingToPaymentConditions = (paymentCondition: PaymentCondi
 
 const initialState: Omit<
   ExpenseQuotationManager,
-  'set' | 'reset' | 'setFirm' | 'setInterlocutor' | 'getQuotation' | 'setQuotation'
+  'set' | 'reset' | 'setFirm' | 'setInterlocutor' | 'getQuotation' | 'setQuotation' | 'setError' | 'validateSequentialNumber'
 > = {
   id: -1,
   sequential: '',
@@ -95,9 +101,11 @@ const initialState: Omit<
   generalConditions: '',
   isInterlocutorInFirm: false,
   uploadedFiles: [],
-  pdfFile: undefined, // PDF file
-  pdfFileId: undefined, // ID of the PDF file
-  uploadPdfField: undefined, // Initialize with undefined
+  pdfFile: undefined,
+  pdfFileId: undefined,
+  uploadPdfField: undefined,
+  includeFiles: false,
+  errors: {},
 };
 
 export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, get) => ({
@@ -112,18 +120,19 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       firm,
       interlocutor:
         firm?.interlocutorsToFirm?.length === 1
-          ? firm.interlocutorsToFirm[0]
-          : api?.interlocutor?.factory() || undefined,
+          ? firm.interlocutorsToFirm[0].interlocutor
+          : undefined,
       isInterlocutorInFirm: !!firm?.interlocutorsToFirm?.length,
       date: dateRange.date,
       dueDate: dateRange.dueDate,
+      currency: firm?.currency || state.currency,
     }));
   },
   setInterlocutor: (interlocutor?: Interlocutor) =>
     set((state) => ({
       ...state,
       interlocutor,
-      isInterlocutorInFirm: true,
+      isInterlocutorInFirm: !!interlocutor,
     })),
   set: (name: keyof ExpenseQuotationManager, value: any) => {
     set((state) => {
@@ -138,9 +147,16 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
         return state;
       }
 
+      // Reset error when field changes
+      const errors = { ...state.errors };
+      if (name === 'sequentialNumbr') {
+        errors['sequentialNumbr'] = null;
+      }
+
       return {
         ...state,
         [name]: newValue,
+        errors,
       };
     });
   },
@@ -163,6 +179,7 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       pdfFile,
       pdfFileId,
       uploadPdfField,
+      includeFiles,
       ...rest
     } = get();
 
@@ -181,37 +198,63 @@ export const useExpenseQuotationManager = create<ExpenseQuotationManager>((set, 
       bankAccountId: bankAccount?.id,
       currencyId: currency?.id,
       uploadedFiles,
-      pdfFile, // PDF file
-      pdfFileId, // ID of the PDF file
+      pdfFile,
+      pdfFileId,
       uploadPdfField,
+      includeFiles,
     };
   },
   setQuotation: (
     quotation: Partial<ExpenseQuotation & { files: ExpensQuotationUploadedFile[] }>,
     firms?: Firm[],
-    bankAccounts?: BankAccount[]
+    bankAccounts?: BankAccount[],
+    includeFiles?: boolean
   ) => {
     set((state) => ({
       ...state,
       id: quotation?.id,
-      sequentialNumbr: quotation?.sequentialNumbr,
+      sequentialNumbr: quotation?.sequentialNumbr || '',
       date: quotation?.date ? new Date(quotation?.date) : undefined,
       dueDate: quotation?.dueDate ? new Date(quotation?.dueDate) : undefined,
-      object: quotation?.object,
+      object: quotation?.object || '',
       firm: firms?.find((firm) => quotation?.firm?.id === firm.id),
       interlocutor: quotation?.interlocutor,
-      discount: quotation?.discount,
-      discount_type: quotation?.discount_type,
-      bankAccount: quotation?.bankAccount,
+      discount: quotation?.discount || 0,
+      discount_type: quotation?.discount_type || DISCOUNT_TYPE.PERCENTAGE,
+      bankAccount: bankAccounts?.find((account) => account.id === quotation?.bankAccount?.id),
       currency: quotation?.currency || quotation?.firm?.currency,
-      notes: quotation?.notes,
-      generalConditions: quotation?.generalConditions,
-      status: quotation?.status,
-      uploadedFiles: quotation?.files || [], // Ensure uploadedFiles is an array
-      pdfFile: quotation?.pdfFile || state.pdfFile, // Keep existing PDF file
-      pdfFileId: quotation?.pdfFileId || state.pdfFileId, // Keep existing PDF file ID
-      uploadPdfField: quotation?.uploadPdfField || state.uploadPdfField, // Keep existing uploadPdfField
+      notes: quotation?.notes || '',
+      generalConditions: quotation?.generalConditions || '',
+      status: quotation?.status || EXPENSQUOTATION_STATUS.Draft,
+      uploadedFiles: quotation?.files || [],
+      pdfFile: quotation?.pdfFile || state.pdfFile,
+      pdfFileId: quotation?.pdfFileId || state.pdfFileId,
+      uploadPdfField: quotation?.uploadPdfField || state.uploadPdfField,
+      includeFiles: includeFiles !== undefined ? includeFiles : state.includeFiles,
+      errors: {},
     }));
   },
   reset: () => set({ ...initialState }),
+  setError: (field: string, message: string | null) => {
+    set((state) => ({
+      ...state,
+      errors: {
+        ...state.errors,
+        [field]: message,
+      },
+    }));
+  },
+  validateSequentialNumber: () => {
+    const sequentialNumbr = get().sequentialNumbr;
+    const sequentialNumberRegex = /^QUO-\d{4,5}$/;
+    const isValid = sequentialNumberRegex.test(sequentialNumbr);
+    
+    if (!isValid) {
+      get().setError('sequentialNumbr', 'Invalid quotation number format. Expected format: QUO-XXXX');
+    } else {
+      get().setError('sequentialNumbr', null);
+    }
+    
+    return isValid;
+  },
 }));

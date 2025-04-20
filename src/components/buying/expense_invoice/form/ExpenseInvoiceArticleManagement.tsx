@@ -39,13 +39,15 @@ interface ExpenseInvoiceArticleManagementProps {
   isArticleDescriptionHidden: boolean;
   edit?: boolean;
   loading?: boolean;
+  isInspectMode?: boolean;
 }
 export const ExpenseInvoiceArticleManagement: React.FC<ExpenseInvoiceArticleManagementProps> = ({
   className,
   taxes = [],
   isArticleDescriptionHidden,
   loading,
-  edit = true
+  edit = true,
+  isInspectMode = false
 }) => {
   const { t: tInvoicing } = useTranslation('invoicing');
   const invoiceManager = useExpenseInvoiceManager();

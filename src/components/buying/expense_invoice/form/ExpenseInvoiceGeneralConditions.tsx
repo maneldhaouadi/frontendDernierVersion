@@ -12,6 +12,7 @@ interface ExpenseInvoiceGeneralConditionsProps {
   isPending?: boolean;
   defaultCondition?: string;
   edit?: boolean;
+  isInspectMode?: boolean;
 }
 
 export const ExpenseInvoiceGeneralConditions = ({
@@ -19,7 +20,8 @@ export const ExpenseInvoiceGeneralConditions = ({
   hidden,
   isPending,
   defaultCondition,
-  edit = true
+  edit = true,
+  isInspectMode = false
 }: ExpenseInvoiceGeneralConditionsProps) => {
   const router = useRouter();
   const { t: tInvoicing } = useTranslation('invoicing');
@@ -40,7 +42,7 @@ export const ExpenseInvoiceGeneralConditions = ({
             isPending={isPending}
             rows={7}
           />
-          {edit && defaultCondition && (
+          {edit && defaultCondition && !isInspectMode && (
             <div className="flex items-center gap-4">
               <div className="flex gap-2 items-center">
                 <Button
@@ -60,10 +62,10 @@ export const ExpenseInvoiceGeneralConditions = ({
               </div>
             </div>
           )}
-          {edit && !defaultCondition && (
+          {edit && !defaultCondition && !isInspectMode && ( // Masquer le label en mode inspection
             <Label
               className="font-bold underline cursor-pointer"
-              onClick={() => router.push('/settings/system/conditions')}>
+              onClick={() => !isInspectMode && router.push('/settings/system/conditions')}>
               {tSettings('default_condition.not_set')}
             </Label>
           )}

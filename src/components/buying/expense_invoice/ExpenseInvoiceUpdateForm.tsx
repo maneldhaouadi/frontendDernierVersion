@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api';
-import { EXPENSQUOTATION_STATUS } from '@/types';
+import { Article, EXPENSQUOTATION_STATUS } from '@/types';
 import { Spinner } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
 import useTax from '@/hooks/content/useTax';
@@ -76,9 +76,13 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
   }, [router.locale, invoice?.sequential]);
 
   const editMode = React.useMemo(() => {
+    // Si le mode est 'inspect', désactiver l'édition
+    if (router.query.mode === 'inspect') return false;
+    
+    // Sinon, utiliser la logique existante basée sur le statut
     const editModeStatuses = [EXPENSE_INVOICE_STATUS.Validated, EXPENSE_INVOICE_STATUS.Draft];
-    return invoice?.status && editModeStatuses.includes(invoice?.status);
-  }, [invoice]);
+    return invoice?.status && editModeStatuses.includes(invoice.status);
+  }, [invoice, router.query.mode]);
 
   const { firms, isFetchFirmsPending } = useFirmChoice([
     'interlocutorsToFirm',
@@ -231,19 +235,52 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
   const onSubmit = async (status: EXPENSE_INVOICE_STATUS) => {
     try {
       // Convertir les articles en DTO
-      const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => ({
-        id: article?.id,
-        article: {
+      const articlesDto: ExpenseArticleInvoiceEntry[] = articleManager.getArticles()?.map((article) => {
+        // Création d'un objet article complet avec valeurs par défaut
+        const fullArticle: Article = {
           id: article?.article?.id ?? 0,
           title: article?.article?.title || '',
-          description: !controlManager.isArticleDescriptionHidden ? article?.article?.description || '' : '',
-        },
-        quantity: article?.quantity || 0,
-        unit_price: article?.unit_price || 0,
-        discount: article?.discount || 0,
-        discount_type: article?.discount_type === 'PERCENTAGE' ? DISCOUNT_TYPE.PERCENTAGE : DISCOUNT_TYPE.AMOUNT,
-        taxes: article?.expenseArticleInvoiceEntryTaxes?.map((entry) => entry?.tax?.id),
-      }));
+          description: !controlManager.isArticleDescriptionHidden 
+            ? article?.article?.description || '' 
+            : '',
+          category: article?.article?.category || '',
+          subCategory: article?.article?.subCategory || '',
+          purchasePrice: article?.article?.purchasePrice || 0,
+          salePrice: article?.article?.salePrice || 0,
+          quantityInStock: article?.article?.quantityInStock || 0,
+          // Propriétés optionnelles
+          status: article?.article?.status,
+          version: article?.article?.version,
+          history: article?.article?.history,
+          barcode: article?.article?.barcode,
+          qrCode: article?.article?.qrCode,
+          isDeletionRestricted: article?.article?.isDeletionRestricted,
+          // Propriétés héritées de DatabaseEntity
+          createdAt: article?.article?.createdAt,
+          updatedAt: article?.article?.updatedAt,
+          deletedAt: article?.article?.deletedAt
+        };
+      
+        return {
+          id: article?.id,
+          article: fullArticle,
+          articleId: article?.article?.id ?? 0,
+          quantity: article?.quantity || 0,
+          unit_price: article?.unit_price || 0,
+          discount: article?.discount || 0,
+          discount_type: article?.discount_type === 'PERCENTAGE' 
+            ? DISCOUNT_TYPE.PERCENTAGE 
+            : DISCOUNT_TYPE.AMOUNT,
+          expenseArticleInvoiceEntryTaxes: article?.expenseArticleInvoiceEntryTaxes || [],
+          taxes: article?.expenseArticleInvoiceEntryTaxes
+            ?.map((entry) => entry?.tax?.id)
+            .filter((id): id is number => id !== undefined),
+          // Propriétés héritées de DatabaseEntity
+          createdAt: article?.createdAt,
+          updatedAt: article?.updatedAt,
+          deletedAt: article?.deletedAt
+        };
+      }) || [];
   
       // Gestion des fichiers PDF
       let pdfFileId = invoiceManager.pdfFileId; // ID du fichier PDF existant
@@ -330,6 +367,7 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
                   firms={firms}
                   edit={editMode}
                   loading={debounceFetching}
+                  isInspectMode={router.query.mode === 'inspect'} 
                 />
                 <ExpenseInvoiceArticleManagement
                   className="my-5"
@@ -337,10 +375,14 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
                   edit={editMode}
                   isArticleDescriptionHidden={controlManager.isArticleDescriptionHidden}
                   loading={debounceFetching}
+                  isInspectMode={router.query.mode === 'inspect'} 
+
                 />
                 <ExpenseInvoiceExtraOptions
                   onUploadAdditionalFiles={(files) => invoiceManager.set('uploadedFiles', files)}
                   onUploadPdfFile={(file) => invoiceManager.set('pdfFile', file)}
+                  isInspectMode={router.query.mode === 'inspect'} 
+
                 />
                 <div className="flex gap-10 m-5">
                   <ExpenseInvoiceGeneralConditions
@@ -349,6 +391,8 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
                     hidden={controlManager.isGeneralConditionsHidden}
                     defaultCondition={defaultCondition}
                     edit={editMode}
+                    isInspectMode={router.query.mode === 'inspect'} 
+
                   />
                   <div className="w-1/3 my-auto">
                     <ExpenseInvoiceFinancialInformation
@@ -359,6 +403,8 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
                       taxWithholdings={taxWithholdings}
                       loading={debounceFetching}
                       edit={editMode}
+                      isInspectMode={router.query.mode === 'inspect'} 
+
                     />
                   </div>
                 </div>
@@ -385,6 +431,7 @@ export const ExpenseInvoiceUpdateForm = ({ className, invoiceId }: ExpenseInvoic
                   loading={debounceFetching}
                   reset={globalReset}
                   edit={editMode}
+                  isInspectMode={router.query.mode === 'inspect'} 
                 />
               </CardContent>
             </Card>

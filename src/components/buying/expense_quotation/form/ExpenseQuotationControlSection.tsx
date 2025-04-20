@@ -54,14 +54,14 @@ interface ExpenseQuotationControlSectionProps {
   invoices: ExpenseInvoice[];
   handleSubmit?: () => void;
   handleSubmitDraft: () => void;
-  handleSubmitValidated: () => void;
   handleSubmitExpired?: () => void;
   handleSubmitDuplicate?: () => void;
   reset: () => void;
   refetch?: () => void;
   loading?: boolean;
   edit?: boolean;
-  expirationDate?: Date; // Ajoutez cette prop pour la date d'échéance
+  expirationDate?: Date;
+  isInspectMode?: boolean; // Ajoutez cette ligne
 }
 
 export const ExpenseQuotationControlSection = ({
@@ -73,16 +73,14 @@ export const ExpenseQuotationControlSection = ({
   invoices,
   handleSubmit,
   handleSubmitDraft,
-  handleSubmitValidated,
-  handleSubmitDuplicate,
   handleSubmitExpired,
   reset,
   refetch,
   loading,
   edit = true,
-  expirationDate // Ajoutez cette prop pour la date d'échéance
-}: ExpenseQuotationControlSectionProps) => {
-  const router = useRouter();
+  expirationDate,
+  isInspectMode = false // Ajoutez cette ligne avec une valeur par défaut
+}: ExpenseQuotationControlSectionProps) => { const router = useRouter();
   const { t: tInvoicing } = useTranslation('invoicing');
   const { t: tCommon } = useTranslation('common');
   const { t: tCurrency } = useTranslation('currency');
@@ -155,20 +153,23 @@ export const ExpenseQuotationControlSection = ({
     }
   });
 
-  const buttonsWithHandlers: ExpenseQuotationLifecycle[] = [
-    {
-      ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.save,
-      key: 'save',
-      onClick: () => {
-        setActionName(tCommon('commands.save'));
-        !!handleSubmit &&
-          setAction(() => {
-            return () => handleSubmit();
-          });
-        setActionDialog(true);
-      },
-      loading: false
+  // Dans la partie des boutons
+const buttonsWithHandlers: ExpenseQuotationLifecycle[] = [
+  {
+    ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.save,
+    key: 'save',
+    onClick: () => {
+      if (isInspectMode) return; // Empêche l'action en mode inspection
+      setActionName(tCommon('commands.save'));
+      !!handleSubmit &&
+        setAction(() => {
+          return () => handleSubmit();
+        });
+      setActionDialog(true);
     },
+    loading: false
+  },
+  // ... autres boutons avec la même logique
     {
       ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.draft,
       key: 'draft',
@@ -179,35 +180,6 @@ export const ExpenseQuotationControlSection = ({
             return () => handleSubmitDraft();
           });
         setActionDialog(true);
-      },
-      loading: false
-    },
-    {
-      ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.validated,
-      key: 'validated',
-      onClick: () => {
-        setActionName(tCommon('commands.validate'));
-        !!handleSubmitValidated &&
-          setAction(() => {
-            return () => handleSubmitValidated();
-          });
-        setActionDialog(true);
-      },
-      loading: false
-    },
-    {
-      ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.duplicate,
-      key: 'duplicate',
-      onClick: () => {
-        setDuplicateDialog(true);
-      },
-      loading: false
-    },
-    {
-      ...EXPENSE_QUOTATION_LIFECYCLE_ACTIONS.delete,
-      key: 'delete',
-      onClick: () => {
-        setDeleteDialog(true);
       },
       loading: false
     },
@@ -330,15 +302,18 @@ export const ExpenseQuotationControlSection = ({
                     <h1 className="font-bold">{tInvoicing('controls.bank_details')}</h1>
                     <div className="my-5">
                       <SelectShimmer isPending={loading}>
-                        <Select
-                          key={quotationManager.bankAccount?.id || 'bankAccount'}
-                          onValueChange={(e) =>
-                            quotationManager.set(
-                              'bankAccount',
-                              bankAccounts.find((account) => account.id == parseInt(e))
-                            )
-                          }
-                          defaultValue={quotationManager?.bankAccount?.id?.toString() || ''}>
+                      <Select
+  key={quotationManager.bankAccount?.id || 'bankAccount'}
+  onValueChange={(e) => {
+    if (isInspectMode) return; // Empêche la modification en mode inspection
+    quotationManager.set(
+      'bankAccount',
+      bankAccounts.find((account) => account.id == parseInt(e))
+    );
+  }}
+  disabled={!edit || isInspectMode} // Désactive en mode inspection
+  defaultValue={quotationManager?.bankAccount?.id?.toString() || ''}
+>
                           <SelectTrigger className="mty1 w-full">
                             <SelectValue
                               placeholder={tInvoicing('controls.bank_select_placeholder')}
@@ -363,49 +338,56 @@ export const ExpenseQuotationControlSection = ({
               </React.Fragment>
             )}
             {/* currency choices */}
-            <h1 className="font-bold">{tInvoicing('controls.currency_details')}</h1>
-            {edit ? (
-              <div>
-                {currencies.length != 0 && (
-                  <div className="my-5">
-                    <SelectShimmer isPending={loading}>
-                      <Select
-                        key={quotationManager.currency?.id || 'currency'}
-                        onValueChange={(e) => {
-                          quotationManager.set(
-                            'currency',
-                            currencies.find((currency) => currency.id == parseInt(e))
-                          );
-                        }}
-                        defaultValue={quotationManager?.currency?.id?.toString() || ''}>
-                        <SelectTrigger className="mty1 w-full">
-                          <SelectValue
-                            placeholder={tInvoicing('controls.currency_select_placeholder')}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {currencies?.map((currency: Currency) => {
-                            return (
-                              <SelectItem key={currency.id} value={currency?.id?.toString() || ''}>
-                                {currency?.code && tCurrency(currency?.code)} ({currency.symbol})
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </SelectShimmer>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <UneditableInput
-                className="font-bold my-4"
-                value={
-                  quotationManager.currency &&
-                  `${quotationManager.currency?.code && tCurrency(quotationManager.currency?.code)} (${quotationManager?.currency?.symbol})`
-                }
+            {/* currency choices */}
+<h1 className="font-bold">{tInvoicing('controls.currency_details')}</h1>
+{edit ? (
+  <div>
+    {currencies.length != 0 && (
+      <div className="my-5">
+        <SelectShimmer isPending={loading}>
+          <Select
+            key={quotationManager.currency?.id || 'currency'}
+            onValueChange={(e) => {
+              if (isInspectMode) return; // Empêche la modification en mode inspection
+              quotationManager.set(
+                'currency',
+                currencies.find((currency) => currency.id == parseInt(e))
+              );
+            }}
+            disabled={isInspectMode || loading} // Désactivé en mode inspection
+            defaultValue={quotationManager?.currency?.id?.toString() || ''}
+          >
+            <SelectTrigger className="mty1 w-full">
+              <SelectValue
+                placeholder={tInvoicing('controls.currency_select_placeholder')}
               />
-            )}
+            </SelectTrigger>
+            <SelectContent>
+              {currencies?.map((currency: Currency) => {
+                return (
+                  <SelectItem 
+                    key={currency.id} 
+                    value={currency?.id?.toString() || ''}
+                  >
+                    {currency?.code && tCurrency(currency?.code)} ({currency.symbol})
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </SelectShimmer>
+      </div>
+    )}
+  </div>
+) : (
+  <UneditableInput
+    className="font-bold my-4"
+    value={
+      quotationManager.currency &&
+      `${quotationManager.currency?.code && tCurrency(quotationManager.currency?.code)} (${quotationManager?.currency?.symbol})`
+    }
+  />
+)}
           </div>
         </div>
         <div className="w-full py-5">

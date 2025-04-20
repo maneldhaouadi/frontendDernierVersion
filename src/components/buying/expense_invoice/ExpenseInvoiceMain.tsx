@@ -55,6 +55,7 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
   const [deleteDialog, setDeleteDialog] = React.useState(false);
   const [duplicateDialog, setDuplicateDialog] = React.useState(false);
   const [downloadDialog, setDownloadDialog] = React.useState(false);
+  const [isDuplicatedWithFiles, setIsDuplicatedWithFiles] = React.useState(true);
 
   const {
     isPending: isFetchPending,
@@ -147,22 +148,25 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
   //Duplicate Invoice
   const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({
     mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
-      const duplicateInvoiceDto: ExpenseDuplicateInvoiceDto = {
-        id, // ID de la facture à dupliquer
-        includeFiles, // Inclure ou non les fichiers
-      };
-      return api.expense_invoice.duplicate(duplicateInvoiceDto); // Appel API pour dupliquer la facture
+      return api.expense_invoice.duplicate({ id, includeFiles });
     },
-    onSuccess: async (data) => {
-      // Afficher un message de succès
+    onSuccess: async (data, variables) => {
+      // Réinitialiser complètement le manager avant mise à jour
+      invoiceManager.reset();
+      
+      // Mettre à jour avec toutes les données
+      invoiceManager.set({
+        ...data,
+        // Forcer la suppression des fichiers si includeFiles=false
+        uploadPdfField: variables.includeFiles ? data.uploadPdfField : null,
+        uploadedFiles: variables.includeFiles ? data.uploads || [] : []
+      });
+  
       toast.success(tInvoicing('expense_invoice.action_duplicate_success'));
-      // Rediriger vers la nouvelle facture dupliquée
       await router.push('/buying/expense_invoice/' + data.id);
-      // Fermer la boîte de dialogue de duplication
       setDuplicateDialog(false);
     },
     onError: (error) => {
-      // Afficher un message d'erreur en cas d'échec
       toast.error(
         getErrorMessage('invoicing', error, tInvoicing('expense_invoice.action_duplicate_failure'))
       );

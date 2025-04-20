@@ -29,6 +29,7 @@ interface ExpenseInvoiceFinancialInformationProps {
   taxWithholdings?: TaxWithholding[];
   loading?: boolean;
   edit?: boolean;
+  isInspectMode?: boolean;
 }
 
 export const ExpenseInvoiceFinancialInformation = ({
@@ -40,6 +41,7 @@ export const ExpenseInvoiceFinancialInformation = ({
   taxWithholdings,
   loading,
   edit = true,
+  isInspectMode = false
 }: ExpenseInvoiceFinancialInformationProps) => {
   const { t: tInvoicing } = useTranslation('invoicing');
 

@@ -7,7 +7,7 @@ import { getErrorMessage } from '@/utils/errors';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { DuplicateExpensQuotationDto, EXPENSQUOTATION_STATUS } from '@/types';
+import { DuplicateExpensQuotationDto, ExpenseQuotation, EXPENSQUOTATION_STATUS } from '@/types';
 import ContentSection from '@/components/common/ContentSection';
 import { cn } from '@/lib/utils';
 import { BreadcrumbRoute, useBreadcrumb } from '@/components/layout/BreadcrumbContext';
@@ -63,6 +63,7 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
   const [deleteDialog, setDeleteDialog] = React.useState(false);
   const [duplicateDialog, setDuplicateDialog] = React.useState(false);
   const [invoiceDialog, setInvoiceDialog] = React.useState(false);
+  const [selectedQuotation, setSelectedQuotation] = React.useState<ExpenseQuotation | null>(null);
 
   const {
     isPending: isFetchPending,
@@ -165,29 +166,36 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
   });
 
   const { mutate: duplicateQuotation, isPending: isDuplicationPending } = useMutation({
-    mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
-      console.log("Starting duplication...");
-      const duplicateQuotationDto: DuplicateExpensQuotationDto = {
-        id,
-        includeFiles,
-      };
-      console.log("Duplicate DTO:", duplicateQuotationDto);
+    mutationFn: (duplicateQuotationDto: DuplicateExpensQuotationDto) => {
+      // Mettre à jour l'état includeFiles avant la duplication
+      quotationManager.set('includeFiles', duplicateQuotationDto.includeFiles);
       return api.expense_quotation.duplicate(duplicateQuotationDto);
     },
     onSuccess: async (data) => {
-      console.log("Duplication successful, redirecting...");
-      console.log("Duplicated Quotation Data in onSuccess:", data);
-      toast.success(tInvoicing('expensequotation.action_duplicate_success'));
-      await router.push('/buying/expense_quotation/' + data.id); // Rediriger vers le nouveau devis
+      toast.success(tInvoicing('quotation.action_duplicate_success'));
+      await router.push('/buying/expense_quotation/' + data.id);
       setDuplicateDialog(false);
     },
     onError: (error) => {
-      console.error("Duplication error:", error);
       toast.error(
-        getErrorMessage('invoicing', error, tInvoicing('expensequotation.action_duplicate_failure'))
+        getErrorMessage('invoicing', error, tInvoicing('quotation.action_duplicate_failure'))
       );
-    },
-  });
+    }
+});
+  
+  // Fonction pour déclencher la duplication
+  const handleDuplicate = (includeFiles: boolean) => {
+    console.log("Initiating duplication with includeFiles:", includeFiles);
+    if (!selectedQuotation?.id) {
+      toast.error(tInvoicing('expensequotation.no_quotation_selected'));
+      return;
+    }
+    
+    duplicateQuotation({ 
+      id: selectedQuotation.id, 
+      includeFiles 
+    });
+  };
 
   // Invoice Quotation
   const { mutate: invoiceExpenseQuotation, isPending: isInvoicingPending } = useMutation({
@@ -234,18 +242,30 @@ export const QuotationEmbeddedMain: React.FC<ExpenseQuotationEmbeddedMainProps> 
           onClose={() => setDeleteDialog(false)}
         />
         <ExpenseQuotationDuplicateDialog
-          id={quotationManager?.id || 0}
-          open={duplicateDialog}
-          duplicateQuotation={(includeFiles: boolean) => {
-            quotationManager?.id &&
-              duplicateQuotation({
-                id: quotationManager?.id,
-                includeFiles: includeFiles,
-              });
-          }}
-          isDuplicationPending={isDuplicationPending}
-          onClose={() => setDuplicateDialog(false)}
-        />
+  id={quotationManager?.id ?? 0} // Utilisation de l'opérateur nullish coalescing
+  open={duplicateDialog}
+  onClose={() => setDuplicateDialog(false)}
+  duplicateQuotation={(includeFiles: boolean) => {
+    if (!quotationManager?.id) {
+      console.error("Cannot duplicate - missing quotation ID");
+      toast.error(tInvoicing('quotation.missing_id_error'));
+      return;
+    }
+
+    // Réinitialisation des états PDF si includeFiles est false
+    if (!includeFiles) {
+      quotationManager.set('pdfFile', null);
+      quotationManager.set('uploadPdfField', null);
+      quotationManager.set('pdfFileId', null);
+    }
+
+    duplicateQuotation({
+      id: quotationManager.id,
+      includeFiles
+    });
+  }}
+  isDuplicationPending={isDuplicationPending}
+/>
         <ExpenseQuotationInvoiceDialog
           id={quotationManager?.id || 0}
           status={quotationManager?.status}

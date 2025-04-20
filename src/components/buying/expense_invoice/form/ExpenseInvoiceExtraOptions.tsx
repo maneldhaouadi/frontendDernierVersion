@@ -20,11 +20,13 @@ interface ExpenseInvoiceExtraOptionsProps {
   loading?: boolean;
   onUploadAdditionalFiles: (files: File[]) => void;
   onUploadPdfFile?: (file: File | undefined) => void;
+  isInspectMode?: boolean;
 }
 
 export const ExpenseInvoiceExtraOptions = ({
   className,
   loading,
+  isInspectMode = false
 }: ExpenseInvoiceExtraOptionsProps) => {
   const { t: tInvoicing } = useTranslation('invoicing');
   const invoiceManager = useExpenseInvoiceManager();
@@ -34,6 +36,7 @@ export const ExpenseInvoiceExtraOptions = ({
 
   // Gestion des fichiers supplémentaires
   const handleAdditionalFilesChange = (files: File[]) => {
+    if (isInspectMode) return;
     if (files.length > invoiceManager.uploadedFiles.length) {
       // Ajouter de nouveaux fichiers
       const newFiles = files.filter(
@@ -78,6 +81,7 @@ export const ExpenseInvoiceExtraOptions = ({
             maxFileCount={Infinity} // Permettre plusieurs fichiers
             value={invoiceManager.uploadedFiles?.map((d) => d.file)} // Afficher les fichiers existants
             onValueChange={handleAdditionalFilesChange}
+            disabled={isInspectMode || loading} // Désactiver en mode inspection ou pendant le chargement
           />
         </AccordionContent>
       </AccordionItem>

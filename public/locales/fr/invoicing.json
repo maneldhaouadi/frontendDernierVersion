@@ -10,6 +10,7 @@
     "action_remove_failure": "Erreur lors de la suppression du devis",
     "action_remove_success": "Devis supprimée avec succès",
     "associate_firm": "Choisissez une entreprise",
+    "invalid_sequential_number_format": "Le format doit être QUO-XXXX(ex: QUO-1234)",
     "associate_interlocutor": "Choisissez un interlocuteur",
     "add_button_label": "Nouveau devis",
     "attributes": {
@@ -61,8 +62,11 @@
     "action_remove_failure": "Erreur lors de la suppression du facture",
     "action_remove_success": "Facture supprimée avec succès",
     "associate_firm": "Choisissez une entreprise",
+    "invalid_sequential_numbere_format": "Format invalide. Format attendu: INV-12345",
     "associate_interlocutor": "Choisissez un interlocuteur",
     "add_button_label": "Nouvelle facture",
+    "sequentialNumbr_required": "Le numéro de facture est requis",
+    "sequential_number_exists": "Ce numéro de facture existe déjà",
     "attributes": {
       "number": "N°",
       "date": "Date",
