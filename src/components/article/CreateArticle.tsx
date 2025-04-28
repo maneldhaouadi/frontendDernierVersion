@@ -280,7 +280,7 @@ const CreateArticle: React.FC = () => {
     setRoutes([
       { title: tCommon('menu.inventory'), href: '/article/article-Lists' },
       { title: tCommon('submenu.articles'), href: '/article/article-Lists' },
-      { title: tCommon('commands.create') },
+      { title: tCommon('create') },
     ]);
   }, [router.locale, tCommon, setRoutes]);
 
@@ -497,7 +497,7 @@ const CreateArticle: React.FC = () => {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirmation(false)}>
-              {tCommon('commands.cancel')}
+              {tCommon('cancel')}
             </Button>
             <Button 
               onClick={handleConfirmCreate}
@@ -506,10 +506,10 @@ const CreateArticle: React.FC = () => {
               {loading ? (
                 <>
                   <Spinner size="small" show={true} className="mr-2" />
-                  {tCommon('commands.creating')}
+                  {tCommon('creating')}
                 </>
               ) : (
-                tCommon('commands.confirm')
+                tCommon('confirm')
               )}
             </Button>
           </DialogFooter>
@@ -519,8 +519,8 @@ const CreateArticle: React.FC = () => {
       <Card>
         <CardHeader className="flex justify-between items-start">
           <div>
-            <CardTitle>{tArticle('article.create_title')}</CardTitle>
-            <CardDescription>{tArticle('article.create_description')}</CardDescription>
+            <CardTitle>{tArticle('Créer un article')}</CardTitle>
+            <CardDescription>{tArticle('')}</CardDescription>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -530,7 +530,7 @@ const CreateArticle: React.FC = () => {
               size="sm"
             >
               {fileLoading === 'image' && <Spinner size="small" show={true} className="mr-2" />}
-              {tArticle('article.upload_image')}
+              {tArticle('télécharger image')}
             </Button>
             <Button 
               onClick={handlePdfUpload}
@@ -539,7 +539,7 @@ const CreateArticle: React.FC = () => {
               size="sm"
             >
               {fileLoading === 'pdf' && <Spinner size="small" show={true} className="mr-2" />}
-              {tArticle('article.upload_pdf')}
+              {tArticle('télécharger pdf')}
             </Button>
           </div>
         </CardHeader>
@@ -548,31 +548,31 @@ const CreateArticle: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title">{tArticle('article.attributes.title')}</Label>
+                  <Label htmlFor="title">{tArticle('Titre')}</Label>
                   <Input
                     id="title"
                     name="title"
                     value={formData.title}
                     onChange={handleChange}
-                    placeholder={tArticle('article.attributes.title_placeholder')}
+                    placeholder={tArticle('Titre de l\'article')}
                     required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="description">{tArticle('article.attributes.description')}</Label>
+                  <Label htmlFor="description">{tArticle('Description')}</Label>
                   <Textarea
                     id="description"
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    placeholder={tArticle('article.attributes.description_placeholder')}
+                    placeholder={tArticle('description de l\'article')}
                     rows={4}
                   />
                 </div>
 
                 <div className="relative">
-                  <Label htmlFor="category">{tArticle('article.attributes.category')}</Label>
+                  <Label htmlFor="category">{tArticle('category')}</Label>
                   <div className="relative">
                     <Input
                       id="category"
@@ -584,7 +584,7 @@ const CreateArticle: React.FC = () => {
                         setShowCategoryDropdown(true);
                         setShowSubCategoryDropdown(false);
                       }}
-                      placeholder={tArticle('article.attributes.category_placeholder')}
+                      placeholder={tArticle('category de l\'article')}
                     />
                     {showCategoryDropdown && (
                       <div className="category-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -609,7 +609,7 @@ const CreateArticle: React.FC = () => {
                 </div>
 
                 <div className="relative">
-                  <Label htmlFor="subCategory">{tArticle('article.attributes.sub_category')}</Label>
+                  <Label htmlFor="subCategory">{tArticle('Sous category')}</Label>
                   <div className="relative">
                     <Input
                       id="subCategory"
@@ -627,8 +627,8 @@ const CreateArticle: React.FC = () => {
                       }}
                       placeholder={
                         formData.category 
-                          ? tArticle('article.attributes.sub_category_placeholder')
-                          : tArticle('article.select_category_first')
+                          ? tArticle('sous category de l\'article')
+                          : tArticle('séléctionner une catégorie')
                       }
                       disabled={!formData.category}
                     />
@@ -657,7 +657,7 @@ const CreateArticle: React.FC = () => {
 
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="purchasePrice">{tArticle('article.attributes.purchase_price')}</Label>
+                  <Label htmlFor="purchasePrice">{tArticle('prix d\'achat')}</Label>
                   <Input
                     id="purchasePrice"
                     name="purchasePrice"
@@ -665,12 +665,12 @@ const CreateArticle: React.FC = () => {
                     min="0"
                     value={formData.purchasePrice}
                     onChange={handleChange}
-                    placeholder={tArticle('article.attributes.purchase_price_placeholder')}
+                    placeholder={tArticle('prix d\'achat')}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="salePrice">{tArticle('article.attributes.sale_price')}</Label>
+                  <Label htmlFor="salePrice">{tArticle('prix de vente')}</Label>
                   <Input
                     id="salePrice"
                     name="salePrice"
@@ -678,12 +678,12 @@ const CreateArticle: React.FC = () => {
                     min="0"
                     value={formData.salePrice}
                     onChange={handleChange}
-                    placeholder={tArticle('article.attributes.sale_price_placeholder')}
+                    placeholder={tArticle('prix de vente')}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="quantityInStock">{tArticle('article.attributes.quantity_in_stock')}</Label>
+                  <Label htmlFor="quantityInStock">{tArticle('quantité en stock')}</Label>
                   <Input
                     id="quantityInStock"
                     name="quantityInStock"
@@ -691,24 +691,24 @@ const CreateArticle: React.FC = () => {
                     min="0"
                     value={formData.quantityInStock}
                     onChange={handleChange}
-                    placeholder={tArticle('article.attributes.quantity_in_stock_placeholder')}
+                    placeholder={tArticle('quantité en stock')}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="status">{tArticle('article.attributes.status')}</Label>
+                  <Label htmlFor="status">{tArticle('status')}</Label>
                   <Select
                     name="status"
                     value={formData.status}
                     onValueChange={(value) => setFormData({ ...formData, status: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={tArticle('article.attributes.status_placeholder')} />
+                      <SelectValue placeholder={tArticle('status_placeholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">{tArticle('article.status.active')}</SelectItem>
-                      <SelectItem value="inactive">{tArticle('article.status.inactive')}</SelectItem>
-                      <SelectItem value="pending">{tArticle('article.status.pending')}</SelectItem>
+                      <SelectItem value="active">{tArticle('active')}</SelectItem>
+                      <SelectItem value="inactive">{tArticle('inactive')}</SelectItem>
+                      <SelectItem value="pending">{tArticle('pending')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -722,10 +722,10 @@ const CreateArticle: React.FC = () => {
                 {loading ? (
                   <>
                     <Spinner size="small" show={true} className="mr-2" />
-                    {tCommon('commands.creating')}
+                    {tCommon('creating')}
                   </>
                 ) : (
-                  tCommon('commands.create')
+                  tCommon('create')
                 )}
               </Button>
               <Button type="button" variant="secondary" onClick={handleReset}>

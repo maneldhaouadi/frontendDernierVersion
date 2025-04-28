@@ -68,61 +68,89 @@ export const ExpensePaymentInvoiceItem: React.FC<ExpensePaymentInvoiceItemProps>
     return total.subtract(amountPaid).subtract(taxWithholdingAmount);
   }, [total, amountPaid, taxWithholdingAmount]);
 
-  const effectiveExchangeRate = Math.max(0.0001, 
-    invoiceEntry.exchangeRate || paymentConvertionRate
-  );
+  // Modifiez les calculs pour une conversion précise
+const effectiveExchangeRate = Math.max(0.0001, 
+  invoiceEntry.exchangeRate || paymentConvertionRate || 1
+);
 
-  // Calcul du montant maximum autorisé
-  const maxAllowedAmount = React.useMemo(() => {
-    if (isSameCurrency) return remainingAmount.toUnit();
-    
-    // Conversion du remaining amount dans la devise de paiement
-    return remainingAmount.toUnit() / effectiveExchangeRate;
-  }, [remainingAmount, isSameCurrency, effectiveExchangeRate]);
+// Nouveau calcul du montant maximum autorisé
+const maxAllowedAmount = React.useMemo(() => {
+  if (isSameCurrency) return remainingAmount.toUnit();
+  
+  // Convert remaining amount in invoice currency to payment currency
+  const remainingInPaymentCurrency = remainingAmount.divide(effectiveExchangeRate);
+  return remainingInPaymentCurrency.toUnit();
+}, [remainingAmount, isSameCurrency, effectiveExchangeRate]);
 
-  // Calcul du montant restant actuel après paiement
-  const currentRemainingAmount = React.useMemo(() => {
-    if (!invoiceEntry.amount) return remainingAmount;
-    
-    // Conversion du montant payé dans la devise de la facture
-    const amountInInvoiceCurrency = isSameCurrency
-      ? invoiceEntry.amount
-      : invoiceEntry.amount * effectiveExchangeRate;
+// Nouveau calcul du montant restant
+const currentRemainingAmount = React.useMemo(() => {
+  if (!invoiceEntry.amount) return remainingAmount;
+  
+  const amountInInvoiceCurrency = isSameCurrency
+    ? createDinero(invoiceEntry.amount)
+    : createDinero(invoiceEntry.amount).multiply(effectiveExchangeRate);
 
-    const amount = createDinero(amountInInvoiceCurrency, invoiceCurrency?.code || 'USD');
-    let newRemaining = remainingAmount.subtract(amount);
-    
-    // Tolérance de 0.01 comme dans le backend
-    if (newRemaining.lessThanOrEqual(createDinero(0.01))) {
-      newRemaining = createDinero(0, invoiceCurrency?.code || 'USD');
-    }
-    
-    return newRemaining;
-  }, [remainingAmount, invoiceEntry, isSameCurrency, effectiveExchangeRate]);
+  const newRemaining = remainingAmount.subtract(amountInInvoiceCurrency);
+  
+  // Ajoutez une tolérance dynamique basée sur la précision de la devise
+  const toleranceAmount = Math.pow(10, -digitAfterComma);
+  const tolerance = createDinero(toleranceAmount);
+  
+  if (newRemaining.lessThanOrEqual(tolerance)) {
+    return createDinero(0);
+  }
+  
+  return newRemaining;
+}, [remainingAmount, invoiceEntry, isSameCurrency, effectiveExchangeRate, digitAfterComma]);
+// Nouvelle gestion de la saisie
+// Replace the amount calculation logic with:
+const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const rawValue = e.target.value;
+  
+  if (rawValue === '') {
+    onChange({ ...invoiceEntry, amount: undefined, originalAmount: undefined });
+    return;
+  }
+  
+  const numberValue = parseFloat(rawValue);
+  if (isNaN(numberValue)) return;
 
-  // Gestion de la saisie du montant payé
-  const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    
-    if (rawValue === '') {
-      onChange({ ...invoiceEntry, amount: undefined });
-      return;
-    }
-    
-    const numberValue = parseFloat(parseFloat(rawValue).toFixed(currency?.digitAfterComma || 2));
-    if (isNaN(numberValue)) return;
-    
-    if (numberValue < 0) return;
-    
-    // Comparaison avec le maximum autorisé
-    const roundedMax = parseFloat(maxAllowedAmount.toFixed(currency?.digitAfterComma || 2));
-    if (numberValue > roundedMax) {
-      onChange({ ...invoiceEntry, amount: roundedMax });
-      return;
-    }
-    
-    onChange({ ...invoiceEntry, amount: numberValue });
-  };
+  // Calcul avec arrondi précis
+  const roundedValue = parseFloat(numberValue.toFixed(digitAfterComma));
+  
+  // Calcul du montant maximum autorisé avec la même précision
+  const preciseMaxAllowed = parseFloat(maxAllowedAmount.toFixed(digitAfterComma));
+  
+  // Si le montant est égal au maximum autorisé (à la précision près)
+  if (Math.abs(roundedValue - preciseMaxAllowed) < Math.pow(10, -digitAfterComma)) {
+    // Forcer le paiement complet
+    onChange({
+      ...invoiceEntry,
+      amount: preciseMaxAllowed,
+      originalAmount: isSameCurrency 
+        ? preciseMaxAllowed 
+        : parseFloat((preciseMaxAllowed / effectiveExchangeRate).toFixed(digitAfterComma)),
+      exchangeRate: isSameCurrency ? 1 : effectiveExchangeRate
+    });
+    return;
+  }
+
+  // Logique normale
+  const amountInInvoiceCurrency = isSameCurrency
+    ? createDinero(roundedValue)
+    : createDinero(roundedValue).multiply(effectiveExchangeRate);
+
+  const originalAmount = isSameCurrency
+    ? roundedValue
+    : parseFloat((roundedValue / effectiveExchangeRate).toFixed(digitAfterComma));
+
+  onChange({
+    ...invoiceEntry,
+    amount: roundedValue,
+    originalAmount,
+    exchangeRate: isSameCurrency ? 1 : effectiveExchangeRate
+  });
+};
 
   const handleExchangeRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;

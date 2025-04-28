@@ -10,6 +10,7 @@ interface ExpensePaymentControlSectionProps {
   handleSubmit?: () => void;
   reset: () => void;
   loading?: boolean;
+  isCreateMode?: boolean; // <-- Ajoutez cette prop
 }
 
 export const ExpensePaymentControlSection = ({
@@ -17,7 +18,8 @@ export const ExpensePaymentControlSection = ({
   isDataAltered,
   handleSubmit,
   reset,
-  loading
+  loading,
+  isCreateMode = false // <-- Valeur par défaut
 }: ExpensePaymentControlSectionProps) => {
   const router = useRouter();
   const { t: tCommon } = useTranslation('common');
@@ -90,7 +92,12 @@ export const ExpensePaymentControlSection = ({
           <Save className="h-5 w-5" />
           <span className="mx-1">{tCommon('commands.save')}</span>
         </Button>
-        <Button className="flex items-center" variant={'outline'} onClick={reset}>
+        <Button 
+          className="flex items-center" 
+          variant={'outline'} 
+          onClick={reset}
+          disabled={isCreateMode} // <-- Désactivation conditionnelle
+        >
           <Save className="h-5 w-5" />
           <span className="mx-1">{tCommon('commands.initialize')}</span>
         </Button>

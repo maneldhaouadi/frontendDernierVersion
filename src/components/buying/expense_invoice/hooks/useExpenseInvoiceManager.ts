@@ -1,7 +1,8 @@
-import { api } from '@/api';
+import { api, quotation } from '@/api';
 import {
   BankAccount,
   Currency,
+  ExpenseQuotation,
   Firm,
   Interlocutor,
   PaymentCondition,
@@ -41,8 +42,8 @@ type ExpenseInvoiceManager = {
   pdfFile?: File; // Fichier PDF unique
   pdfFileId?: number; // ID du fichier PDF
   uploadPdfField?: Upload; // Champ d'upload du PDF
-  quotationId?: number;
-  taxStampId?: number;
+  quotation?: ExpenseQuotation; // Modification du type
+  quotationId?: number; taxStampId?: number;
   taxWithholdingId?: number;
   // utility data
   isInterlocutorInFirm: boolean;
@@ -104,8 +105,9 @@ const initialState: Omit<ExpenseInvoiceManager, 'set' | 'reset' | 'setFirm' | 's
   pdfFile: undefined, // Fichier PDF
   pdfFileId: undefined, // ID du fichier PDF
   uploadPdfField: undefined, // Champ d'upload du PDF
+  quotation: undefined, // Initialisation corrigée
   quotationId: undefined,
-  taxStampId: undefined,
+   taxStampId: undefined,
   taxWithholdingId: undefined,
 };
 
@@ -222,7 +224,8 @@ export const useExpenseInvoiceManager = create<ExpenseInvoiceManager>((set, get)
         notes: invoice?.notes,
         generalConditions: invoice?.generalConditions,
         status: invoice?.status,
-        quotationId: invoice?.quotationId,
+        quotation: invoice.quotation, // Conservez l'objet quotation complet
+        quotationId: invoice.quotationId,
         taxStampId: invoice?.taxStampId,
         amountPaid: invoice?.amountPaid,
         taxWithholdingId: invoice?.taxWithholdingId,

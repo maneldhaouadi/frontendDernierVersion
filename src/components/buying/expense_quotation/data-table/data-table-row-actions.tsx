@@ -63,20 +63,9 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           }}>
           <Copy className="h-5 w-5 mr-2" /> {tCommon('commands.duplicate')}
         </DropdownMenuItem>
-        {(quotation.status == EXPENSQUOTATION_STATUS.Draft ||
-          quotation.status == EXPENSQUOTATION_STATUS.Validated) && (
+        {(quotation.status == EXPENSQUOTATION_STATUS.Draft) && (
           <DropdownMenuItem onClick={() => router.push('/buying/expense_quotation/' + quotation.id)}>
             <Settings2 className="h-5 w-5 mr-2" /> {tCommon('commands.modify')}
-          </DropdownMenuItem>
-        )}
-        {(
-          quotation.status == EXPENSQUOTATION_STATUS.Invoiced) && (
-          <DropdownMenuItem
-            onClick={() => {
-              targetQuotation();
-              openInvoiceDialog?.();
-            }}>
-            <FileCheck className="h-5 w-5 mr-2" /> {tCommon('commands.to_invoice')}
           </DropdownMenuItem>
         )}
         { (

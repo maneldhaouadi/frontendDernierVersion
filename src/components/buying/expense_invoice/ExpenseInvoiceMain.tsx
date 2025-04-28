@@ -51,8 +51,11 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const { value: debouncedSearchTerm, loading: searching } = useDebounce<string>(searchTerm, 500);
-
-  const [deleteDialog, setDeleteDialog] = React.useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = React.useState<{
+    id: number, 
+    sequential: string,
+    hasQuotation: boolean // Ajoutez cette information
+  } | null>(null);  const [deleteDialog, setDeleteDialog] = React.useState(false);
   const [duplicateDialog, setDuplicateDialog] = React.useState(false);
   const [downloadDialog, setDownloadDialog] = React.useState(false);
   const [isDuplicatedWithFiles, setIsDuplicatedWithFiles] = React.useState(true);
@@ -81,6 +84,7 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
         ['firm', 'interlocutor', 'currency', 'payments']
       )
   });
+  
 
   // Mutation pour mettre à jour le statut des factures expirées
   const { mutate: updateInvoiceStatus } = useMutation({
@@ -134,16 +138,36 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
   //Remove Invoice
   const { mutate: removeInvoice, isPending: isDeletePending } = useMutation({
     mutationFn: (id: number) => api.expense_invoice.remove(id),
-    onSuccess: () => {
+    onSuccess: (data) => {
       if (invoices?.length == 1 && page > 1) setPage(page - 1);
-      toast.success(tInvoicing('expense_invoice.action_remove_success'));
+      
+      if (data?.quotationDeleted) {
+        toast.success(
+          `La facture ${data.invoice.sequential} et le devis ${data.quotationSequential} ont été supprimés avec succès`
+        );
+      } else {
+        toast.success(tInvoicing('La facture a été supprimée avec succès'));
+      }
+      
       refetchInvoices();
       setDeleteDialog(false);
+      setInvoiceToDelete(null); // Reset l'élément à supprimer
     },
     onError: (error) => {
       toast.error(getErrorMessage('invoicing', error, tInvoicing('expense_invoice.action_remove_failure')));
+      setDeleteDialog(false); // Ferme le dialogue même en cas d'erreur
     }
   });
+  
+  // Fonction pour ouvrir le dialogue
+  const handleOpenDeleteDialog = (invoice: {id: number, sequential: string, quotation?: any}) => {
+    setInvoiceToDelete({
+      id: invoice.id,
+      sequential: invoice.sequential,
+      hasQuotation: !!invoice.quotation
+    });
+    setDeleteDialog(true);
+  };
 
   //Duplicate Invoice
   const { mutate: duplicateInvoice, isPending: isDuplicationPending } = useMutation({

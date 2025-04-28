@@ -179,12 +179,6 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
                   <ExpensePaymentInvoiceManagement className="pb-5 border-b" loading={loading} />
                 )}
                 {/* Extra Options (files) */}
-                <div>
-                  <ExpensePaymentExtraOptions
-                    onUploadAdditionalFiles={(files) => paymentManager.set('uploadedFiles', files)}
-                    onUploadPdfFile={(file) => paymentManager.set('pdfFile', file)}
-                  />
-                </div>
                 <div className="flex gap-10 mt-5">
                   <Textarea
                     placeholder={tInvoicing('payment.attributes.notes')}
@@ -205,11 +199,12 @@ export const ExpensePaymentCreateForm = ({ className, firmId }: ExpensePaymentFo
           <ScrollArea className=" h-fit border rounded-lg">
             <Card className="border-0">
               <CardContent className="p-5 ">
-                <ExpensePaymentControlSection
-                  handleSubmit={onSubmit}
-                  reset={globalReset}
-                  loading={false}
-                />
+              <ExpensePaymentControlSection
+  handleSubmit={onSubmit}
+  reset={globalReset}
+  loading={isCreatePending}
+  isCreateMode={true} // <-- Active le mode création
+/>
               </CardContent>
             </Card>
           </ScrollArea>

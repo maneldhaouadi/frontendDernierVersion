@@ -31,7 +31,8 @@
       "notes": "Remarques",
       "files": "Pièces jointes",
       "no_date": "Date manquante",
-      "no_due_date": "Date d'échéance manquante"
+      "no_due_date": "Date d'échéance manquante",
+      "additional_files":"additional_files"
     },
     "card_description": "Cette section fournit une vue claire et organisée de tous vos devis.",
     "errors": {
@@ -90,7 +91,9 @@
       "payment": "Paiement",
       "withholding": "Retenus à la source",
       "no_date": "Date manquante",
-      "no_due_date": "Date d'échéance manquante"
+      "no_due_date": "Date d'échéance manquante",
+      "additional_files":"additional_files"
+
     },
     "invoice_list": "Liste des factures",
     "new": "Nouvelle facture",
@@ -144,7 +147,9 @@
       "convertion_rate": "Taux de change",
       "created_at": "Date de création",
       "notes": "Remarques",
-      "files": "Pièces jointes"
+      "files": "Pièces jointes",
+      "no_paid_invoices_for_this_payment": "Aucune facture payée pour ce paiement",
+      "no_unpaid_invoices": "Aucune facture impayée disponible"
     },
     "empty_cells": {
       "currency": "Aucun devise"

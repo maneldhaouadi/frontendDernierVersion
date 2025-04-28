@@ -101,16 +101,29 @@ const findPaginated = async (
   return response.data;
 };
 
-const findChoices = async (): Promise<ExpenseQuotation[]> => {
+const findChoices = async (
+  firmId?: number, 
+  interlocutorId?: number,
+  relations?: string[] // Nouveau paramètre pour les relations
+): Promise<ExpenseQuotation[]> => {
   try {
-    // Ne pas ajouter de paramètre `status` pour récupérer toutes les quotations
-    const url = `public/expensquotation/all`;
+    let url = `public/expensquotation/all`;
+    const params = new URLSearchParams();
+    
+    if (firmId !== undefined) params.append('firmId', firmId.toString());
+    if (interlocutorId !== undefined) params.append('interlocutorId', interlocutorId.toString());
+    
+    // Ajouter les relations si spécifiées
+    if (relations && relations.length > 0) {
+      params.append('relations', relations.join(','));
+    }
+    
+    if (params.toString()) url += `?${params.toString()}`;
 
     const response = await axios.get<ExpenseQuotation[]>(url);
-
     return response.data;
   } catch (error) {
-    return []; // Retourne un tableau vide en cas d'erreur
+    return [];
   }
 };
 
@@ -139,7 +152,7 @@ const findOne = async (
     'uploads.upload',
     'expensearticleQuotationEntries',
     'firm.interlocutorsToFirm',
-    'expensearticleQuotationEntries.article',
+    'expensearticleQuotationEntries.article', 
     'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes',
     'expensearticleQuotationEntries.articleExpensQuotationEntryTaxes.tax',
     'uploadPdfField'

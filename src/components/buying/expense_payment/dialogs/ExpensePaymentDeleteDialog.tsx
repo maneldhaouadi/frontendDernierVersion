@@ -25,10 +25,12 @@ import { Label } from '@/components/ui/label';
 interface ExpensePaymentDeleteDialogProps {
   className?: string;
   id?: number;
+  sequential?: string; // Ajoutez cette prop
   open: boolean;
   deletePayment: () => void;
   isDeletionPending?: boolean;
   onClose: () => void;
+  hasInvoices?: boolean; // Nouvelle prop
 }
 
 export const ExpensePaymentDeleteDialog: React.FC<ExpensePaymentDeleteDialogProps> = ({
@@ -37,13 +39,24 @@ export const ExpensePaymentDeleteDialog: React.FC<ExpensePaymentDeleteDialogProp
   open,
   deletePayment,
   isDeletionPending,
+  hasInvoices = false,
+  sequential,
   onClose
 }) => {
   const { t: tCommon } = useTranslation('common');
+  const { t: tInvoicing } = useTranslation('invoicing');
   const isDesktop = useMediaQuery('(min-width: 1500px)');
-
   const header = (
-    <Label className="leading-5">Voulez-vous vraiment supprimer le paiement N° PAY{id}</Label>
+    <div className="space-y-2">
+      <Label className="leading-5">
+        {tInvoicing('payment.delete_confirmation', { sequential: sequential ? `PAY${sequential}` : '' })}
+      </Label>
+      {hasInvoices && (
+        <p className="text-sm text-yellow-600 dark:text-yellow-400">
+          {tInvoicing('payment.delete_invoices_warning')}
+        </p>
+      )}
+    </div>
   );
 
   const footer = (

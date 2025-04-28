@@ -48,6 +48,7 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
   const [loading, setLoading] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [useExistingArticle, setUseExistingArticle] = useState<boolean>(false); // Contrôle l'affichage de la liste déroulante
+  const [searchQuery, setSearchQuery] = useState(''); // Ajout pour la recherche
 
   const digitAfterComma = currency?.digitAfterComma || 3;
   const currencySymbol = currency?.symbol || '$';
@@ -58,9 +59,9 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
       setLoading(true);
       setFormError(null);
       try {
-        // Mettez à jour l'état des articles
-        const response = await api.article.findPaginated(1, 5, 'ASC', 'title');
-        setArticles(response.data); // Mettez à jour l'état des articles
+        // Augmentez la limite à 100 ou utilisez un endpoint de recherche
+        const response = await api.article.findPaginated(1, 100, 'ASC', 'title');
+        setArticles(response.data);
       } catch (error) {
         setFormError('Impossible de récupérer les articles. Veuillez réessayer plus tard.');
         toast.error('Erreur lors de la récupération des articles');
@@ -68,12 +69,11 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
         setLoading(false);
       }
     };
-
-    // Ne récupérez les articles que si la liste est vide (évitez les appels inutiles)
-    if (articles.length === 0) {
+  
+    if (useExistingArticle && articles.length === 0) {
       fetchArticles();
     }
-  }, [articles]);
+  }, [useExistingArticle]); // Déclencher quand useExistingArticle change
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentArticle = article?.article || {
@@ -101,32 +101,20 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
   const handleSelectArticle = (value: string) => {
     const selectedArticle = articles.find((art) => art.id === parseInt(value));
     if (selectedArticle) {
-      const currentArticle = article?.article || {
-        id: 0,
-        title: '',
-        description: '',
-        category: '',
-        subCategory: '',
-        purchasePrice: 0,
-        salePrice: 0,
-        quantityInStock: 0
-      };
-  
       onChange({
         ...article,
         article: {
-          ...currentArticle,
-          ...selectedArticle, // On écrase avec toutes les propriétés de l'article sélectionné
-          id: selectedArticle.id, // On utilise l'ID de l'article sélectionné
-          // On s'assure que les propriétés obligatoires sont toutes présentes
+          id: selectedArticle.id,
           title: selectedArticle.title,
-          description: selectedArticle.description,
-          category: selectedArticle.category,
-          subCategory: selectedArticle.subCategory,
-          purchasePrice: selectedArticle.purchasePrice,
-          salePrice: selectedArticle.salePrice,
-          quantityInStock: selectedArticle.quantityInStock
-        }
+          description: selectedArticle.description || '',
+          category: selectedArticle.category || '',
+          subCategory: selectedArticle.subCategory || '',
+          purchasePrice: selectedArticle.purchasePrice || 0,
+          salePrice: selectedArticle.salePrice || 0,
+          quantityInStock: selectedArticle.quantityInStock || 0
+        },
+        unit_price: selectedArticle.purchasePrice || 0,
+        quantity: 1 // Valeur par défaut
       });
     }
   };
@@ -261,32 +249,49 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
                   </Label>
                 </div>
                 {useExistingArticle ? (
-                  <Select onValueChange={handleSelectArticle}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez un article" />
-                    </SelectTrigger>
-                    <SelectContent>
-                    {articles.map((art) => (
-  art.id !== undefined && (
-    <SelectItem key={art.id} value={art.id.toString()}>
-      {art.title}
-    </SelectItem>
-  )
-))}
-                      {articles.map((art) => (
-                        <SelectItem key={art.id} value={art.id.toString()}>
-                          {art.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    placeholder="Saisissez un titre"
-                    value={article.article?.title}
-                    onChange={handleTitleChange}
-                  />
-                )}
+  <Select onValueChange={handleSelectArticle}>
+    <SelectTrigger>
+      <SelectValue placeholder="Sélectionnez un article" />
+    </SelectTrigger>
+    <SelectContent>
+      {/* Ajoutez un champ de recherche */}
+      <div className="p-2">
+        <Input
+          placeholder="Rechercher un article..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+      
+      {loading ? (
+        <SelectItem value="loading" disabled>
+          Chargement...
+        </SelectItem>
+      ) : articles.length > 0 ? (
+        articles
+          .filter(article => 
+            article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (article.reference && article.reference.toLowerCase().includes(searchQuery.toLowerCase()))
+          )
+          .map((art) => (
+            <SelectItem key={art.id} value={art.id.toString()}>
+              {art.title} {art.reference ? `(${art.reference})` : ''}
+            </SelectItem>
+          ))
+      ) : (
+        <SelectItem value="no-articles" disabled>
+          Aucun article disponible
+        </SelectItem>
+      )}
+    </SelectContent>
+  </Select>
+) : (
+  <Input
+    placeholder="Saisissez un titre"
+    value={article.article?.title}
+    onChange={handleTitleChange}
+  />
+)}
               </div>
             ) : (
               <UneditableInput value={article.article?.title} />

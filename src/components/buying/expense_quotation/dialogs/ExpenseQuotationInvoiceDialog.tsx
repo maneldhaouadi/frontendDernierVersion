@@ -69,15 +69,6 @@ export const ExpenseQuotationInvoiceDialog: React.FC<ExpenseQuotationInvoiceDial
     <div className="flex gap-2 mt-2 items-center justify-center">
       <Button
         className="w-1/2 flex gap-2"
-        onClick={() => {
-          if (id) invoice(id, status != EXPENSQUOTATION_STATUS.Invoiced ? !invoiceMark : true);
-          onClose();
-        }}>
-        <Check /> Facturer
-        <Spinner className="ml-2" size={'small'} show={isInvoicePending} />
-      </Button>
-      <Button
-        className="w-1/2 flex gap-2"
         variant={'secondary'}
         onClick={() => {
           onClose();
@@ -92,14 +83,6 @@ export const ExpenseQuotationInvoiceDialog: React.FC<ExpenseQuotationInvoiceDial
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className={cn('max-w-[25vw] p-8', className)}>
-          <DialogHeader>
-            <DialogTitle>{header}</DialogTitle>
-            {status != EXPENSQUOTATION_STATUS.Invoiced && (
-              <DialogDescription className="flex gap-2 pt-4 items-center px-2">
-                {content}
-              </DialogDescription>
-            )}
-          </DialogHeader>
           {footer}
         </DialogContent>
       </Dialog>
@@ -109,9 +92,6 @@ export const ExpenseQuotationInvoiceDialog: React.FC<ExpenseQuotationInvoiceDial
       <DrawerContent>
         <DrawerHeader className="text-left">
           <DrawerTitle>{header}</DrawerTitle>
-          {status !=EXPENSQUOTATION_STATUS.Invoiced && (
-            <DrawerDescription className="flex gap-2 items-center p-4">{content}</DrawerDescription>
-          )}
         </DrawerHeader>
         <DrawerFooter className="border-t pt-2">{footer}</DrawerFooter>
       </DrawerContent>

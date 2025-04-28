@@ -21,6 +21,7 @@ import { useRouter } from 'next/router';
 import {
   BankAccount,
   Currency,
+  ExpenseArticleQuotationEntry,
   ExpenseQuotation,
   PaymentInvoiceEntry,
   TaxWithholding
@@ -210,16 +211,27 @@ export const ExpenseInvoiceControlSection = ({
     {edit ? (
       <SelectShimmer isPending={loading}>
         <Select
-          key={invoiceManager?.quotationId || 'quotationId'}
-          onValueChange={(e) => {
-            const selectedQuotation = quotations?.find((q) => q.id === parseInt(e));
-            console.log("Selected Quotation:", selectedQuotation);
-            if (selectedQuotation) {
-              invoiceManager.set('quotationId', selectedQuotation.id);
-            }
-          }}
-          value={invoiceManager?.quotationId?.toString() || ''}>
-          
+  key={invoiceManager?.quotationId || 'quotationId'}
+  onValueChange={async (e) => {
+    const quotationId = parseInt(e);
+    const selectedQuotation = quotations?.find((q) => q.id === quotationId);
+    
+    if (selectedQuotation) {
+      // Chargez les détails complets du devis
+      const fullQuotation = await api.expense_quotation.findOne(quotationId, [
+        'expensearticleQuotationEntries',
+        'expensearticleQuotationEntries.article'
+      ]);
+      
+      // Mettez à jour le manager avec toutes les données
+      invoiceManager.set('quotationId', quotationId);
+      invoiceManager.set('quotation', fullQuotation);
+      
+      console.log('Quotation mise à jour:', fullQuotation); // Pour le débogage
+    }
+  }}
+  value={invoiceManager?.quotationId?.toString() || ''}
+>
           <SelectTrigger className="my-1 w-full">
             <SelectValue placeholder={tInvoicing('controls.quotation_select_placeholder')} />
           </SelectTrigger>
@@ -245,7 +257,7 @@ export const ExpenseInvoiceControlSection = ({
     ) : invoiceManager.quotationId ? (
       <UneditableInput
         className="font-bold my-4"
-        value={quotations.find((q) => q.id === invoiceManager.quotationId)?.sequential || ''}
+        value={quotations.find((q) => q.id === invoiceManager.quotationId)?.sequentialNumbr || ''}
       />
     ) : (
       <Label className="flex p-2 items-center justify-center gap-2 underline ">
@@ -257,20 +269,58 @@ export const ExpenseInvoiceControlSection = ({
 
   {/* Afficher la liste des éléments associés à la quotation */}
   {invoiceManager.quotationId && (
-    <div className="my-4">
-      <h2 className="font-semibold">{tInvoicing('controls.associated_expenses')}</h2>
-      <ul>
-        {quotations
-          .find((q) => q.id === invoiceManager?.quotationId)?.expensearticleQuotationEntries?.map((expense, index) => (
-            <li key={index} className="my-2">
-              <span>{expense.article?.id}</span> - <span>{expense.discount}</span>
-            </li>
-          )) || (
-          <li>{tInvoicing('controls.no_expenses_associated')}</li>
-        )}
-      </ul>
-    </div>
-  )}
+  <div className="my-4">
+    <h2 className="font-semibold mb-2">Articles du devis</h2>
+    {(() => {
+      // Utilisez directement la quotation du manager
+      const selectedQuotation = invoiceManager.quotation;
+      
+      console.log('Selected Quotation Data:', selectedQuotation);
+
+      if (!selectedQuotation) {
+        return <div className="text-red-500 text-sm">Devis non trouvé</div>;
+      }
+
+      const items = selectedQuotation.expensearticleQuotationEntries || [];
+
+      if (items.length === 0) {
+        return (
+          <div className="text-orange-500 text-sm">
+            Aucun article trouvé dans le devis
+            <pre className="hidden">{JSON.stringify(selectedQuotation, null, 2)}</pre>
+          </div>
+        );
+      }
+
+      return (
+        <div className="border rounded-lg p-3 bg-gray-50">
+          {items.map((item: ExpenseArticleQuotationEntry, index: number) => (
+            <div key={`${item.id || index}`} className="py-2 border-b last:border-b-0">
+              <div className="flex justify-between">
+                <span className="font-medium">
+                  {item.article?.title || `Article ${index + 1}`}
+                </span>
+                <span className="font-semibold">
+                  {item.quantity || 1} × {item.unit_price || 0} {invoiceManager.currency?.symbol || '€'}
+                </span>
+              </div>
+              {item.article?.description && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {item.article.description}
+                </p>
+              )}
+              {(item.discount_type && item.discount_type) && (
+                <p className="text-sm text-muted-foreground">
+                  discount_type: {item.discount_type}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    })()}
+  </div>
+)}
 </div>
 
         {/* Payment list */}

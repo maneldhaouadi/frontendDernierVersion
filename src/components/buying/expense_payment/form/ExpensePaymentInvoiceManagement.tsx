@@ -31,15 +31,19 @@ import { PackageOpen } from 'lucide-react';
 import { useExpensePaymentManager } from '../hooks/useExpensePaymentManager';
 import { useExpensePaymentInvoiceManager } from '../hooks/useExpensePaymentInvoiceManager';
 import { ExpensePaymentInvoiceItem } from './ExpensePaymentInvoiceItem';
+import { ExpensePaymentInvoiceEntry } from '@/types/expense-payment';
 
 interface ExpensePaymentInvoiceManagementProps {
   className?: string;
   loading?: boolean;
+  mode?: 'CREATE' | 'EDIT'; // Nouveau prop
 }
+
 
 export const ExpensePaymentInvoiceManagement: React.FC<ExpensePaymentInvoiceManagementProps> = ({
   className,
-  loading
+  loading,
+  mode = 'CREATE', // Valeur par défaut
 }) => {
   const { t: tInvoicing } = useTranslation('invoicing');
   const paymentManager = useExpensePaymentManager();

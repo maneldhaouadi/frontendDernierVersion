@@ -2,7 +2,7 @@ import { api } from '@/api';
 import { useBreadcrumb } from '@/components/layout/BreadcrumbContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDebounce } from '@/hooks/other/useDebounce';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,32 +104,51 @@ export const ExpensePaymentMain: React.FC<ExpensePaymentMainProps> = ({ classNam
   };
 
   //Remove Invoice
+  const queryClient = useQueryClient();
   const { mutate: removePayment, isPending: isDeletePending } = useMutation({
     mutationFn: (id: number) => api.expensepayment.remove(id),
-    onSuccess: () => {
-      if (payments?.length == 1 && page > 1) setPage(page - 1);
-      toast.success(tInvoicing('payment.action_remove_success'));
+    onSuccess: (data) => {
+      if (payments?.length === 1 && page > 1) setPage(page - 1);
+      
+      const invoiceCount = data.deletedInvoices?.length || 0;
+      let successMessage;
+      
+      if (invoiceCount > 0) {
+        successMessage = tInvoicing('payment.delete_with_invoices_success', { count: invoiceCount });
+      } else {
+        successMessage = tInvoicing('payment.action_remove_success');
+      }
+      
+      toast.success(successMessage);
       refetchPayments();
       setDeleteDialog(false);
+      
+      // Si des factures ont été supprimées, rafraîchir aussi la liste des factures
+      if (invoiceCount > 0) {
+        queryClient.invalidateQueries({ queryKey: ['expense-invoices'] });
+      }
     },
     onError: (error) => {
       toast.error(getErrorMessage('invoicing', error, tInvoicing('payment.action_remove_failure')));
     }
   });
+  
 
   const isPending = isFetchPending || paging || resizing || searching || sorting;
 
   return (
     <>
       <ExpensePaymentDeleteDialog
-        id={paymentManager?.id}
-        open={deleteDialog}
-        deletePayment={() => {
-          paymentManager?.id && removePayment(paymentManager?.id);
-        }}
-        isDeletionPending={isDeletePending}
-        onClose={() => setDeleteDialog(false)}
-      />
+  id={paymentManager?.id}
+  sequential={paymentManager?.sequentialNumbr}
+  open={deleteDialog}
+  deletePayment={() => {
+    paymentManager?.id && removePayment(paymentManager.id);
+  }}
+  isDeletionPending={isDeletePending}
+  onClose={() => setDeleteDialog(false)}
+  hasInvoices={(paymentManager as any)?.hasInvoices} // Solution temporaire
+/>
       <ExpensePaymentActionsContext.Provider value={context}>
         <Card className={className}>
           <CardHeader>

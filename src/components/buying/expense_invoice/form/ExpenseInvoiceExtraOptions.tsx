@@ -12,8 +12,7 @@ import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import React from 'react';
 import { useExpenseInvoiceManager } from '../hooks/useExpenseInvoiceManager';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+
 
 interface ExpenseInvoiceExtraOptionsProps {
   className?: string;
@@ -65,7 +64,7 @@ export const ExpenseInvoiceExtraOptions = ({
         <AccordionTrigger>
           <div className="flex gap-2 justify-center items-center">
             <Files />
-            <Label>{tInvoicing('invoice.attributes.additional_files')}</Label>
+            <Label>additional_files</Label>
           </div>
         </AccordionTrigger>
         <AccordionContent className="m-5">

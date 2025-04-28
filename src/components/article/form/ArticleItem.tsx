@@ -107,7 +107,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
         <div className="flex flex-row gap-2 my-1">
           {/* Title */}
           <div className="w-3/5">
-            <Label className="mx-1">{tArticle('article.attributes.title')}</Label>
+            <Label className="mx-1">{tArticle('title')}</Label>
             {edit ? (
               <Input
                 placeholder="Title"
@@ -120,7 +120,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
           </div>
           {/* Quantity in Stock */}
           <div className="w-1/5">
-            <Label className="mx-1">{tArticle('article.attributes.quantityInStock')}</Label>
+            <Label className="mx-1">{tArticle('quantityInStock')}</Label>
             {edit ? (
               <Input
                 type="number"
@@ -134,7 +134,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
           </div>
           {/* Sale Price */}
           <div className="w-1/5">
-            <Label className="mx-1">{tArticle('article.attributes.salePrice')}</Label>
+            <Label className="mx-1">{tArticle('salePrice')}</Label>
             <div className="flex items-center gap-2">
               {edit ? (
                 <Input
@@ -155,7 +155,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
             <div>
               {edit ? (
                 <>
-                  <Label className="mx-1">{tArticle('article.attributes.description')}</Label>
+                  <Label className="mx-1">{tArticle('description')}</Label>
                   <Textarea
                     placeholder="Description"
                     className="resize-none"
@@ -167,7 +167,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
               ) : (
                 article.description && (
                   <>
-                    <Label className="mx-1">{tArticle('article.attributes.description')}</Label>
+                    <Label className="mx-1">{tArticle('description')}</Label>
                     <Textarea
                       disabled
                       value={article.description}
@@ -187,7 +187,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
 
         {/* Status */}
         <div className="my-auto">
-          <Label className="mx-1">{tArticle('article.attributes.status')}</Label>
+          <Label className="mx-1">{tArticle('status')}</Label>
           {edit ? (
             <Select
               onValueChange={handleStatusChange}
@@ -208,7 +208,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
       <div className="w-2/12 text-center flex flex-col justify-between h-full gap-12 mx-4">
         {/* Category */}
         <div className="flex flex-col gap-2 my-auto">
-          <Label className="font-bold mx-1">{tArticle('article.attributes.category')}</Label>
+          <Label className="font-bold mx-1">{tArticle('category')}</Label>
           {edit ? (
             <Input
               placeholder="Category"
@@ -221,7 +221,7 @@ export const ArticleItem: React.FC<ArticleItemProps> = ({
         </div>
         {/* Sub Category */}
         <div className="flex flex-col gap-2 my-auto">
-          <Label className="font-bold mx-1">{tArticle('article.attributes.subCategory')}</Label>
+          <Label className="font-bold mx-1">{tArticle('subCategory')}</Label>
           {edit ? (
             <Input
               placeholder="Sub Category"

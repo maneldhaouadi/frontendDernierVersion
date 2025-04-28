@@ -45,12 +45,10 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <Eye className="h-4 w-4 mr-2" /> {tCommon('commands.inspect')}
         </DropdownMenuItem>
         {/* Modifier l'article */}
-        <DropdownMenuItem onClick={() => router.push(`/inventory/article/${article.id}/edit`)}>
-          <Settings2 className="h-4 w-4 mr-2" /> {tCommon('commands.modify')}
-        </DropdownMenuItem>
+       
         {/* Historique de l'article */}
         <DropdownMenuItem onClick={() => router.push(`/article/article-history/${article.id}`)}>
-          <History className="h-4 w-4 mr-2" /> {tCommon('commands.history')}
+          <History className="h-4 w-4 mr-2" /> {tCommon('history')}
         </DropdownMenuItem>
         {/* Supprimer l'article */}
         <DropdownMenuItem

@@ -7,22 +7,20 @@ import { api } from '.';
 import { EXPENSE_PAYMENT_FILTER_ATTRIBUTES } from '@/constants/expense-payment-filter-attributes';
 import { ExpenseCreatePaymentDto, ExpensePagedPayment, ExpensePayment, ExpensePaymentUploadedFile, ExpenseUpdatePaymentDto } from '@/types/expense-payment';
 
-const findOne = async (
-  id: number,
-  relations: string[] = [
-    'currency',
+const findOne = async (id: number) => {
+  const relations = [
     'invoices',
-    'invoices.expenseInvoice',
+    'invoices.expenseInvoice', 
     'invoices.expenseInvoice.currency',
-    'uploads',
-    'uploads.upload',
-    'uploadPdfField'
-  ]
-): Promise<ExpensePayment & { files: ExpensePaymentUploadedFile[] }> => {
-  const response = await axios.get<ExpensePayment>(`public/expense-payment/${id}?join=${relations.join(',')}`);
-  return { ...response.data, files: await getPaymentUploads(response.data) };
+    'invoices.expenseInvoice.firm'
+  ].join(',');
+  
+  const response = await axios.get<ExpensePayment>(
+    `public/expense-payment/${id}?join=${relations}`
+  );
+  
+  return response.data;
 };
-
 const findPaginated = async (
   page: number = 1,
   size: number = 5,
@@ -131,8 +129,11 @@ const update = async (payment: ExpenseUpdatePaymentDto, files: File[] = []): Pro
   return response.data;
 };
 
-const remove = async (id: number): Promise<ExpensePayment> => {
-  const response = await axios.delete<ExpensePayment>(`public/expense-payment/${id}`);
+const remove = async (id: number): Promise<{
+  payment: ExpensePayment;
+  deletedInvoices: number[]; // IDs des factures supprimées
+}> => {
+  const response = await axios.delete(`public/expense-payment/${id}`);
   return response.data;
 };
 const deletePdfFile = async (paymentId: number): Promise<void> => {

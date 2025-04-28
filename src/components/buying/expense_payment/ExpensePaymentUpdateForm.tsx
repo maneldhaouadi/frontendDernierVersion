@@ -67,7 +67,9 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
   const { cabinet, isFetchCabinetPending } = useCabinet();
 
   React.useEffect(() => {
-    paymentManager.set('currencyId', cabinet?.currency?.id);
+    if (cabinet?.currency?.id) {
+      paymentManager.set('currencyId', cabinet.currency.id);
+    }
   }, [cabinet]);
 
   const { firms, isFetchFirmsPending } = useFirmChoices([
@@ -80,20 +82,58 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
     isFetchPending || isFetchFirmsPending || isFetchCurrenciesPending || isFetchCabinetPending;
 
   const setPaymentData = (data: Partial<ExpensePayment>) => {
+    if (!data) return;
+
     // Payment infos
     paymentManager.setPayment({
       ...data,
-      firm: firms.find((firm) => firm.id === data.firmId),
-      sequentialNumbr: data.sequentialNumbr, // Récupérer sequentialNumbr
-      uploadPdfField: data.uploadPdfField, // Récupérer le fichier PDF
-      uploads: data.uploads || [], // Récupérer les fichiers uploadés
+      firm: firms?.find((firm) => firm.id === data.firmId),
+      sequentialNumbr: data.sequentialNumbr,
+      uploadPdfField: data.uploadPdfField,
+      uploads: data.uploads || [],
+      convertionRate: data.convertionRate || 1,
     });
 
-    // Invoice infos
-    data?.invoices &&
-      data.convertionRate &&
-      data.currency &&
-      invoiceManager.setInvoices(data.invoices, data.currency, data.convertionRate, 'EDIT');
+    // Invoice infos with currency conversion
+    if (data?.invoices) {
+      const processedInvoices = data.invoices.map(invoice => {
+        // Vérifications de sécurité ajoutées
+        const invoiceCurrencyId = invoice?.expenseInvoice?.currency?.id;
+        const paymentCurrencyId = data?.currencyId;
+        
+        // Si currencyId est manquant, on utilise celui de la facture comme fallback
+        const effectiveCurrencyId = paymentCurrencyId || invoiceCurrencyId;
+        
+        // Vérification que nous avons au moins une currency valide
+        if (!invoiceCurrencyId && !paymentCurrencyId) {
+          throw new Error("Missing currency information for invoice payment");
+        }
+    
+        const isSameCurrency = invoiceCurrencyId === paymentCurrencyId;
+        const exchangeRate = invoice?.exchangeRate || data?.convertionRate || 1;
+        
+        // Valeurs par défaut sécurisées
+        const amount = invoice?.amount || 0;
+        const originalAmount = invoice?.originalAmount || amount;
+        
+        return {
+          ...invoice,
+          amount: isSameCurrency 
+            ? amount 
+            : originalAmount * exchangeRate,
+          originalAmount,
+          exchangeRate: isSameCurrency ? 1 : exchangeRate,
+          originalCurrencyId: isSameCurrency ? invoiceCurrencyId : effectiveCurrencyId
+        };
+      });
+    
+      invoiceManager.setInvoices(
+        processedInvoices,
+        data.currency, 
+        data.convertionRate || 1,
+        'EDIT'
+      );
+    }
   };
 
   const { isDisabled, globalReset } = useInitializedState({
@@ -115,7 +155,7 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
   });
 
   const currency = React.useMemo(() => {
-    return currencies.find((c) => c.id === paymentManager.currencyId);
+    return currencies?.find((c) => c.id === paymentManager.currencyId);
   }, [paymentManager.currencyId, currencies]);
 
   const { mutate: updatePayment, isPending: isUpdatePending } = useMutation({
@@ -132,45 +172,77 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
   });
 
   const onSubmit = () => {
-    const invoices: ExpensePaymentInvoiceEntry[] = invoiceManager
+    const invoices = invoiceManager
       .getInvoices()
-      .map((invoice: ExpensePaymentInvoiceEntry) => ({
-        expenseInvoiceId: invoice.expenseInvoice?.id,
-        amount: invoice.amount,
-      }));
+      .map((invoice: ExpensePaymentInvoiceEntry) => {
+        const invoiceCurrencyId = invoice?.expenseInvoice?.currency?.id;
+        const paymentCurrencyId = paymentManager.currencyId;
+        const shouldConvert = invoiceCurrencyId && paymentCurrencyId && 
+                            invoiceCurrencyId !== paymentCurrencyId;
+        
+        // Récupérer le taux de change dynamique
+        const exchangeRate = invoice.exchangeRate || paymentManager.convertionRate;
+        
+        if (shouldConvert && (!exchangeRate || exchangeRate <= 0)) {
+            throw new Error(`Taux de change manquant ou invalide pour la conversion ${paymentCurrencyId}→${invoiceCurrencyId}`);
+        }
 
-    const used = invoiceManager.calculateUsedAmount();
+        return {
+          expenseInvoiceId: invoice?.expenseInvoice?.id,
+          amount: shouldConvert 
+            ? (invoice.amount || 0) * exchangeRate
+            : (invoice.amount || 0),
+          exchangeRate, // Taux dynamique
+          originalAmount: invoice.amount || 0,
+          originalCurrencyId: paymentCurrencyId
+        };
+      });
+
+    // Calculate used amount with conversion
+    const used = invoiceManager.getInvoices().reduce((sum, invoice) => {
+      const invoiceCurrencyId = invoice?.expenseInvoice?.currency?.id;
+      const paymentCurrencyId = paymentManager.currencyId;
+      const shouldConvert = invoiceCurrencyId && paymentCurrencyId && 
+                          invoiceCurrencyId !== paymentCurrencyId;
+      const amount = invoice?.amount || 0;
+      
+      return sum + (shouldConvert 
+        ? amount * (paymentManager.convertionRate || 1)
+        : amount);
+    }, 0);
+
+    const paidAmount = (paymentManager.amount || 0) + (paymentManager.fee || 0);
     const paid = dinero({
       amount: createDineroAmountFromFloatWithDynamicCurrency(
-        (paymentManager.amount || 0) + (paymentManager.fee || 0),
+        paidAmount,
         currency?.digitAfterComma || 3
       ),
       precision: currency?.digitAfterComma || 3,
     }).toUnit();
 
-    const payment: ExpenseUpdatePaymentDto = {
+    const paymentData: ExpenseUpdatePaymentDto = {
       id: paymentManager.id,
-      sequential: '', // Assurez-vous que sequentialNumbr est bien défini ici
-      amount: paymentManager.amount,
-      fee: paymentManager.fee,
-      convertionRate: paymentManager.convertionRate,
+      sequential: paymentManager.sequentialNumbr || '',
+      amount: paymentManager.amount || 0,
+      fee: paymentManager.fee || 0,
+      convertionRate: paymentManager.convertionRate || 1,
       date: paymentManager.date?.toString(),
       mode: paymentManager.mode,
       notes: paymentManager.notes,
       currencyId: paymentManager.currencyId,
       firmId: paymentManager.firmId,
-      sequentialNumbr: paymentManager.sequentialNumbr, // Inclure sequentialNumbr
-      invoices,
-      uploads: paymentManager.uploadedFiles.filter((u) => !!u.upload).map((u) => u.upload),
+      sequentialNumbr: paymentManager.sequentialNumbr,
+      invoices: invoices.filter(inv => inv.expenseInvoiceId), // Filter out invalid entries
+      uploads: paymentManager.uploadedFiles?.filter((u) => !!u.upload)?.map((u) => u.upload) || [],
     };
 
-    const validation = api.expensepayment.validate(payment, used, paid);
+    const validation = api.expensepayment.validate(paymentData, used, paid);
     if (validation.message) {
       toast.error(validation.message);
     } else {
       updatePayment({
-        payment,
-        files: paymentManager.uploadedFiles.filter((u) => !u.upload).map((u) => u.file),
+        payment: paymentData,
+        files: paymentManager.uploadedFiles?.filter((u) => !u.upload)?.map((u) => u.file) || [],
       });
     }
   };
@@ -181,36 +253,37 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
       <div className={cn('block xl:flex gap-4', false ? 'pointer-events-none' : '')}>
         {/* First Card */}
         <div className="w-full h-auto flex flex-col xl:w-9/12">
-          <ScrollArea className=" max-h-[calc(100vh-120px)] border rounded-lg">
+          <ScrollArea className="max-h-[calc(100vh-120px)] border rounded-lg">
             <Card className="border-0 p-2">
               <CardContent className="p-5">
                 <ExpensePaymentGeneralInformation
                   className="pb-5 border-b"
-                  firms={firms}
-                  currencies={currencies.filter(
-                    (c) => c.id == cabinet?.currencyId || c.id == paymentManager?.firm?.currencyId
-                  )}
+                  firms={firms || []}
+                  currencies={currencies?.filter(
+                    (c) => c.id === cabinet?.currency?.id || c.id === paymentManager?.firm?.currencyId
+                  ) || []}
                   loading={fetching}
                 />
                 {paymentManager.firmId && (
                   <ExpensePaymentInvoiceManagement className="pb-5 border-b" loading={fetching} />
                 )}
                 {/* Extra Options (files) */}
-                 <div>
-                                  <ExpensePaymentExtraOptions
-                                    onUploadAdditionalFiles={(files) => paymentManager.set('uploadedFiles', files)}
-                                    onUploadPdfFile={(file) => paymentManager.set('pdfFile', file)}
-                                  />
-                                </div>
+                <div>
+                  <ExpensePaymentExtraOptions
+                    onUploadAdditionalFiles={(files) => paymentManager.set('uploadedFiles', files)}
+                    onUploadPdfFile={(file) => paymentManager.set('pdfFile', file)}
+                  />
+                </div>
                 <div className="flex gap-10 mt-5">
                   <Textarea
                     placeholder={tInvoicing('payment.attributes.notes')}
                     className="resize-none w-2/3"
                     rows={7}
+                    value={paymentManager.notes || ''}
+                    onChange={(e) => paymentManager.set('notes', e.target.value)}
                   />
                   <div className="w-1/3 my-auto">
-                    {/* Final Financial Information */}
-                    <ExpensePaymentFinancialInformation />
+                    <ExpensePaymentFinancialInformation currency={currency} />
                   </div>
                 </div>
               </CardContent>
@@ -219,13 +292,13 @@ export const ExpensePaymentUpdateForm = ({ className, paymentId }: ExpensePaymen
         </div>
         {/* Second Card */}
         <div className="w-full xl:mt-0 xl:w-3/12">
-          <ScrollArea className=" h-fit border rounded-lg">
+          <ScrollArea className="h-fit border rounded-lg">
             <Card className="border-0">
-              <CardContent className="p-5 ">
+              <CardContent className="p-5">
                 <ExpensePaymentControlSection
                   handleSubmit={onSubmit}
                   reset={globalReset}
-                  loading={false}
+                  loading={isUpdatePending}
                 />
               </CardContent>
             </Card>

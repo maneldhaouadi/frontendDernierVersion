@@ -79,8 +79,12 @@ export const ExpenseInvoiceCreateForm = ({ className, firmId }: ExpenseInvoiceFo
     'deliveryAddress',
     'currency',
   ]);
-  const { quotations, isFetchQuotationPending } = useExpenseQuotationChoices(EXPENSQUOTATION_STATUS.Invoiced);
-  const { cabinet, isFetchCabinetPending } = useCabinet();
+  const { quotations, isFetchQuotationPending } = useExpenseQuotationChoices(
+    EXPENSQUOTATION_STATUS.Draft,
+    invoiceManager.firm?.id,
+    invoiceManager.interlocutor?.id,
+    true // enabled par défaut
+  );  const { cabinet, isFetchCabinetPending } = useCabinet();
   const { taxes, isFetchTaxesPending } = useTax();
   const { currencies, isFetchCurrenciesPending } = useCurrency();
   const { bankAccounts, isFetchBankAccountsPending } = useBankAccount();

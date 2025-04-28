@@ -252,7 +252,7 @@ const buttonsWithHandlers: ExpenseQuotationLifecycle[] = [
             <Label className="text-base my-2 text-center">
               <span className="font-bold">{tInvoicing('quotation.attributes.status')} :</span>
               <span className="font-extrabold text-gray-500 ml-2 mr-1">{tInvoicing(status)}</span>
-              {status === EXPENSQUOTATION_STATUS.Invoiced && invoices?.length != 0 && (
+              {status === EXPENSQUOTATION_STATUS.Draft && invoices?.length != 0 && (
                 <span className="font-extrabold text-gray-500">({invoices?.length})</span>
               )}
             </Label>
@@ -280,9 +280,6 @@ const buttonsWithHandlers: ExpenseQuotationLifecycle[] = [
           })}
         </div>
         {/* Invoice list */}
-        {status === EXPENSQUOTATION_STATUS.Invoiced && invoices.length != 0 && (
-          <QuotationInvoiceList className="border-b" invoices={invoices} />
-        )}
         <div className={cn('w-full mt-5 border-b')}>
           {/* bank account choices */}
           <div>

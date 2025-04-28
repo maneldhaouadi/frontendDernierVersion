@@ -80,7 +80,7 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
 
   // Recognize if the form can be edited
   const editMode = React.useMemo(() => {
-    const editModeStatuses = [EXPENSQUOTATION_STATUS.Validated, EXPENSQUOTATION_STATUS.Draft];
+    const editModeStatuses = [EXPENSQUOTATION_STATUS.Draft];
     return quotation?.status && editModeStatuses.includes(quotation.status);
   }, [quotation]);
 
@@ -196,7 +196,7 @@ export const ExpenseQuotationUpdateForm = ({ className, expensequotationId }: Ex
       return api.expense_quotation.update(data.quotation, data.files);
     },
     onSuccess: (data) => {
-      if (data.status === EXPENSQUOTATION_STATUS.Invoiced) {
+      if (data.status === EXPENSQUOTATION_STATUS.Draft) {
         toast.success('Devis facturé avec succès');
       } else {
         toast.success('Devis modifié avec succès');

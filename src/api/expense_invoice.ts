@@ -78,7 +78,7 @@ const findOne = async (
     'firm',
     'currency',
     'bankAccount',
-    'quotation',
+    'quotation.expensearticleQuotationEntries.article',
     'interlocutor',
     'firm.currency',
     'expenseInvoiceMetaData',
@@ -99,7 +99,10 @@ const findOne = async (
   ]
 ): Promise<ExpenseInvoice & { files: ExpenseInvoiceUploadedFile[] }> => {
   const response = await axios.get<ExpenseInvoice>(`public/expenseinvoice/${id}?join=${relations.join(',')}`);
+  console.log("rrrrInvoice",response.data); // Vérifiez ici si les articles sont présents
+
   return { ...response.data, files: await getInvoiceUploads(response.data) };
+  
 };
 
 
@@ -229,8 +232,12 @@ const update = async (invoice: ExpenseUpdateInvoiceDto, files: File[]): Promise<
     throw error;
   }
 };
-const remove = async (id: number): Promise<ExpenseInvoice> => {
-  const response = await axios.delete<ExpenseInvoice>(`public/expenseinvoice/${id}`);
+const remove = async (id: number): Promise<{ 
+  invoice: ExpenseInvoice;
+  quotationDeleted?: boolean;
+  quotationSequential?: string;
+}> => {
+  const response = await axios.delete(`public/expenseinvoice/${id}`);
   return response.data;
 };
 

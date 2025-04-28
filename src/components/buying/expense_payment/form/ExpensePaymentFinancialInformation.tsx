@@ -1,11 +1,12 @@
 import React from 'react';
-import { Currency, Tax } from '@/types';
+import { Currency } from '@/types';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { ciel } from '@/utils/number.utils';
 import { useExpensePaymentManager } from '../hooks/useExpensePaymentManager';
 import { useExpensePaymentInvoiceManager } from '../hooks/useExpensePaymentInvoiceManager';
+import { Input } from '@/components/ui/input';
 
 interface ExpensePaymentFinancialInformationProps {
   className?: string;
@@ -22,59 +23,78 @@ export const ExpensePaymentFinancialInformation = ({
   const paymentManager = useExpensePaymentManager();
   const invoiceManager = useExpensePaymentInvoiceManager();
 
-  //get currency symbol
-  const currencySymbol = React.useMemo(() => currency?.symbol || '$', [currency]);
+  // Get currency details
+  const currencySymbol = currency?.symbol || '$';
+  const currencyDigitAfterComma = currency?.digitAfterComma || 2;
 
-  const currencyDigitAfterComma = React.useMemo(() => currency?.digitAfterComma || 0, [currency]);
-  const customCiel = React.useCallback(
-    (n: number) => ciel(n, currencyDigitAfterComma + 1),
-    [currencyDigitAfterComma]
-  );
+  // Calculate total amount from invoices
+  const totalInvoicesAmount = React.useMemo(() => {
+    return invoiceManager.getInvoices().reduce((sum, invoice) => {
+      return sum + (invoice.amount || 0);
+    }, 0);
+  }, [invoiceManager.getInvoices()]);
 
-  const amountPaid = React.useMemo(() => {
-    return paymentManager.amount || 0;
-  }, [paymentManager.amount]);
+  // Update payment amount when invoices change
+  React.useEffect(() => {
+    paymentManager.set('amount', totalInvoicesAmount);
+  }, [totalInvoicesAmount]);
 
-  const fee = React.useMemo(() => {
-    return paymentManager.fee || 0;
-  }, [paymentManager.fee]);
+  // Calculate financial values
+  const amountPaid = paymentManager.amount || 0;
+  const fee = paymentManager.fee || 0;
+  const available = ciel(amountPaid + fee, currencyDigitAfterComma + 1);
+  const used = invoiceManager.calculateUsedAmount();
+  const remaining_amount = ciel(available - used, currencyDigitAfterComma + 1);
 
-  const available = React.useMemo(() => {
-    return customCiel(amountPaid + fee);
-  }, [customCiel, amountPaid, fee]);
-
-  const used = React.useMemo(() => {
-    return invoiceManager.calculateUsedAmount();
-  }, [invoiceManager, currencyDigitAfterComma]);
-
-  const remaining_amount = React.useMemo(() => {
-    return customCiel(available - used);
-  }, [customCiel, available, used]);
+  const handleFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || 0;
+    paymentManager.set('fee', value);
+  };
 
   return (
-    <div className={cn(className)}>
-      <div className="flex flex-col w-full">
-        <div className="flex my-2">
-          <Label className="mr-auto">{tInvoicing('payment.financial_status.received')}</Label>
-          <Label className="ml-auto" isPending={loading || false}>
-            {available?.toFixed(currencyDigitAfterComma)} {currencySymbol}
-          </Label>
+    <div className={cn('space-y-4', className)}>
+      {/* Total des factures (non modifiable) */}
+      <div className="grid grid-cols-2 items-center gap-4">
+        <Label>{tInvoicing('payment.attributes.amount')}</Label>
+        <div className="text-right font-medium">
+          {totalInvoicesAmount.toFixed(currencyDigitAfterComma)} {currencySymbol}
         </div>
       </div>
-      <div className="flex flex-col w-full mt-1">
-        <div className="flex my-2">
-          <Label className="mr-auto">{tInvoicing('payment.financial_status.used')}</Label>
-          <Label className="ml-auto" isPending={loading || false}>
-            {used?.toFixed(currencyDigitAfterComma)} {currencySymbol}
-          </Label>
+
+      {/* Frais (modifiable) */}
+      <div className="grid grid-cols-2 items-center gap-4">
+        <Label>{tInvoicing('payment.attributes.fee')}</Label>
+        <Input
+          type="number"
+          value={fee}
+          onChange={handleFeeChange}
+          min="0"
+          step="0.01"
+          disabled={loading}
+        />
+      </div>
+
+      {/* Total à payer */}
+      <div className="grid grid-cols-2 items-center gap-4 pt-2 border-t">
+        <Label className="font-semibold">{tInvoicing('total')}</Label>
+        <div className="text-right font-bold">
+          {(amountPaid + fee).toFixed(currencyDigitAfterComma)} {currencySymbol}
         </div>
       </div>
-      <div className="flex flex-col w-full border-t pt-1">
-        <div className="flex my-2">
-          <Label className="mr-auto">{tInvoicing('payment.financial_status.available')}</Label>
-          <Label className="ml-auto" isPending={loading || false}>
-            {remaining_amount?.toFixed(currencyDigitAfterComma)} {currencySymbol}
-          </Label>
+
+      {/* Utilisé */}
+      <div className="grid grid-cols-2 items-center gap-4">
+        <Label>{tInvoicing('payment.financial_status.used')}</Label>
+        <div className="text-right">
+          {used.toFixed(currencyDigitAfterComma)} {currencySymbol}
+        </div>
+      </div>
+
+      {/* Disponible */}
+      <div className="grid grid-cols-2 items-center gap-4 pt-2 border-t">
+        <Label className="font-semibold">{tInvoicing('payment.financial_status.available')}</Label>
+        <div className="text-right font-bold">
+          {remaining_amount.toFixed(currencyDigitAfterComma)} {currencySymbol}
         </div>
       </div>
     </div>

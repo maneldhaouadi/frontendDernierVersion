@@ -63,7 +63,7 @@ export const ExpensequotationExtraOptions = ({
         <AccordionTrigger>
           <div className="flex gap-2 justify-center items-center">
             <Files />
-            <Label>{tInvoicing('quotation.attributes.additional_files')}</Label>
+            <Label>Additional_files</Label>
           </div>
         </AccordionTrigger>
         <AccordionContent className="m-5">
