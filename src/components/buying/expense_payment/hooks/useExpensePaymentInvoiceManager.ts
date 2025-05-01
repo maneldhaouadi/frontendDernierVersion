@@ -48,15 +48,27 @@ export const useExpensePaymentInvoiceManager = create<ExpensePaymentInvoiceManag
 
   setInvoices: (
     entries: ExpensePaymentInvoiceEntry[],
-    currency: Currency,
+    currency: Currency | undefined, // Marquez currency comme potentiellement undefined
     convertionRate: number,
     mode?: 'EDIT' | 'NEW'
   ) => {
+    // Vérification initiale de currency
+    if (!currency) {
+      console.error('Currency is undefined in setInvoices');
+      return; // Ou lancez une erreur selon votre besoin
+    }
+  
     const actualEntries =
       mode === 'EDIT'
         ? entries.map((entry) => {
             const amountPaid = entry?.expenseInvoice?.amountPaid || 0;
             const entryAmount = entry?.amount || 0;
+            
+            // Vérification supplémentaire pour entry.expenseInvoice
+            const entryCurrencyId = entry?.expenseInvoice?.currencyId;
+            const shouldConvert = entryCurrencyId !== undefined && 
+                                currency.id !== entryCurrencyId;
+  
             return {
               ...entry,
               invoice: {
@@ -65,7 +77,7 @@ export const useExpensePaymentInvoiceManager = create<ExpensePaymentInvoiceManag
               },
               amount: dinero({
                 amount: createDineroAmountFromFloatWithDynamicCurrency(
-                  currency.id != entry.expenseInvoice?.currencyId
+                  shouldConvert
                     ? entryAmount / convertionRate
                     : entryAmount,
                   currency.digitAfterComma || 3
@@ -75,13 +87,12 @@ export const useExpensePaymentInvoiceManager = create<ExpensePaymentInvoiceManag
             };
           })
         : entries;
+  
     set({
-      invoices: actualEntries.map((invoice) => {
-        return {
-          id: uuidv4(),
-          invoice
-        };
-      })
+      invoices: actualEntries.map((invoice) => ({
+        id: uuidv4(),
+        invoice
+      }))
     });
   },
 

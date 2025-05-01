@@ -128,3 +128,109 @@ input[type='number'] {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+/* Styles spécifiques à l'éditeur Tiptap */
+.ProseMirror {
+  h1 {
+    @apply text-3xl font-bold my-4 text-gray-900 dark:text-white;
+  }
+  h2 {
+    @apply text-2xl font-bold my-3 text-gray-800 dark:text-gray-200;
+  }
+  h3 {
+    @apply text-xl font-semibold my-2 text-gray-700 dark:text-gray-300;
+  }
+}
+
+/* Styles pour les tableaux */
+.my-table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  border: 1px solid #000; /* Bordure principale du tableau */
+}
+
+.my-table td, 
+.my-table th {
+  border: 1px solid #000; /* Bordures des cellules */
+  padding: 8px;
+  min-width: 50px;
+  position: relative;
+}
+
+.my-table th {
+  background-color: #e91c1c;
+  font-weight: bold;
+  text-align: left;
+}
+
+/* Style pour les cellules d'en-tête */
+.my-table-header {
+  background-color: #a51212;
+  font-weight: bold;
+}
+
+/* Style pour les cellules normales */
+.my-table-cell {
+  background-color: #5c2d2d;
+}
+.my-custom-table {
+  border-collapse: collapse !important;
+  border-style: solid !important;
+  border-width: 1px !important;
+  border-color: #1e293b !important; /* gray-800 */
+  margin: 1rem 0 !important;
+  width: 100% !important;
+}
+
+.my-custom-cell, .my-custom-header {
+  border-style: solid !important;
+  border-width: 1px !important;
+  border-color: #94a3b8 !important; /* gray-400 */
+  padding: 0.5rem !important;
+  min-width: 50px !important;
+}
+
+.my-custom-header {
+  background-color: #f1f5f9 !important; /* gray-100 */
+  font-weight: 700 !important; /* bold */
+}
+/* Styles globaux pour les tables Tiptap */
+.ProseMirror {
+  table {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    width: 100%;
+    border: 1px solid #1e293b !important;
+    
+    td, th {
+      border: 1px solid #94a3b8 !important;
+      padding: 0.5rem !important;
+      min-width: 50px !important;
+      position: relative;
+    }
+
+    th {
+      background-color: #f1f5f9 !important;
+      font-weight: bold !important;
+      text-align: left !important;
+    }
+  }
+}
+.dynamic-field {
+  background-color: #f0f7ff;
+  border: 1px dashed #3b82f6;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  color: #1d4ed8;
+  font-family: monospace;
+}
+
+.address-field {
+  border-left: 2px solid #3b82f6;
+  padding-left: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.dynamic-field:hover {
+  background-color: #dbeafe;
+}

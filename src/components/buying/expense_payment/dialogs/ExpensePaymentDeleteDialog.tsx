@@ -48,9 +48,10 @@ export const ExpensePaymentDeleteDialog: React.FC<ExpensePaymentDeleteDialogProp
   const isDesktop = useMediaQuery('(min-width: 1500px)');
   const header = (
     <div className="space-y-2">
-      <Label className="leading-5">
-        {tInvoicing('payment.delete_confirmation', { sequential: sequential ? `PAY${sequential}` : '' })}
-      </Label>
+       <Label className="leading-5">
+            Voulez-vous vraiment supprimer le payment N°{' '}
+            <span className="font-semibold">{sequential}</span> ?
+          </Label>
       {hasInvoices && (
         <p className="text-sm text-yellow-600 dark:text-yellow-400">
           {tInvoicing('payment.delete_invoices_warning')}

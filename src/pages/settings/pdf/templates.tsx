@@ -1,12 +1,11 @@
-import React from 'react';
-import { PdfSettings } from '@/components/settings/PdfSettings';
-import { ComingSoon } from '@/components/common';
+// pages/templates.tsx
 
-export default function Page() {
+import { TemplateMain } from "@/components/settings/pdf/template/TemplateMain";
+
+export default function TemplatesPage() {
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
-      <PdfSettings defaultValue={'templates'} />
-      <ComingSoon className="m-10" />
+    <div className="flex-1 flex flex-col overflow-auto p-8">
+      <TemplateMain />
     </div>
-  );
+  )
 }

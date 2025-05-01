@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/other/useDebounce';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/api';
-import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errors';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from './data-table/data-table';
@@ -17,6 +16,7 @@ import { ExpenseInvoiceActionsContext } from './data-table/ActionsContext';
 import { ExpenseDuplicateInvoiceDto } from '@/types/expense_invoices';
 import { EXPENSE_INVOICE_STATUS } from '@/types/expense_invoices';
 import { DuplicateInvoiceDto } from '@/types';
+import { toast } from 'sonner';
 
 interface ExpenseInvoiceMainProps {
   className?: string;
@@ -31,7 +31,7 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
   React.useEffect(() => {
     setRoutes([
       { title: tCommon('menu.buying'), href: '/buying' },
-      { title: tCommon('submenu.expense_invoices') }
+      { title: tCommon('submenu.invoices') }
     ]);
   }, [router.locale]);
 
@@ -140,15 +140,7 @@ export const ExpenseInvoiceMain: React.FC<ExpenseInvoiceMainProps> = ({ classNam
     mutationFn: (id: number) => api.expense_invoice.remove(id),
     onSuccess: (data) => {
       if (invoices?.length == 1 && page > 1) setPage(page - 1);
-      
-      if (data?.quotationDeleted) {
-        toast.success(
-          `La facture ${data.invoice.sequential} et le devis ${data.quotationSequential} ont été supprimés avec succès`
-        );
-      } else {
         toast.success(tInvoicing('La facture a été supprimée avec succès'));
-      }
-      
       refetchInvoices();
       setDeleteDialog(false);
       setInvoiceToDelete(null); // Reset l'élément à supprimer

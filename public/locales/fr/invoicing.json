@@ -149,7 +149,8 @@
       "notes": "Remarques",
       "files": "Pièces jointes",
       "no_paid_invoices_for_this_payment": "Aucune facture payée pour ce paiement",
-      "no_unpaid_invoices": "Aucune facture impayée disponible"
+      "no_unpaid_invoices": "Aucune facture impayée disponible",
+      "delete_confirmation":"Voulez-vous vraiment supprimer le payment"
     },
     "empty_cells": {
       "currency": "Aucun devise"

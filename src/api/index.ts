@@ -58,6 +58,8 @@ export * from './expense-payment-condition'
 import { dialogflow } from './dialogflow';
 export * from './dialogflow'
 
+import  { templateApi } from './template';
+export * from './template'
 
 export * from '../types/response';
 export * from '../types/enums';
@@ -91,6 +93,7 @@ export const api = {
   expense_quotation,
   expensepayment,
   expensepaymentCondition,
-  dialogflow
+  dialogflow,
+  templateApi
 
 };

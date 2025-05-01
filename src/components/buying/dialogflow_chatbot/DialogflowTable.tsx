@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '@/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import InvoicePaymentsCard from './InvoicePaymentsCard';
-import { HistoryIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { HistoryIcon, XIcon } from 'lucide-react';
+
 
 interface DialogflowTableProps {
   onNewMessage?: () => void;
@@ -142,7 +143,7 @@ const DialogflowTable = ({
   const [isTyping, setIsTyping] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<HistoryEntry[]>([]);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -828,24 +829,24 @@ const DialogflowTable = ({
             {/* Main content */}
             <div className="flex-1 min-h-0 flex overflow-hidden">
               {/* Sessions sidebar */}
-              <div className="w-56 border-r flex flex-col bg-gray-50">
-                <div className="p-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full mb-3"
-                    onClick={() => {
-                      const newSessionId = `session-${Date.now()}`;
-                      loadSession(newSessionId, true);
-                      setRefreshKey(prev => prev + 1);
-                    }}
-                  >
-                    {languageCode === 'fr' ? '+ Nouvelle session' : '+ New session'}
-                  </Button>
-                  <h3 className="font-medium text-sm text-gray-500 mb-3">
-                    {languageCode === 'fr' ? 'Sessions récentes' : 'Recent sessions'}
-                  </h3>
-                </div>
+<div className="min-w-[14rem] border-r flex flex-col bg-gray-50"> {/* Changement ici */}
+  <div className="p-3">
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="w-full mb-3 bg-white hover:bg-gray-100" // Ajout de bg-white et hover:bg-gray-100
+      onClick={() => {
+        const newSessionId = `session-${Date.now()}`;
+        loadSession(newSessionId, true);
+        setRefreshKey(prev => prev + 1);
+      }}
+    >
+      {languageCode === 'fr' ? '+ Nouvelle session' : '+ New session'}
+    </Button>
+    <h3 className="font-medium text-sm text-gray-500 mb-3">
+      {languageCode === 'fr' ? 'Sessions récentes' : 'Recent sessions'}
+    </h3>
+  </div>
                 <div className="flex-1 overflow-y-auto p-3 pt-0 space-y-2">
                   {Object.entries(getStoredSessions())
                     .sort(([, a], [, b]) => {

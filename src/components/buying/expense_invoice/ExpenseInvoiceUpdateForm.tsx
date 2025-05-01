@@ -7,7 +7,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import useTax from '@/hooks/content/useTax';
 import useFirmChoice from '@/hooks/content/useFirmChoice';
 import useBankAccount from '@/hooks/content/useBankAccount';
-import { toast } from 'sonner';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getErrorMessage } from '@/utils/errors';
 import { DISCOUNT_TYPE } from '@/types/enums/discount-types';
@@ -39,6 +38,7 @@ import { ExpenseInvoiceArticleManagement } from './form/ExpenseInvoiceArticleMan
 import { ExpenseInvoiceGeneralInformation } from './form/ExpenseInvoiceGeneralInformation';
 import { useExpenseQuotationManager } from '../expense_quotation/hooks/useExpenseQuotationManager';
 import useExpenseQuotationChoices from '@/hooks/content/useExpenseQuotationChoice';
+import { toast } from 'sonner';
 
 interface ExpenseInvoiceFormProps {
   className?: string;
