@@ -8,13 +8,13 @@ import { api } from '@/api';
 import { DataTable } from './data-table/data-table';
 import { getArticleColumns } from './data-table/columns';
 import { ArticleDeleteDialog } from './dialogs/ArticleDeleteDialog';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { ArticleActionsContext } from './data-table/ActionsContext';
 import { ArticleDuplicateDialog } from './dialogs/ExpenseInvoiceDuplicateDialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ArticleList: React.FC = () => {
   const router = useRouter();
@@ -48,12 +48,13 @@ const ArticleList: React.FC = () => {
       debouncedSearchTerm,
     ],
     queryFn: () =>
-      api.article.findPaginated(
-        debouncedPage,
-        debouncedSize,
-        debouncedSortDetails.order ? 'ASC' : 'DESC',
-        debouncedSortDetails.sortKey,
-        debouncedSearchTerm
+      api.article.searchArticlesByTitle(
+        debouncedSearchTerm,
+        {
+          page: debouncedPage,
+          limit: debouncedSize,
+          sort: `${debouncedSortDetails.sortKey},${debouncedSortDetails.order ? 'ASC' : 'DESC'}`
+        }
       ),
   });
 
@@ -68,8 +69,6 @@ const ArticleList: React.FC = () => {
       toast.error(t('article.action_remove_failure'));
     },
   });
-
-  
 
   const { mutate: duplicateArticle, isPending: isDuplicationPending } = useMutation({
     mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
@@ -102,96 +101,159 @@ const ArticleList: React.FC = () => {
   };
 
   const goToNextPage = () => {
-    if (articlesResp?.meta?.pageCount && page < articlesResp.meta.pageCount) {
+    if (articlesResp?.pageCount && page < articlesResp.pageCount) {
       setPage(page + 1);
     }
   };
 
+  const context = {
+    openDeleteDialog,
+    openDuplicateDialog,
+    searchTerm,
+    setSearchTerm,
+    page,
+    totalPageCount: articlesResp?.pageCount || 1,
+    setPage,
+    size,
+    setSize,
+    order: sortDetails.order,
+    sortKey: sortDetails.sortKey,
+    setSortDetails: (order: boolean, sortKey: string) => setSortDetails({ order, sortKey })
+  };
+
   if (error) {
-    return <div>An error has occurred: {error.message}</div>;
+    return (
+      <div className="p-4 text-red-500">
+        <p>{t('Une erreur est survenue lors du chargement des articles')}</p>
+        <p className="text-sm text-muted-foreground">{error.message}</p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-2"
+          onClick={() => refetchArticles()}
+        >
+          {t('Réessayer')}
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <ArticleActionsContext.Provider
-      value={{
-        openDeleteDialog,
-        openDuplicateDialog,
-      }}
-    >
-      <div className="p-6 bg-white rounded-lg shadow-sm">
-        {/* En-tête de la section */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">{t('Liste des articles')}</h1>
-          <Button className="flex items-center gap-2" onClick={() => router.push('/article/create-article')}>
-            <Plus className="h-4 w-4" />
-            {t('Ajouter un article')}
-          </Button>
-        </div>
-
-        {/* Barre de filtres */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="relative flex-1">
-            <Input
-              placeholder={t('Rechercher un article..')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button variant="outline">{t('Rechercher')}</Button>
-        </div>
-
-        {/* Tableau des articles */}
-        <DataTable
-          data={articlesResp?.data || []}
-          columns={getArticleColumns(t, router)}
-          isPending={isFetchPending || isDeletePending || isDuplicationPending}
-        />
-
-        {/* Pagination avec flèches, numérotation et sélecteur de lignes par page */}
-        <div className="flex justify-between items-center mt-6">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t('Lignes par page')}</span>
-            <Select
-              value={size.toString()}
-              onValueChange={(value) => setSize(Number(value))}
-            >
-              <SelectTrigger className="w-24">
-                <SelectValue placeholder={size.toString()} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToPreviousPage}
-              disabled={page === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm text-muted-foreground">
-              {t('Page')} {page} {t('sur')} {articlesResp?.meta?.pageCount || 1}
+    <ArticleActionsContext.Provider value={context}>
+      <Card className="flex flex-col flex-1 overflow-hidden">
+        <CardHeader className="flex flex-col space-y-1.5">
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-lg">{t('Liste des articles')}</CardTitle>
+              <CardDescription className="text-sm">{t('Gestion des articles de votre inventaire')}</CardDescription>
             </div>
-            <Button
-              variant="outline"
+            <Button 
               size="sm"
-              onClick={goToNextPage}
-              disabled={!articlesResp?.meta?.pageCount || page >= articlesResp.meta.pageCount}
+              className="flex items-center gap-1.5 h-8"
+              onClick={() => router.push('/article/create-article')}
             >
-              <ChevronRight className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
+              <span>{t('Ajouter un article')}</span>
             </Button>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Boîtes de dialogue pour la suppression et la duplication */}
+        <CardContent className="p-6">
+          {/* Barre de recherche */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative flex-1">
+              <Input
+                placeholder={t('Rechercher un article (titre, description, code-barres, catégorie)...')}
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page on new search
+                }}
+                className="h-8 pl-8 text-sm"
+              />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8"
+              onClick={() => refetchArticles()}
+            >
+              {t('Rechercher')}
+            </Button>
+          </div>
+
+          {/* Tableau des articles */}
+          <DataTable
+            data={articlesResp?.data || []}
+            columns={getArticleColumns(t, router)}
+            isPending={isFetchPending || isDeletePending || isDuplicationPending}
+          />
+
+          {/* Messages d'état */}
+          {isFetchPending && (
+            <div className="p-4 text-center text-muted-foreground">
+              {t('Chargement des articles...')}
+            </div>
+          )}
+
+          {!isFetchPending && articlesResp?.data.length === 0 && (
+            <div className="p-4 text-center text-muted-foreground">
+              {searchTerm 
+                ? t('Aucun article ne correspond à votre recherche') 
+                : t('Aucun article trouvé')}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {articlesResp?.data.length ? (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t('Lignes par page')}</span>
+                <Select
+                  value={size.toString()}
+                  onValueChange={(value) => setSize(Number(value))}
+                >
+                  <SelectTrigger className="h-8 w-20 text-xs">
+                    <SelectValue placeholder={size.toString()} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5" className="text-xs">5</SelectItem>
+                    <SelectItem value="10" className="text-xs">10</SelectItem>
+                    <SelectItem value="20" className="text-xs">20</SelectItem>
+                    <SelectItem value="50" className="text-xs">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={goToPreviousPage}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <div className="text-xs text-muted-foreground px-2">
+                  {t('Page')} {page} {t('sur')} {articlesResp?.pageCount || 1}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={goToNextPage}
+                  disabled={!articlesResp?.pageCount || page >= articlesResp.pageCount}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+
+        {/* Boîtes de dialogue */}
         <ArticleDeleteDialog
           id={selectedArticle}
           open={deleteDialog}
@@ -207,7 +269,7 @@ const ArticleList: React.FC = () => {
           }}
           onClose={() => setDuplicateDialog(false)}
         />
-      </div>
+      </Card>
     </ArticleActionsContext.Provider>
   );
 };

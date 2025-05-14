@@ -3,14 +3,17 @@ import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import { api, article } from '@/api';
 import { Article, ArticleCompareResponseDto, UpdateArticleDto, ArticleStatus } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/common/Spinner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Edit, Save, X, FileText, Image } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Edit, Save, X, FileText, Image, Download } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const statusOptions = [
   { value: 'draft', label: 'Brouillon' },
@@ -204,16 +207,23 @@ const ArticleDetails: React.FC = () => {
     quantityInStock: 0,
     status: 'draft',
     unitPrice: 0,
+    notes: '',
+    version: 1,
+    justificatifFileName: '',
+    justificatifMimeType: '',
+    justificatifFileSize: 0
   });
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareFile, setCompareFile] = useState<File | null>(null);
   const [compareFileType, setCompareFileType] = useState<'image' | 'pdf'>('image');
+  const [filePreview, setFilePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
 
     const fetchArticleDetails = async () => {
       try {
+        setLoading(true);
         const response = await article.findOne(Number(id));
         setArticleDetails(response);
         setFormData({
@@ -223,7 +233,18 @@ const ArticleDetails: React.FC = () => {
           quantityInStock: response.quantityInStock,
           status: response.status,
           unitPrice: response.unitPrice,
+          notes: response.notes || '',
+          version: response.version || 1,
+          justificatifFileName: response.justificatifFileName || '',
+          justificatifMimeType: response.justificatifMimeType || '',
+          justificatifFileSize: response.justificatifFileSize || 0
         });
+
+        if (response.justificatifFile) {
+          const blob = new Blob([response.justificatifFile.data], { type: response.justificatifMimeType });
+          const url = URL.createObjectURL(blob);
+          setFilePreview(url);
+        }
       } catch (error) {
         setError('Could not fetch article details');
         toast.error('Error fetching article details');
@@ -239,7 +260,7 @@ const ArticleDetails: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'quantityInStock' || name === 'unitPrice'
+      [name]: name === 'quantityInStock' || name === 'unitPrice' || name === 'version' || name === 'justificatifFileSize'
         ? Number(value)
         : value,
     }));
@@ -262,6 +283,11 @@ const ArticleDetails: React.FC = () => {
         quantityInStock: articleDetails.quantityInStock,
         status: articleDetails.status,
         unitPrice: articleDetails.unitPrice,
+        notes: articleDetails.notes || '',
+        version: articleDetails.version || 1,
+        justificatifFileName: articleDetails.justificatifFileName || '',
+        justificatifMimeType: articleDetails.justificatifMimeType || '',
+        justificatifFileSize: articleDetails.justificatifFileSize || 0
       });
     }
   };
@@ -269,28 +295,49 @@ const ArticleDetails: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload: UpdateArticleDto = {
-        ...formData,
+      // Préparer les données à envoyer
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        reference: formData.reference,
         quantityInStock: Number(formData.quantityInStock),
         unitPrice: Number(formData.unitPrice),
+        status: formData.status,
+        notes: formData.notes,
+        version: Number(formData.version)
       };
-
+  
+      // Appel API
       const updatedArticle = await api.article.update(Number(id), payload);
+      
+      // Mettre à jour l'état local
       setArticleDetails(updatedArticle);
-      setFormData({
-        title: updatedArticle.title || '',
-        description: updatedArticle.description || '',
-        reference: updatedArticle.reference,
-        quantityInStock: updatedArticle.quantityInStock,
-        status: updatedArticle.status,
-        unitPrice: updatedArticle.unitPrice,
-      });
       setIsEditing(false);
-      toast.success('Article updated successfully');
+      toast.success('Article mis à jour avec succès');
     } catch (error) {
-      console.error('Error updating article:', error);
-      toast.error('Error updating article');
+      console.error('Erreur lors de la mise à jour:', error);
+      toast.error('Échec de la mise à jour');
     }
+  };
+
+  const handleDownloadJustificatif = () => {
+    if (!articleDetails?.justificatifFile) return;
+    
+    const blob = new Blob([articleDetails.justificatifFile.data], { 
+      type: articleDetails.justificatifMimeType 
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = articleDetails.justificatifFileName || 'justificatif';
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   };
 
   const handleCompareWithImage = () => {
@@ -328,7 +375,7 @@ const ArticleDetails: React.FC = () => {
   if (!articleDetails) return <p>No article found</p>;
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-sm">
+    <div className="p-6 space-y-6">
       {compareModalOpen && compareFile && articleDetails && (
         <CompareModal
           file={compareFile}
@@ -342,8 +389,32 @@ const ArticleDetails: React.FC = () => {
         />
       )}
 
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">Article Details</h1>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Détails de l'article</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full" style={{
+                backgroundColor: 
+                  articleDetails.status === 'draft' ? '#6b7280' :
+                  articleDetails.status === 'active' ? '#10b981' :
+                  articleDetails.status === 'inactive' ? '#ef4444' :
+                  articleDetails.status === 'archived' ? '#8b5cf6' :
+                  articleDetails.status === 'out_of_stock' ? '#f59e0b' :
+                  articleDetails.status === 'pending_review' ? '#3b82f6' :
+                  '#9ca3af'
+              }}></span>
+              {statusOptions.find(opt => opt.value === articleDetails.status)?.label || articleDetails.status}
+            </Badge>
+            <Badge variant="outline">
+              Version: {articleDetails.version}
+            </Badge>
+            <Badge variant="outline">
+              Ref: {articleDetails.reference}
+            </Badge>
+          </div>
+        </div>
+        
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -351,7 +422,7 @@ const ArticleDetails: React.FC = () => {
             onClick={handleCompareWithPdf}
           >
             <FileText className="h-4 w-4" />
-            Compare with PDF
+            Comparer avec PDF
           </Button>
           
           <Button 
@@ -360,8 +431,19 @@ const ArticleDetails: React.FC = () => {
             onClick={handleCompareWithImage}
           >
             <Image className="h-4 w-4" />
-            Compare with Image
+            Comparer avec Image
           </Button>
+
+          {articleDetails.justificatifFile && (
+            <Button
+              variant="outline"
+              onClick={handleDownloadJustificatif}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Télécharger
+            </Button>
+          )}
 
           <Button
             variant={isEditing ? 'secondary' : 'default'}
@@ -371,127 +453,229 @@ const ArticleDetails: React.FC = () => {
             {isEditing ? (
               <>
                 <X className="h-4 w-4" />
-                Cancel
+                Annuler
               </>
             ) : (
               <>
                 <Edit className="h-4 w-4" />
-                Edit
+                Modifier
               </>
             )}
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    readOnly={!isEditing}
-                    className={!isEditing ? 'bg-gray-100' : ''}
-                  />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations de base</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="title">Titre</Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        readOnly={!isEditing}
+                        className={!isEditing ? 'bg-gray-100' : ''}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        readOnly={!isEditing}
+                        className={!isEditing ? 'bg-gray-100' : ''}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="reference">Référence</Label>
+                      <Input
+                        id="reference"
+                        name="reference"
+                        value={formData.reference}
+                        onChange={handleInputChange}
+                        readOnly={!isEditing}
+                        className={!isEditing ? 'bg-gray-100' : ''}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="notes">Notes</Label>
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        readOnly={!isEditing}
+                        className={!isEditing ? 'bg-gray-100' : ''}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="unitPrice">Prix unitaire</Label>
+                      <Input
+                        id="unitPrice"
+                        name="unitPrice"
+                        type="number"
+                        value={formData.unitPrice}
+                        onChange={handleInputChange}
+                        readOnly={!isEditing}
+                        className={!isEditing ? 'bg-gray-100' : ''}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="quantityInStock">Quantité en stock</Label>
+                      <Input
+                        id="quantityInStock"
+                        name="quantityInStock"
+                        type="number"
+                        value={formData.quantityInStock}
+                        onChange={handleInputChange}
+                        readOnly={!isEditing}
+                        className={!isEditing ? 'bg-gray-100' : ''}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="version">Version</Label>
+                      <Input
+                        id="version"
+                        name="version"
+                        type="number"
+                        value={formData.version}
+                        onChange={handleInputChange}
+                        readOnly={true}
+                        className="bg-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="status">Statut</Label>
+                      {isEditing ? (
+                        <select
+                          id="status"
+                          name="status"
+                          value={formData.status}
+                          onChange={handleStatusChange}
+                          className="w-full p-2 border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          {statusOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="px-4 py-2 rounded-full bg-gray-100 inline-flex items-center">
+                          <span className="h-2 w-2 rounded-full mr-2" style={{
+                            backgroundColor: 
+                              formData.status === 'draft' ? '#6b7280' :
+                              formData.status === 'active' ? '#10b981' :
+                              formData.status === 'inactive' ? '#ef4444' :
+                              formData.status === 'archived' ? '#8b5cf6' :
+                              formData.status === 'out_of_stock' ? '#f59e0b' :
+                              formData.status === 'pending_review' ? '#3b82f6' :
+                              '#9ca3af'
+                          }}></span>
+                          {statusOptions.find(opt => opt.value === formData.status)?.label || formData.status}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    readOnly={!isEditing}
-                    className={!isEditing ? 'bg-gray-100' : ''}
-                  />
+                {isEditing && (
+                  <div className="flex justify-end">
+                    <Button type="submit" className="flex items-center gap-2">
+                      <Save className="h-4 w-4" />
+                      Enregistrer
+                    </Button>
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+
+          {articleDetails.justificatifFile && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Fichier justificatif</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <FileText className="h-8 w-8 text-gray-400" />
+                    <div>
+                      <p className="font-medium">{articleDetails.justificatifFileName}</p>
+                      <p className="text-sm text-gray-500">
+                        {articleDetails.justificatifMimeType} • 
+                        {(articleDetails.justificatifFileSize / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {filePreview && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open(filePreview, '_blank')}
+                      >
+                        Prévisualiser
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleDownloadJustificatif}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Télécharger
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="reference">Reference</Label>
-                  <Input
-                    id="reference"
-                    name="reference"
-                    value={formData.reference}
-                    onChange={handleInputChange}
-                    readOnly={!isEditing}
-                    className={!isEditing ? 'bg-gray-100' : ''}
-                  />
-                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Métadonnées</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Créé le</Label>
+                <p className="text-sm">
+                  {format(new Date(articleDetails.createdAt), 'PPPp', { locale: fr })}
+                </p>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="unitPrice">Unit Price</Label>
-                  <Input
-                    id="unitPrice"
-                    name="unitPrice"
-                    type="number"
-                    value={formData.unitPrice}
-                    onChange={handleInputChange}
-                    readOnly={!isEditing}
-                    className={!isEditing ? 'bg-gray-100' : ''}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="quantityInStock">Quantity in Stock</Label>
-                  <Input
-                    id="quantityInStock"
-                    name="quantityInStock"
-                    type="number"
-                    value={formData.quantityInStock}
-                    onChange={handleInputChange}
-                    readOnly={!isEditing}
-                    className={!isEditing ? 'bg-gray-100' : ''}
-                  />
-                </div>
-                <div>
-  <Label htmlFor="status">Status</Label>
-  {isEditing ? (
-    <select
-      id="status"
-      name="status"
-      value={formData.status}
-      onChange={handleStatusChange}
-      className="w-full p-2 border rounded-full bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-    >
-      {statusOptions.map(option => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  ) : (
-    <div className="px-4 py-2 rounded-full bg-gray-100 inline-flex items-center">
-      <span className="h-2 w-2 rounded-full mr-2" style={{
-        backgroundColor: 
-          formData.status === 'draft' ? '#6b7280' :
-          formData.status === 'active' ? '#10b981' :
-          formData.status === 'inactive' ? '#ef4444' :
-          formData.status === 'archived' ? '#8b5cf6' :
-          formData.status === 'out_of_stock' ? '#f59e0b' :
-          formData.status === 'pending_review' ? '#3b82f6' :
-          '#9ca3af'
-      }}></span>
-      {statusOptions.find(opt => opt.value === formData.status)?.label || formData.status}
-    </div>
-  )}
-</div>
+              <div>
+                <Label>Modifié le</Label>
+                <p className="text-sm">
+                  {format(new Date(articleDetails.updatedAt), 'PPPp', { locale: fr })}
+                </p>
               </div>
-            </div>
-            {isEditing && (
-              <div className="flex justify-end">
-                <Button type="submit" className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
-                  Save
-                </Button>
-              </div>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+              {articleDetails.deletedAt && (
+                <div>
+                  <Label>Supprimé le</Label>
+                  <p className="text-sm">
+                    {format(new Date(articleDetails.deletedAt), 'PPPp', { locale: fr })}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

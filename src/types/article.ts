@@ -1,117 +1,137 @@
 import { PagedResponse } from './response';
 import { DatabaseEntity } from './response/DatabaseEntity';
 
-// Interface de base pour un article
-export interface Article  {
+/**
+ * Statuts possibles des articles
+ */
+export type ArticleStatus = 
+  | 'draft' 
+  | 'active' 
+  | 'inactive' 
+  | 'archived' 
+  | 'out_of_stock' 
+  | 'pending_review' 
+  | 'deleted';
+
+/**
+ * Interface pour le fichier justificatif
+ */
+export interface JustificatifFile {
+  data: Buffer;
+  filename: string;
+  mimeType: string;
+  size: number;
+  originalname?: string;
+  buffer?: Buffer;
+}
+
+/**
+ * Historique des modifications d'un article
+ */
+export interface ArticleHistory {
+  version: number;
+  changes: Record<string, { oldValue: any; newValue: any }>;
+  date: Date;
+  changedBy?: string;
+  articleId?: number;
+}
+
+/**
+ * Interface de base pour un article
+ */
+export interface Article {
   id: number;
-  title?: string;
-  description?: string;
+  title: string | null;
+  description: string | null;
   reference: string;
   quantityInStock: number;
-  status: string;
+  status: ArticleStatus;
   version: number;
-  notes?: string;
-  justificatifFile?: {
-    data: Buffer;
-    filename?: string;
-    mimeType?: string;
-    size?: number;
-  };
+  notes: string | null;
+  justificatifFile?: JustificatifFile;
+  justificatifFileName?: string;
+  justificatifMimeType?: string;
+  justificatifFileSize?: number;
   unitPrice: number;
-  history?: Array<{
-    version: number;
-    changes: Record<string, { oldValue: any; newValue: any }>;
-    date: Date;
-  }>;
-  isDeletionRestricted?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  history?: ArticleHistory[];
+  createdAt: Date;
+  updatedAt: Date;
   deletedAt?: Date;
 }
 
-// DTO pour la création d'un article
+/**
+ * DTO pour la création d'un article
+ */
 export interface CreateArticleDto {
   title?: string;
   description?: string;
   reference: string;
   quantityInStock: number;
-  status: string;
+  status?: ArticleStatus;
   notes?: string;
-  justificatifFile?: File;
+  justificatifFile?: Express.Multer.File;
   unitPrice: number;
 }
 
-// DTO pour la réponse d'un article
+/**
+ * DTO pour la réponse d'un article
+ */
 export interface ResponseArticleDto {
   id: number;
   title?: string;
   description?: string;
   reference: string;
   quantityInStock: number;
-  status: string;
+  status: ArticleStatus;
   version: number;
   notes?: string;
-  justificatifFile?: {
-    data: Buffer;
-    filename?: string;
-    mimeType?: string;
-    size?: number;
-  };
+  justificatifFile?: JustificatifFile;
+  justificatifFileName?: string;
+  justificatifMimeType?: string;
+  justificatifFileSize?: number;
   unitPrice: number;
-  isDeletionRestricted?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  history?: ArticleHistory[];
+  createdAt: Date;
+  updatedAt: Date;
   deletedAt?: Date;
-  history?: Array<{
-    version: number;
-    changes: Record<string, { oldValue: any; newValue: any }>;
-    date: Date;
-  }>;
 }
 
-export interface UpdateArticleDto {
-  title?: string;
-  description?: string;
-  reference: string;
-  quantityInStock: number;
-  status: ArticleStatus;
-  notes?: string;
-  unitPrice: number;
-  justificatifFile?: File; // Ajouter cette ligne
+/**
+ * DTO pour la mise à jour d'un article
+ */
+export interface UpdateArticleDto extends Partial<CreateArticleDto> {
+  version?: number;
 }
 
-
-// Représentation paginée des articles
+/**
+ * Représentation paginée des articles
+ */
 export interface PagedArticle extends PagedResponse<Article> {}
 
-// Interfaces pour la recherche
-export interface QrCodeSearchResponse {
-  article?: Article;
-  message?: string;
-}
-
-export interface BarcodeSearchResponse {
-  article?: Article;
-  message?: string;
-}
-
-// Interfaces pour l'extraction et la comparaison
+/**
+ * Données extraites d'un article (OCR/PDF)
+ */
 export interface ArticleExtractedData {
   title?: string;
   description?: string;
   reference?: string;
   quantityInStock?: number;
-  status?: string;
+  status?: ArticleStatus;
   unitPrice?: number;
+  notes?: string;
   rawText?: string;
   confidenceScores?: {
     title?: number;
     reference?: number;
-    prices?: number;
+    quantity?: number;
+    price?: number;
     [key: string]: number | undefined;
   };
 }
 
+/**
+ * Résultat de comparaison d'un champ
+ */
 export interface FieldComparisonResult {
   field: string;
   match: boolean;
@@ -120,9 +140,12 @@ export interface FieldComparisonResult {
   confidence?: number;
 }
 
+/**
+ * Résultat de comparaison d'un article
+ */
 export interface ArticleComparisonResult {
   article: Article;
-  sourceType: 'pdf' | 'image';
+  sourceType: 'pdf' | 'image' | 'ocr';
   sourceName: string;
   matches: Record<string, boolean>;
   differences: Record<string, {
@@ -136,95 +159,203 @@ export interface ArticleComparisonResult {
   extractedData?: ArticleExtractedData;
 }
 
+/**
+ * DTO de réponse pour la comparaison d'articles
+ */
 export interface ArticleCompareResponseDto {
   success: boolean;
   comparison?: ArticleComparisonResult;
   error?: string;
+  warnings?: string[];
 }
 
-// Interfaces pour l'OCR et extraction PDF
+/**
+ * Résultat de traitement OCR
+ */
 export interface OcrProcessingResult {
   text: string;
   confidence: number;
   imageMetrics?: {
     sharpness: number;
     contrast: number;
+    brightness: number;
   };
+  language?: string;
 }
 
+/**
+ * Résultat d'extraction PDF
+ */
 export interface PdfExtractionResult extends ArticleExtractedData {
   pagesProcessed: number;
-  extractionMethod: string;
+  extractionMethod: 'text' | 'table' | 'mixed';
+  metadata?: Record<string, any>;
 }
 
-// Interface pour les suggestions de catégories (maintenant pour les références)
+/**
+ * Suggestion de référence
+ */
 export interface ReferenceSuggestion {
-  name: string;
+  reference: string;
   similarity: number;
   existing?: boolean;
+  matchType?: 'exact' | 'partial' | 'fuzzy';
 }
 
-// Validation des références
+/**
+ * Résultat de validation de référence
+ */
 export interface ReferenceValidationResult {
   valid: boolean;
   suggestedReferences?: ReferenceSuggestion[];
   exactMatch?: boolean;
+  existingId?: number;
 }
 
-// Historique des versions
+/**
+ * Info de version d'article
+ */
 export interface ArticleVersionInfo {
   version: number;
   date: Date;
   changesSummary: string[];
   changedBy?: string;
+  changesCount?: number;
 }
 
+/**
+ * Réponse des versions d'article
+ */
 export interface ArticleVersionsResponse {
   currentVersion: number;
   availableVersions: ArticleVersionInfo[];
+  totalVersions: number;
 }
 
+/**
+ * Score de qualité d'article
+ */
+export interface ArticleQualityScore {
+  id: number;
+  reference: string;
+  title?: string;
+  score: number; // 0-100
+  missingFields: string[];
+  completeness: 'complete' | 'partial' | 'incomplete';
+}
 
-interface ArticleStats {
+/**
+ * Article suspect
+ */
+export interface SuspiciousArticle {
+  id: number;
+  reference: string;
+  title?: string;
+  issue: 'zero_price' | 'high_stock' | 'invalid_reference' | 'inactive_with_stock';
+  value?: number;
+  severity: 'low' | 'medium' | 'high';
+}
+
+/**
+ * Statistiques d'articles
+ */
+export interface ArticleStats {
   totalArticles: number;
-  statusDistribution: Record<string, number>;
+  statusDistribution: Record<ArticleStatus, number>;
   outOfStockCount: number;
   totalStockValue: number;
   averageStockPerArticle: number;
   lowStockCount: number;
+  stockHealth: {
+    healthy: number;
+    warning: number;
+    critical: number;
+  };
 }
 
-interface ArticleQualityScore {
-  id: number;
-  reference: string;
+/**
+ * DTO de réponse des statistiques d'articles
+ */
+export interface ArticleStatsResponseDto extends ArticleStats {
+  statusPercentages: Record<ArticleStatus, string>;
+  topStockValueArticles: Array<{
+    reference: string;
+    title?: string;
+    value: number;
+    status: ArticleStatus;
+  }>;
+  stockRiskPredictions: Array<{
+    reference: string;
+    title?: string;
+    daysToOutOfStock: number;
+    currentStock: number;
+  }>;
+  toArchiveSuggestions: string[];
+  lastUpdated: Date;
+}
+
+export interface UpdateArticleDto {
   title?: string;
-  score: number;
-  missingFields: string[];
-}
-
-interface SuspiciousArticle {
-  id: number;
+  description?: string;
   reference: string;
-  title?: string;
-  issue: string;
-  value?: number;
+  quantityInStock?: number;
+  status?: ArticleStatus;
+  notes?: string;
+  unitPrice?: number;
+  version?: number;
 }
 
+/**
+ * Réponse de recherche par QR code
+ */
+export interface QrCodeSearchResponse {
+  article?: Article;
+  message?: string;
+  found: boolean;
+  scanDate: Date;
+}
 
-// Statuts possibles des articles
-export type ArticleStatus = 
-  | 'draft' 
-  | 'active' 
-  | 'inactive' 
-  | 'archived' 
-  | 'out_of_stock' 
-  | 'pending_review' 
-  | 'deleted';
+/**
+ * Réponse de recherche par code-barres
+ */
+export interface BarcodeSearchResponse {
+  article?: Article;
+  message?: string;
+  found: boolean;
+  barcodeType?: string;
+}
 
-// Interface pour le fichier justificatif
-export interface JustificatifFile {
-  data: Buffer;
-  filename?: string;
-  mimeType?: string;
-  size?: number;
+// Interfaces supplémentaires pour les fonctionnalités avancées
+
+export interface ArticleStatusChange {
+  from: ArticleStatus;
+  to: ArticleStatus;
+  date: Date;
+  changedBy?: string;
+  reason?: string;
+}
+
+export interface ArticleStatusHistory {
+  articleId: number;
+  changes: ArticleStatusChange[];
+}
+
+export interface ArticleBulkUpdateResult {
+  total: number;
+  success: number;
+  failed: number;
+  errors: Array<{
+    id: number;
+    error: string;
+  }>;
+}
+
+export interface ArticleImportResult {
+  imported: number;
+  skipped: number;
+  duplicates: number;
+  errors: Array<{
+    line: number;
+    error: string;
+  }>;
 }

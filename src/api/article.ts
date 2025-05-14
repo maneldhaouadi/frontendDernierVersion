@@ -1,5 +1,22 @@
+import { Chart } from 'chart.js';
 import axios from './axios';
-import { Article, ArticleCompareResponseDto, BarcodeSearchResponse, CreateArticleDto, PagedArticle, QrCodeSearchResponse, UpdateArticleDto } from '@/types';
+import { Article, ArticleCompareResponseDto, BarcodeSearchResponse, CreateArticleDto, PagedArticle, QrCodeSearchResponse, ResponseArticleDto, UpdateArticleDto } from '@/types';
+interface IQueryObject {
+  page?: number;
+  limit?: number;
+  filter?: string;
+  sort?: string;
+  join?: string;
+  [key: string]: any;
+}
+
+interface PageDto<T> {
+  data: T[];
+  count: number;
+  total: number;
+  page: number;
+  pageCount: number;
+}
 
 const findPaginated = async (
   page: number = 1,
@@ -43,6 +60,27 @@ const createWithFilterTitle = async (article: CreateArticleDto): Promise<Article
   }
 };
 
+const searchArticlesByTitle = async (
+  title: string,
+  query: IQueryObject = {}
+): Promise<PageDto<ResponseArticleDto> | null> => {
+  try {
+    if (title) {
+      query.filter = query.filter 
+        ? `${query.filter},title||$cont||${title}`
+        : `title||$cont||${title}`;
+    }
+
+    const response = await axios.get<PageDto<ResponseArticleDto>>('/public/article/search', {
+      params: query
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la recherche d'articles par titre:", error);
+    return null;
+  }
+};
+
 const remove = async (id: number): Promise<Article> => {
   const response = await axios.delete<Article>(`/public/article/delete/${id}`);
   return response.data;
@@ -74,18 +112,24 @@ const generateQrCode = async (data: string): Promise<string> => {
     throw new Error("Impossible de générer le code QR.");
   }
 };
-
-
 const update = async (id: number, updateArticleDto: UpdateArticleDto): Promise<Article> => {
   try {
-    console.log('Données envoyées:', updateArticleDto);
-    const response = await axios.put<Article>(`/public/article/update/${id}`, updateArticleDto);
+    const response = await axios.put<Article>(
+      `/public/article/update/${id}`,  // Notez le /v1/ devant le chemin
+      updateArticleDto,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
     return response.data;
   } catch (error) {
-    console.error("Erreur lors de la mise à jour de l'article:", error);
-    throw new Error("Impossible de mettre à jour l'article.");
+    console.error("Update error:", error);
+    throw error; 
   }
 };
+
 
 const getQrCode = async (id: number): Promise<string> => {
   try {
@@ -157,15 +201,33 @@ const getArticleHistory = async (id: number): Promise<any[]> => {
   }
 };
 
-const restoreVersion = async (id: number, version: number): Promise<Article> => {
+const restoreVersion = async (id: number, version: number): Promise<{ message: string }> => {
   try {
-    const response = await axios.post<Article>(`/public/article/${id}/restore-version/${version}`);
+    const response = await axios.post<{ message: string }>(
+      `/public/article-history/${id}/restore/${version}`
+    );
     return response.data;
   } catch (error) {
     console.error("Erreur lors de la restauration de la version:", error);
     throw new Error("Impossible de restaurer cette version de l'article.");
   }
 };
+
+
+const getTopOutOfStockRisk = async (): Promise<
+  ArticleStats & { riskArticles: Array<Article & { daysToOutOfStock: number }> }
+> => {
+  try {
+    const response = await axios.get<
+      ArticleStats & { riskArticles: Array<Article & { daysToOutOfStock: number }> }
+    >('/public/article/stats/top-out-of-stock-risk');
+    return response.data;
+  } catch (error) {
+    console.error("Erreur récupération risque stock:", error);
+    throw new Error("Impossible de récupérer les données de risque");
+  }
+};
+
 
 const getAvailableVersions = async (id: number): Promise<{versions: Array<{version: number, date?: Date}>}> => {
   try {
@@ -414,6 +476,7 @@ const getStockAlerts = async (): Promise<StockAlerts> => {
   }
 };
 
+
 const getStatusOverview = async (): Promise<StatusOverview> => {
   try {
     const response = await axios.get<StatusOverview>('/public/article/stats/status-overview');
@@ -478,6 +541,69 @@ const getStockHealth = async (): Promise<StockHealth> => {
   }
 };
 
+const getStockValueEvolution = async (days: number = 30): Promise<{ dates: string[]; values: number[] }> => {
+  try {
+    const response = await axios.get<{ dates: string[]; values: number[] }>(
+      `/public/article/stats/stock-value-evolution?days=${days}`
+    );
+    return response.data || { dates: [], values: [] }; // Fallback si data est null
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'évolution du stock:", error);
+    return { dates: [], values: [] }; // Retourner un objet valide même en cas d'erreur
+  }
+};
+
+
+// Ajoutez ces interfaces en haut du fichier si elles n'existent pas déjà
+interface SimplifiedStockStatus {
+  healthy: number;       // Articles actifs avec stock > 5
+  warning: number;       // Articles actifs avec 1-5 en stock
+  danger: number;        // Articles en rupture (0 stock)
+  inactive: number;      // Articles inactifs (quel que soit le stock)
+}
+
+interface TopValuedArticle {
+  reference: string;
+  title: string;
+  totalValue: number; // quantityInStock * unitPrice
+}
+
+interface AveragePriceByStatus {
+  [status: string]: number;
+}
+
+// Ajoutez ces méthodes à la fin du fichier, avant l'export
+const getSimplifiedStockStatus = async (): Promise<SimplifiedStockStatus> => {
+  try {
+    const response = await axios.get<SimplifiedStockStatus>('/public/article/stats/simple-stock');
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération du statut simplifié du stock:", error);
+    throw new Error("Impossible de récupérer le statut simplifié du stock.");
+  }
+};
+
+const getTopValuedArticles = async (): Promise<TopValuedArticle[]> => {
+  try {
+    const response = await axios.get<TopValuedArticle[]>('/public/article/stats/top-valued');
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération des articles les plus valorisés:", error);
+    throw new Error("Impossible de récupérer les articles les plus valorisés.");
+  }
+};
+
+const getAveragePriceByStatus = async (): Promise<AveragePriceByStatus> => {
+  try {
+    const response = await axios.get<AveragePriceByStatus>('/public/article/stats/avg-price-status');
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération du prix moyen par statut:", error);
+    throw new Error("Impossible de récupérer le prix moyen par statut.");
+  }
+};
+
+
 
 // N'oubliez pas d'ajouter ces méthodes à l'objet exporté à la fin du fichier
 export const article = {
@@ -514,5 +640,13 @@ export const article = {
   getQualityScores,
   getSuspiciousArticles,
   getPriceTrends,
-  getStockHealth
+  getStockHealth,
+  getTopOutOfStockRisk,
+  searchArticlesByTitle,
+  getStockValueEvolution,
+  // Nouvelles méthodes ajoutées
+  getSimplifiedStockStatus,
+  getTopValuedArticles,
+  getAveragePriceByStatus
+
 };
