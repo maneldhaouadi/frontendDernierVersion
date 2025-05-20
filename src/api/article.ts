@@ -1,6 +1,8 @@
 import { Chart } from 'chart.js';
 import axios from './axios';
-import { Article, ArticleCompareResponseDto, BarcodeSearchResponse, CreateArticleDto, PagedArticle, QrCodeSearchResponse, ResponseArticleDto, UpdateArticleDto } from '@/types';
+import { Article, ArticleCompareResponseDto, ArticleStatus, BarcodeSearchResponse, CreateArticleDto, PagedArticle, QrCodeSearchResponse, ResponseArticleDto, UpdateArticleDto } from '@/types';
+import { AxiosError, isAxiosError } from 'axios';
+
 interface IQueryObject {
   page?: number;
   limit?: number;
@@ -10,6 +12,33 @@ interface IQueryObject {
   [key: string]: any;
 }
 
+interface ArticleExtractedData {
+  reference: string;
+  title: string;
+  description?: string;
+  quantityInStock?: number;
+  unitPrice: number;
+  status?: string;
+  notes?: string;
+}
+
+interface OcrResponse {
+  success: boolean;
+  data: ArticleExtractedData;
+  confidence?: number;
+  processingTime?: number;
+  debug?: any;
+  message?: string;
+  corrections?: Array<{
+    original: string;
+    corrected: string;
+    confidence: number;
+    field: string;
+    context: string[];
+  }>;
+}
+
+
 interface PageDto<T> {
   data: T[];
   count: number;
@@ -18,6 +47,90 @@ interface PageDto<T> {
   pageCount: number;
 }
 
+interface ArticleStats {
+  totalArticles: number;
+  statusCounts: Record<string, number>;
+  statusPercentages: Record<string, string>;
+  outOfStockCount: number;
+  totalStockAvailable: number;
+  averageStockPerArticle: number;
+  lowStockCount: number;
+  outOfStockSinceDays: Record<string, number>;
+  topStockValueArticles: Array<{ reference: string; value: number }>;
+  toArchiveSuggestions: string[];
+}
+
+interface StockAlerts {
+  outOfStock: Array<{
+    reference: string;
+    title?: string;
+    daysOutOfStock: number;
+  }>;
+  lowStock: Array<{
+    reference: string;
+    title?: string;
+    remainingStock: number;
+  }>;
+}
+
+interface StatusOverview {
+  counts: Record<string, number>;
+  examples: Record<string, Array<{ reference: string; title?: string }>>;
+}
+
+interface ArticleQualityScore {
+  id: number;
+  reference: string;
+  title?: string;
+  score: number;
+  missingFields: string[];
+}
+
+interface SuspiciousArticle {
+  id: number;
+  reference: string;
+  title?: string;
+  quantity?: number;
+}
+
+interface PriceTrend {
+  oldArticles: {
+    count: number;
+    averagePrice: number;
+  };
+  newArticles: {
+    count: number;
+    averagePrice: number;
+  };
+  priceEvolution: {
+    amount: number;
+    percentage: number;
+    trend: 'up' | 'down' | 'stable';
+  };
+}
+
+interface StockHealth {
+  activePercentage: number;
+  status: 'poor' | 'medium' | 'good';
+  details: Record<string, number>;
+}
+
+interface SimplifiedStockStatus {
+  healthy: number;
+  warning: number;
+  danger: number;
+  inactive: number;
+}
+
+interface TopValuedArticle {
+  reference: string;
+  title: string;
+  totalValue: number;
+}
+
+interface AveragePriceByStatus {
+  [status: string]: number;
+}
 const findPaginated = async (
   page: number = 1,
   size: number = 5,
@@ -27,11 +140,13 @@ const findPaginated = async (
   relations: string[] = []
 ): Promise<PagedArticle> => {
   const barcodeFilter = search ? `barcode||$cont||${search}` : '';
-  const filters = barcodeFilter ? `filter=${barcodeFilter}` : '';
+  // Ajout du filtre pour exclure les articles archivés
+  const statusFilter = `status||$ne||archived`;
+  const filters = [statusFilter, barcodeFilter].filter(Boolean).join(',');
 
   try {
     const response = await axios.get<PagedArticle>(
-      `/public/article/list?sort=${sortKey},${order}&${filters}&limit=${size}&page=${page}&join=${relations.join(',')}`
+      `/public/article/list?sort=${sortKey},${order}&filter=${filters}&limit=${size}&page=${page}&join=${relations.join(',')}`
     );
     return response.data;
   } catch (error) {
@@ -43,6 +158,38 @@ const findPaginated = async (
 const findOne = async (id: number): Promise<Article> => {
   const response = await axios.get<Article>(`/public/article/${id}`);
   return response.data;
+};
+
+
+const findArchivedArticles = async (
+  search?: string,
+  sortBy?: string,
+  sortOrder: 'ASC' | 'DESC' = 'DESC'
+): Promise<ResponseArticleDto[]> => {
+  try {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (sortBy) params.append('sortBy', sortBy);
+    params.append('sortOrder', sortOrder);
+
+    const response = await axios.get<ResponseArticleDto[]>(
+      `/public/article/archives?${params.toString()}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching archived articles:", error);
+    throw new Error("Failed to fetch archived articles");
+  }
+};
+
+const findActiveArticles = async (): Promise<ResponseArticleDto[]> => {
+  try {
+    const response = await axios.get<ResponseArticleDto[]>('/public/article/list/active');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching active articles:", error);
+    throw new Error("Failed to fetch active articles");
+  }
 };
 
 const create = async (article: CreateArticleDto): Promise<Article> => {
@@ -81,10 +228,27 @@ const searchArticlesByTitle = async (
   }
 };
 
-const remove = async (id: number): Promise<Article> => {
-  const response = await axios.delete<Article>(`/public/article/delete/${id}`);
-  return response.data;
+const hardDelete = async (id: number): Promise<void> => {
+  await axios.delete(`/public/article/hard-delete/${id}`);
 };
+
+
+// Dans api.ts
+const remove = async (id: number): Promise<{ success: boolean }> => {
+  try {
+    const response = await axios.delete<{ success: boolean }>(`/public/article/delete/${id}`);
+    if (response.data.success) {
+      return { success: true };
+    } else {
+      throw new Error("Delete operation failed");
+    }
+  } catch (error) {
+    console.error("Error deleting article:", error);
+    throw error;
+  }
+};
+
+
 
 const importExcel = async (file: File): Promise<Article[]> => {
   const formData = new FormData();
@@ -112,24 +276,26 @@ const generateQrCode = async (data: string): Promise<string> => {
     throw new Error("Impossible de générer le code QR.");
   }
 };
+
 const update = async (id: number, updateArticleDto: UpdateArticleDto): Promise<Article> => {
   try {
     const response = await axios.put<Article>(
-      `/public/article/update/${id}`,  // Notez le /v1/ devant le chemin
+      `/public/article/update/${id}`,
       updateArticleDto,
       {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` // Si vous utilisez JWT
         },
+        withCredentials: true // Si vous utilisez des cookies
       }
     );
     return response.data;
   } catch (error) {
-    console.error("Update error:", error);
+   
     throw error; 
   }
 };
-
 
 const getQrCode = async (id: number): Promise<string> => {
   try {
@@ -213,7 +379,6 @@ const restoreVersion = async (id: number, version: number): Promise<{ message: s
   }
 };
 
-
 const getTopOutOfStockRisk = async (): Promise<
   ArticleStats & { riskArticles: Array<Article & { daysToOutOfStock: number }> }
 > => {
@@ -227,7 +392,6 @@ const getTopOutOfStockRisk = async (): Promise<
     throw new Error("Impossible de récupérer les données de risque");
   }
 };
-
 
 const getAvailableVersions = async (id: number): Promise<{versions: Array<{version: number, date?: Date}>}> => {
   try {
@@ -288,174 +452,124 @@ const searchCategories = async (query: string): Promise<string[]> => {
     return [];
   }
 };
-const extractFromImage = async (file: File): Promise<CreateArticleDto> => {
+const extractFromImage = async (file: File): Promise<ArticleExtractedData> => {
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const response = await axios.post<CreateArticleDto>('/ocr/article/extract', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await axios.post<OcrResponse>(
+      '/ocr/extract',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        params: {
+          strict: false, // Passé à false pour accepter des résultats partiels
+          debug: true,
+        },
+        timeout: 30000,
+        validateStatus: (status) => status < 500,
       },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Erreur lors de l\'extraction des données depuis l\'image:', error);
-    throw new Error("Impossible d'extraire les données depuis l'image.");
-  }
-};
+    );
 
-/*
-const extractFromPdf = async (file: File): Promise<CreateArticleDto> => {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await axios.post<CreateArticleDto>('/public/article/extract-from-pdf', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    if (!response.data) {
-      throw new Error("Aucune donnée reçue du serveur");
+    // Gestion des erreurs HTTP
+    if (response.status >= 400) {
+      const errorData = response.data;
+      throw new Error(
+        errorData.message ||
+        `Server returned status ${response.status}: ${JSON.stringify(errorData)}`,
+      );
     }
 
-    // Conversion explicite des nombres et valeurs par défaut
-    return {
-      title: response.data.title || '',
-      description: response.data.description || '',
-      category: response.data.category || '',
-      subCategory: response.data.subCategory || '',
-      purchasePrice: response.data.purchasePrice ? Number(response.data.purchasePrice) : 0,
-      salePrice: response.data.salePrice ? Number(response.data.salePrice) : 0,
-      quantityInStock: response.data.quantityInStock ? Number(response.data.quantityInStock) : 0,
-      status: response.data.status || 'active'
+    // Validation de la structure de réponse
+    if (!response.data || typeof response.data !== 'object') {
+      throw new Error('Invalid response format from OCR service');
+    }
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'OCR processing failed');
+    }
+
+    // Normalisation des données
+    const normalizeString = (value: any): string => {
+      if (typeof value === 'string') return value.trim();
+      if (value !== undefined && value !== null) return value.toString().trim();
+      return '';
     };
-  } catch (error) {
-    console.error('Erreur détaillée:', error);
-    throw new Error(`Impossible d'extraire les données depuis le PDF: ${console.error}`);
+
+    const normalizeNumber = (value: any, defaultValue: number = 0): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        // Supprime les espaces et convertit les virgules en points
+        const cleaned = value.replace(/\s/g, '').replace(/,/g, '.');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? defaultValue : parsed;
+      }
+      return defaultValue;
+    };
+
+    // Construction de l'objet final avec valeurs par défaut
+    const processedData: ArticleExtractedData = {
+      reference: normalizeString(response.data.data.reference || 'REF-TEMP').replace(/[^a-zA-Z0-9-]/g, ''),
+      title: normalizeString(response.data.data.title || 'Titre non détecté'),
+      description: response.data.data.description ? normalizeString(response.data.data.description) : undefined,
+      unitPrice: normalizeNumber(response.data.data.unitPrice, 0),
+      quantityInStock: response.data.data.quantityInStock !== undefined ? 
+        normalizeNumber(response.data.data.quantityInStock, 0) : 
+        0,
+      status: response.data.data.status ? 
+        normalizeString(response.data.data.status) : 
+        'draft',
+      notes: response.data.data.notes ? normalizeString(response.data.data.notes) : undefined,
+    };
+
+    // Validation des champs critiques avec valeurs par défaut
+    if (!processedData.reference || processedData.reference === 'REF-TEMP') {
+      console.warn('Reference not detected, using temporary value');
+    }
+
+    if (processedData.title === 'Titre non détecté') {
+      console.warn('Title not detected, using default value');
+    }
+
+    if (processedData.unitPrice <= 0) {
+      console.warn('Invalid unit price detected, using 0');
+      processedData.unitPrice = 0;
+    }
+
+    // Ajout des corrections OCR si disponibles
+    if (response.data.corrections) {
+      console.log('OCR corrections applied:', response.data.corrections);
+    }
+
+    return processedData;
+  } catch (error: unknown) {
+    console.error('OCR processing error:', error);
+
+    // Création d'un objet par défaut en cas d'erreur
+    const defaultData: ArticleExtractedData = {
+      reference: 'REF-TEMP',
+      title: 'Titre non détecté',
+      unitPrice: 0,
+      quantityInStock: 0,
+      status: 'draft'
+    };
+
+    if (error instanceof Error) {
+      if (error.message.includes('missing')) {
+        // Si l'erreur concerne des champs manquants, on retourne les valeurs par défaut
+        console.warn('Missing fields detected, returning default values');
+        return defaultData;
+      }
+      throw new Error(`OCR processing failed: ${error.message}`);
+    } 
+    
+    throw new Error('Unknown error occurred during OCR processing');
   }
 };
 
-const compareWithPdf = async (
-  id: number,
-  file: File
-): Promise<ArticleCompareResponseDto> => {
-  const formData = new FormData();
-  formData.append('file', file);
 
-  try {
-    const response = await axios.post<ArticleCompareResponseDto>(
-      `/public/article/${id}/compare-with-pdf`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error("Erreur lors de la comparaison avec PDF:", error);
-    throw new Error(`Impossible de comparer avec le PDF: ${console.error}`);
-  }
-};
-
-const compareWithImage = async (
-  id: number,
-  file: File
-): Promise<ArticleCompareResponseDto> => {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await axios.post<ArticleCompareResponseDto>(
-      `/public/article/${id}/compare-with-image`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error("Erreur lors de la comparaison avec image:", error);
-    throw new Error(`Impossible de comparer avec l'image: ${console.error}`);
-  }
-};*/// Ajoutez ces interfaces en haut du fichier si elles n'existent pas déjà
-interface ArticleStats {
-  totalArticles: number;
-  statusCounts: Record<string, number>;
-  statusPercentages: Record<string, string>;
-  outOfStockCount: number;
-  totalStockAvailable: number;
-  averageStockPerArticle: number;
-  lowStockCount: number;
-  outOfStockSinceDays: Record<string, number>;
-  topStockValueArticles: Array<{ reference: string; value: number }>;
-  toArchiveSuggestions: string[];
-}
-
-interface StockAlerts {
-  outOfStock: Array<{
-    reference: string;
-    title?: string;
-    daysOutOfStock: number;
-  }>;
-  lowStock: Array<{
-    reference: string;
-    title?: string;
-    remainingStock: number;
-  }>;
-}
-
-interface StatusOverview {
-  counts: Record<string, number>;
-  examples: Record<string, Array<{ reference: string; title?: string }>>;
-}
-
-interface ArticleQualityScore {
-  id: number;
-  reference: string;
-  title?: string;
-  score: number;
-  missingFields: string[];
-}
-
-interface SuspiciousArticle {
-  id: number;
-  reference: string;
-  title?: string;
-  quantity?: number;
-}
-
-interface PriceTrend {
-  oldArticles: {
-    count: number;
-    averagePrice: number;
-  };
-  newArticles: {
-    count: number;
-    averagePrice: number;
-  };
-  priceEvolution: {
-    amount: number;
-    percentage: number;
-    trend: 'up' | 'down' | 'stable';
-  };
-}
-
-interface StockHealth {
-  activePercentage: number;
-  status: 'poor' | 'medium' | 'good';
-  details: Record<string, number>;
-}
-
-// Ajoutez ces méthodes à l'objet article à la fin du fichier
 const getSimpleStats = async (): Promise<ArticleStats> => {
   try {
     const response = await axios.get<ArticleStats>('/public/article/stats/simple');
@@ -475,7 +589,6 @@ const getStockAlerts = async (): Promise<StockAlerts> => {
     throw new Error("Impossible de récupérer les alertes de stock.");
   }
 };
-
 
 const getStatusOverview = async (): Promise<StatusOverview> => {
   try {
@@ -546,33 +659,13 @@ const getStockValueEvolution = async (days: number = 30): Promise<{ dates: strin
     const response = await axios.get<{ dates: string[]; values: number[] }>(
       `/public/article/stats/stock-value-evolution?days=${days}`
     );
-    return response.data || { dates: [], values: [] }; // Fallback si data est null
+    return response.data || { dates: [], values: [] };
   } catch (error) {
     console.error("Erreur lors de la récupération de l'évolution du stock:", error);
-    return { dates: [], values: [] }; // Retourner un objet valide même en cas d'erreur
+    return { dates: [], values: [] };
   }
 };
 
-
-// Ajoutez ces interfaces en haut du fichier si elles n'existent pas déjà
-interface SimplifiedStockStatus {
-  healthy: number;       // Articles actifs avec stock > 5
-  warning: number;       // Articles actifs avec 1-5 en stock
-  danger: number;        // Articles en rupture (0 stock)
-  inactive: number;      // Articles inactifs (quel que soit le stock)
-}
-
-interface TopValuedArticle {
-  reference: string;
-  title: string;
-  totalValue: number; // quantityInStock * unitPrice
-}
-
-interface AveragePriceByStatus {
-  [status: string]: number;
-}
-
-// Ajoutez ces méthodes à la fin du fichier, avant l'export
 const getSimplifiedStockStatus = async (): Promise<SimplifiedStockStatus> => {
   try {
     const response = await axios.get<SimplifiedStockStatus>('/public/article/stats/simple-stock');
@@ -603,9 +696,117 @@ const getAveragePriceByStatus = async (): Promise<AveragePriceByStatus> => {
   }
 };
 
+const useInQuote = async (id: number): Promise<void> => {
+  try {
+    await axios.post(`/public/article/${id}/use-in-quote`);
+  } catch (error) {
+    console.error("Erreur lors de l'utilisation dans un devis:", error);
+    throw new Error("Impossible d'utiliser l'article dans un devis");
+  }
+};
+
+const useInOrder = async (id: number): Promise<void> => {
+  try {
+    await axios.post(`/public/article/${id}/use-in-order`);
+  } catch (error) {
+    console.error("Erreur lors de l'utilisation dans une commande:", error);
+    throw new Error("Impossible d'utiliser l'article dans une commande");
+  }
+};
+
+const restoreArticleVersion = async (
+  id: number, 
+  version: number
+): Promise<ResponseArticleDto> => {
+  try {
+    const response = await axios.post<ResponseArticleDto>(
+      `/public/article/${id}/restore-version/${version}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la restauration de version:", error);
+    throw new Error("Impossible de restaurer cette version");
+  }
+};
+
+const updateArticleStatus = async (
+  id: number, 
+  newStatus: ArticleStatus
+): Promise<ResponseArticleDto> => {
+  try {
+    const response = await axios.put<ResponseArticleDto>(
+      `/public/article/${id}/status`,
+      { status: newStatus },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du statut:", error);
+    throw new Error("Erreur inconnue lors de la mise à jour du statut");
+  }
+};
+
+// Méthodes pour les articles archivés
+const getArchivedArticles = async (
+  page: number = 1,
+  size: number = 10,
+  searchTerm: string = ''
+): Promise<PagedArticle> => {
+  try {
+    const response = await axios.get<PagedArticle>(
+      `/public/article/archived?page=${page}&limit=${size}&search=${searchTerm}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération des articles archivés:", error);
+    throw new Error("Impossible de récupérer les articles archivés");
+  }
+};
+
+const archiveArticle = async (id: number): Promise<ResponseArticleDto> => {
+  try {
+    const response = await axios.post<ResponseArticleDto>(
+      `/public/article/${id}/archive`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de l'archivage de l'article:", error);
+    throw new Error("Impossible d'archiver l'article");
+  }
+};
+
+const unarchiveArticle = async (id: number): Promise<ResponseArticleDto> => {
+  try {
+    const response = await axios.post<ResponseArticleDto>(
+      `/public/article/${id}/unarchive`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors du désarchivage de l'article:", error);
+    throw new Error("Impossible de désarchiver l'article");
+  }
+};
+
+const restoreArticle = async (id: number): Promise<ResponseArticleDto> => {
+  try {
+    const response = await axios.post<ResponseArticleDto>(
+      `/public/article/${id}/restore`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error restoring article:", error);
+    throw new Error("Failed to restore article");
+  }
+};
 
 
-// N'oubliez pas d'ajouter ces méthodes à l'objet exporté à la fin du fichier
+
+
 export const article = {
   findPaginated,
   findOne,
@@ -630,10 +831,6 @@ export const article = {
   validateSubCategory,
   searchCategories,
   extractFromImage,
-  /* extractFromPdf,
-  compareWithPdf,
-  compareWithImage, */
-  // Ajoutez ces nouvelles méthodes
   getSimpleStats,
   getStockAlerts,
   getStatusOverview,
@@ -644,9 +841,19 @@ export const article = {
   getTopOutOfStockRisk,
   searchArticlesByTitle,
   getStockValueEvolution,
-  // Nouvelles méthodes ajoutées
   getSimplifiedStockStatus,
   getTopValuedArticles,
-  getAveragePriceByStatus
-
+  getAveragePriceByStatus,
+  useInQuote,
+  useInOrder,
+  restoreArticleVersion,
+  updateArticleStatus,
+  // Méthodes pour les articles archivés
+  getArchivedArticles,
+  archiveArticle,
+  unarchiveArticle,
+  findActiveArticles,
+  findArchivedArticles,
+  restoreArticle,
+  hardDelete
 };

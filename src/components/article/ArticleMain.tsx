@@ -1,136 +1,216 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { useDebounce } from '@/hooks/other/useDebounce';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api';
 import { DataTable } from './data-table/data-table';
 import { getArticleColumns } from './data-table/columns';
-import { ArticleDeleteDialog } from './dialogs/ArticleDeleteDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, Archive, Loader2 } from 'lucide-react';
 import { ArticleActionsContext } from './data-table/ActionsContext';
-import { ArticleDuplicateDialog } from './dialogs/ExpenseInvoiceDuplicateDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/common/Spinner';
+
+type ArticleStatus = 'draft' | 'active' | 'inactive' | 'archived' | 'out_of_stock' | 'pending_review';
 
 const ArticleList: React.FC = () => {
   const router = useRouter();
   const { t } = useTranslation('article');
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
-  const [sortDetails, setSortDetails] = useState({ order: true, sortKey: 'title' });
+  const queryClient = useQueryClient();
+  
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
 
-  const { value: debouncedPage } = useDebounce<number>(page, 500);
-  const { value: debouncedSize } = useDebounce<number>(size, 500);
-  const { value: debouncedSortDetails } = useDebounce<typeof sortDetails>(sortDetails, 500);
-  const { value: debouncedSearchTerm } = useDebounce<string>(searchTerm, 500);
-
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [duplicateDialog, setDuplicateDialog] = useState(false);
-  const [selectedArticle, setSelectedArticle] = useState<number | null>(null);
-
+  // Optimized query with debounced search
   const {
-    isPending: isFetchPending,
+    data: articles = [],
+    isLoading,
     error,
-    data: articlesResp,
-    refetch: refetchArticles,
+    refetch
   } = useQuery({
-    queryKey: [
-      'articles',
-      debouncedPage,
-      debouncedSize,
-      debouncedSortDetails.order,
-      debouncedSortDetails.sortKey,
-      debouncedSearchTerm,
-    ],
-    queryFn: () =>
-      api.article.searchArticlesByTitle(
-        debouncedSearchTerm,
-        {
-          page: debouncedPage,
-          limit: debouncedSize,
-          sort: `${debouncedSortDetails.sortKey},${debouncedSortDetails.order ? 'ASC' : 'DESC'}`
-        }
-      ),
+    queryKey: ['active-articles', searchTerm],
+    queryFn: async () => {
+      const data = await api.article.findActiveArticles();
+      return data.filter(article => 
+        searchTerm 
+          ? article.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            article.reference?.toLowerCase().includes(searchTerm.toLowerCase())
+          : true
+      );
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
   });
 
-  const { mutate: removeArticle, isPending: isDeletePending } = useMutation({
-    mutationFn: (id: number) => api.article.remove(id),
-    onSuccess: () => {
-      toast.success(t('article.action_remove_success'));
-      refetchArticles();
-      setDeleteDialog(false);
-    },
-    onError: (error) => {
-      toast.error(t('article.action_remove_failure'));
-    },
-  });
+  // Memoized pagination calculations
+  const { paginatedArticles, pageCount } = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = page * pageSize;
+    return {
+      paginatedArticles: articles.slice(startIndex, endIndex),
+      pageCount: Math.ceil(articles.length / pageSize) || 1,
+    };
+  }, [articles, page, pageSize]);
 
-  const { mutate: duplicateArticle, isPending: isDuplicationPending } = useMutation({
-    mutationFn: ({ id, includeFiles }: { id: number; includeFiles: boolean }) => {
-      return api.article.duplicate(id, includeFiles);
-    },
-    onSuccess: async (data) => {
-      toast.success(t('article.action_duplicate_success'));
-      await router.push(`/inventory/article/${data.id}`);
-      setDuplicateDialog(false);
-    },
-    onError: (error) => {
-      toast.error(t('article.action_duplicate_failure'));
-    },
-  });
+  // Reset to first page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
-  const openDeleteDialog = (id: number) => {
-    setSelectedArticle(id);
-    setDeleteDialog(true);
-  };
-
-  const openDuplicateDialog = (id: number) => {
-    setSelectedArticle(id);
-    setDuplicateDialog(true);
-  };
-
-  const goToPreviousPage = () => {
-    if (page > 1) {
+  // Handle page overflow
+  useEffect(() => {
+    if (articles.length > 0 && paginatedArticles.length === 0 && page > 1) {
       setPage(page - 1);
     }
-  };
+  }, [articles, paginatedArticles, page]);
 
-  const goToNextPage = () => {
-    if (articlesResp?.pageCount && page < articlesResp.pageCount) {
-      setPage(page + 1);
+  // Delete article mutation with optimistic updates
+  const { mutate: removeArticle, isLoading: isDeleting } = useMutation({
+    mutationFn: (id: number) => api.article.remove(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries(['active-articles']);
+      const previousArticles = queryClient.getQueryData(['active-articles']);
+      
+      queryClient.setQueryData(['active-articles'], (old: any) => 
+        old?.filter((article: any) => article.id !== id) || []
+      );
+
+      return { previousArticles };
+    },
+    onSuccess: () => {
+      toast.success(t('article.action_remove_success'));
+    },
+    onError: (err, id, context: any) => {
+      queryClient.setQueryData(['active-articles'], context.previousArticles);
+      toast.error(t('article.action_remove_failure'));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(['active-articles']);
+      queryClient.invalidateQueries(['archived-articles']);
     }
-  };
+  });
 
-  const context = {
+  const { mutate: duplicateArticle } = useMutation({
+    mutationFn: (id: number) => api.article.duplicate(id),
+    onSuccess: (data) => {
+      toast.success(t('article.action_duplicate_success'));
+      router.push(`/articles/${data.id}`);
+    },
+    onError: () => {
+      toast.error(t('article.action_duplicate_failure'));
+    }
+  });
+
+  const { mutate: updateArticleStatus } = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: ArticleStatus }) => 
+      api.article.updateStatus(id, status),
+    onSuccess: () => {
+      toast.success(t('Statut mis à jour avec succès'));
+      queryClient.invalidateQueries(['active-articles']);
+    },
+    onError: () => {
+      toast.error(t('Erreur lors de la mise à jour du statut'));
+    }
+  });
+
+  const openDeleteDialog = useCallback((id: number) => {
+    setArticleToDelete(id);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (articleToDelete) {
+      try {
+        await removeArticle(articleToDelete);
+        setDeleteDialogOpen(false);
+        setArticleToDelete(null);
+      } catch (error) {
+        console.error("Delete error:", error);
+        toast.error(t('article.action_remove_failure'));
+      }
+    }
+  }, [articleToDelete, removeArticle, t]);
+
+  const openDuplicateDialog = useCallback((id: number) => {
+    if (window.confirm(t('article.confirm_duplicate'))) {
+      duplicateArticle(id);
+    }
+  }, [duplicateArticle, t]);
+
+  const handleStatusChange = useCallback((id: number, newStatus: ArticleStatus) => {
+    updateArticleStatus({ id, status: newStatus });
+  }, [updateArticleStatus]);
+
+  const goToPreviousPage = useCallback(() => {
+    if (page > 1) setPage(page - 1);
+  }, [page]);
+
+  const goToNextPage = useCallback(() => {
+    if (page < pageCount) setPage(page + 1);
+  }, [page, pageCount]);
+
+  const goToArchive = useCallback(() => {
+    router.push('/articles/archives');
+  }, [router]);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handlePageSizeChange = useCallback((value: string) => {
+    setPageSize(Number(value));
+    setPage(1);
+  }, []);
+
+  // Memoized context value
+  const contextValue = useMemo(() => ({
     openDeleteDialog,
     openDuplicateDialog,
     searchTerm,
-    setSearchTerm,
+    setSearchTerm: (term: string) => {
+      setSearchTerm(term);
+      setPage(1);
+    },
     page,
-    totalPageCount: articlesResp?.pageCount || 1,
+    totalPageCount: pageCount,
     setPage,
-    size,
-    setSize,
-    order: sortDetails.order,
-    sortKey: sortDetails.sortKey,
-    setSortDetails: (order: boolean, sortKey: string) => setSortDetails({ order, sortKey })
-  };
+    size: pageSize,
+    setSize: setPageSize,
+    onStatusChange: handleStatusChange,
+    refetchArticles: refetch,
+  }), [
+    openDeleteDialog, 
+    openDuplicateDialog, 
+    searchTerm, 
+    page, 
+    pageCount, 
+    pageSize, 
+    handleStatusChange, 
+    refetch
+  ]);
 
   if (error) {
     return (
-      <div className="p-4 text-red-500">
-        <p>{t('Une erreur est survenue lors du chargement des articles')}</p>
-        <p className="text-sm text-muted-foreground">{error.message}</p>
+      <div className="p-4 text-center">
+        <p className="text-red-500 mb-2">{t('Une erreur est survenue lors du chargement des articles')}</p>
         <Button 
           variant="outline" 
-          size="sm" 
-          className="mt-2"
-          onClick={() => refetchArticles()}
+          size="sm"
+          onClick={() => refetch()}
+          className="h-8 px-4 text-sm"
         >
           {t('Réessayer')}
         </Button>
@@ -139,137 +219,161 @@ const ArticleList: React.FC = () => {
   }
 
   return (
-    <ArticleActionsContext.Provider value={context}>
+    <ArticleActionsContext.Provider value={contextValue}>
       <Card className="flex flex-col flex-1 overflow-hidden">
         <CardHeader className="flex flex-col space-y-1.5">
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="text-lg">{t('Liste des articles')}</CardTitle>
-              <CardDescription className="text-sm">{t('Gestion des articles de votre inventaire')}</CardDescription>
+              <CardTitle className="text-lg flex items-center gap-2">
+                {t('Liste des articles')}
+              </CardTitle>
+              <CardDescription className="text-sm">
+                {t('Gestion des articles actifs')}
+              </CardDescription>
             </div>
-            <Button 
-              size="sm"
-              className="flex items-center gap-1.5 h-8"
-              onClick={() => router.push('/article/create-article')}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{t('Ajouter un article')}</span>
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                className="h-8 px-4 text-sm flex items-center gap-1.5"
+                onClick={goToArchive}
+              >
+                <Archive className="h-3.5 w-3.5" />
+                <span>{t('Archives')}</span>
+              </Button>
+              <Button 
+                size="sm"
+                className="h-8 px-4 text-sm flex items-center gap-1.5"
+                onClick={() => router.push('/articles/create')}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{t('Nouvel article')}</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-6">
-          {/* Barre de recherche */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="relative flex-1">
-              <Input
-                placeholder={t('Rechercher un article (titre, description, code-barres, catégorie)...')}
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1); // Reset to first page on new search
-                }}
-                className="h-8 pl-8 text-sm"
-              />
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8"
-              onClick={() => refetchArticles()}
-            >
-              {t('Rechercher')}
-            </Button>
+        <CardContent className="p-6 flex flex-col h-[calc(100vh-180px)]">
+          <div className="relative mb-4">
+            <Input
+              placeholder={t('Rechercher un article...')}
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="h-8 pl-8 text-sm"
+            />
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           </div>
 
-          {/* Tableau des articles */}
-          <DataTable
-            data={articlesResp?.data || []}
-            columns={getArticleColumns(t, router)}
-            isPending={isFetchPending || isDeletePending || isDuplicationPending}
-          />
+          <ScrollArea className="flex-1 pr-4 mb-4">
+            <DataTable
+              data={paginatedArticles}
+              columns={getArticleColumns(t, router)}
+              isPending={isLoading}
+            />
 
-          {/* Messages d'état */}
-          {isFetchPending && (
-            <div className="p-4 text-center text-muted-foreground">
-              {t('Chargement des articles...')}
-            </div>
-          )}
-
-          {!isFetchPending && articlesResp?.data.length === 0 && (
-            <div className="p-4 text-center text-muted-foreground">
-              {searchTerm 
-                ? t('Aucun article ne correspond à votre recherche') 
-                : t('Aucun article trouvé')}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {articlesResp?.data.length ? (
-            <div className="flex justify-between items-center mt-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{t('Lignes par page')}</span>
-                <Select
-                  value={size.toString()}
-                  onValueChange={(value) => setSize(Number(value))}
-                >
-                  <SelectTrigger className="h-8 w-20 text-xs">
-                    <SelectValue placeholder={size.toString()} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5" className="text-xs">5</SelectItem>
-                    <SelectItem value="10" className="text-xs">10</SelectItem>
-                    <SelectItem value="20" className="text-xs">20</SelectItem>
-                    <SelectItem value="50" className="text-xs">50</SelectItem>
-                  </SelectContent>
-                </Select>
+            {isLoading && (
+              <div className="p-4 text-center text-muted-foreground">
+                <Spinner className="mx-auto" size="small" />
+                <p className="mt-2">{t('Chargement des articles...')}</p>
               </div>
+            )}
 
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={goToPreviousPage}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <div className="text-xs text-muted-foreground px-2">
-                  {t('Page')} {page} {t('sur')} {articlesResp?.pageCount || 1}
+            {!isLoading && articles.length === 0 && (
+              <div className="p-4 text-center text-muted-foreground">
+                {searchTerm 
+                  ? t('Aucun article ne correspond à votre recherche') 
+                  : t('Aucun article trouvé')}
+              </div>
+            )}
+          </ScrollArea>
+
+          {articles.length > 0 && (
+            <div className="sticky bottom-0 bg-background pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {t('Lignes par page')}
+                  </span>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={handlePageSizeChange}
+                  >
+                    <SelectTrigger className="h-8 w-20 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={goToNextPage}
-                  disabled={!articlesResp?.pageCount || page >= articlesResp.pageCount}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={goToPreviousPage}
+                    disabled={page === 1}
+                  >
+                    <span className="sr-only">{t('Page précédente')}</span>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="text-xs text-muted-foreground px-2">
+                    {t('Page')} {page} {t('sur')} {pageCount}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={goToNextPage}
+                    disabled={page >= pageCount}
+                  >
+                    <span className="sr-only">{t('Page suivante')}</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
-          ) : null}
+          )}
         </CardContent>
-
-        {/* Boîtes de dialogue */}
-        <ArticleDeleteDialog
-          id={selectedArticle}
-          open={deleteDialog}
-          deleteArticle={() => selectedArticle && removeArticle(selectedArticle)}
-          onClose={() => setDeleteDialog(false)}
-        />
-
-        <ArticleDuplicateDialog
-          id={selectedArticle || 0}
-          open={duplicateDialog}
-          duplicateArticle={(includeFiles: boolean) => {
-            selectedArticle && duplicateArticle({ id: selectedArticle, includeFiles });
-          }}
-          onClose={() => setDuplicateDialog(false)}
-        />
       </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{t('Confirmer la suppression')}</DialogTitle>
+            <DialogDescription>
+              {t('article.confirm_delete')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button 
+              variant="outline"
+              size="sm"
+              className="h-8 px-4 text-sm"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              {t('Annuler')}
+            </Button>
+            <Button 
+              variant="destructive"
+              size="sm"
+              className="h-8 px-4 text-sm"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t('Supprimer')
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </ArticleActionsContext.Provider>
   );
 };

@@ -13,6 +13,17 @@ export const getArticleColumns = (
     return t(value, { ns: namespace || translationNamespace });
   };
 
+  // Traduction des statuts en français
+  const statusTranslations: Record<string, string> = {
+    'active': 'Actif',
+    'inactive': 'Inactif',
+    'out_of_stock': 'Rupture de stock',
+    'draft': 'Brouillon',
+    'published': 'Publié',
+    'archived': 'Archivé',
+    'pending': 'En attente'
+  };
+
   return [
     {
       accessorKey: 'title',
@@ -52,10 +63,9 @@ export const getArticleColumns = (
       ),
       cell: ({ row }) => (
         <div>
-<Badge className="w-60 justify-center py-1">
-  {translate(`article.status.${row.original.status}`)}
-</Badge>
-
+          <Badge className="w-60 justify-center py-1">
+            {statusTranslations[row.original.status] || row.original.status}
+          </Badge>
         </div>
       ),
       enableSorting: true,

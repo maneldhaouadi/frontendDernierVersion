@@ -129,6 +129,20 @@ export interface ArticleExtractedData {
   };
 }
 
+
+interface ArticleStatusUpdateResponse {
+  id: number;
+  status: ArticleStatus;
+  previousStatus: ArticleStatus;
+  updatedAt: Date;
+}
+
+interface VersionRestoreResponse {
+  id: number;
+  version: number;
+  restoredFields: string[];
+}
+
 /**
  * Résultat de comparaison d'un champ
  */

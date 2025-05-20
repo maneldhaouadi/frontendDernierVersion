@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/common/Spinner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Save, X, FileText, Image, Download } from 'lucide-react';
+import { FileText, Image, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -199,20 +199,6 @@ const ArticleDetails: React.FC = () => {
   const [articleDetails, setArticleDetails] = useState<Article | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [formData, setFormData] = useState<UpdateArticleDto>({
-    title: '',
-    description: '',
-    reference: '',
-    quantityInStock: 0,
-    status: 'draft',
-    unitPrice: 0,
-    notes: '',
-    version: 1,
-    justificatifFileName: '',
-    justificatifMimeType: '',
-    justificatifFileSize: 0
-  });
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareFile, setCompareFile] = useState<File | null>(null);
   const [compareFileType, setCompareFileType] = useState<'image' | 'pdf'>('image');
@@ -226,19 +212,6 @@ const ArticleDetails: React.FC = () => {
         setLoading(true);
         const response = await article.findOne(Number(id));
         setArticleDetails(response);
-        setFormData({
-          title: response.title || '',
-          description: response.description || '',
-          reference: response.reference,
-          quantityInStock: response.quantityInStock,
-          status: response.status,
-          unitPrice: response.unitPrice,
-          notes: response.notes || '',
-          version: response.version || 1,
-          justificatifFileName: response.justificatifFileName || '',
-          justificatifMimeType: response.justificatifMimeType || '',
-          justificatifFileSize: response.justificatifFileSize || 0
-        });
 
         if (response.justificatifFile) {
           const blob = new Blob([response.justificatifFile.data], { type: response.justificatifMimeType });
@@ -255,70 +228,6 @@ const ArticleDetails: React.FC = () => {
 
     fetchArticleDetails();
   }, [id]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'quantityInStock' || name === 'unitPrice' || name === 'version' || name === 'justificatifFileSize'
-        ? Number(value)
-        : value,
-    }));
-  };
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      status: e.target.value as ArticleStatus,
-    }));
-  };
-
-  const toggleEditMode = () => {
-    setIsEditing(prev => !prev);
-    if (isEditing && articleDetails) {
-      setFormData({
-        title: articleDetails.title || '',
-        description: articleDetails.description || '',
-        reference: articleDetails.reference,
-        quantityInStock: articleDetails.quantityInStock,
-        status: articleDetails.status,
-        unitPrice: articleDetails.unitPrice,
-        notes: articleDetails.notes || '',
-        version: articleDetails.version || 1,
-        justificatifFileName: articleDetails.justificatifFileName || '',
-        justificatifMimeType: articleDetails.justificatifMimeType || '',
-        justificatifFileSize: articleDetails.justificatifFileSize || 0
-      });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // Préparer les données à envoyer
-      const payload = {
-        title: formData.title,
-        description: formData.description,
-        reference: formData.reference,
-        quantityInStock: Number(formData.quantityInStock),
-        unitPrice: Number(formData.unitPrice),
-        status: formData.status,
-        notes: formData.notes,
-        version: Number(formData.version)
-      };
-  
-      // Appel API
-      const updatedArticle = await api.article.update(Number(id), payload);
-      
-      // Mettre à jour l'état local
-      setArticleDetails(updatedArticle);
-      setIsEditing(false);
-      toast.success('Article mis à jour avec succès');
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour:', error);
-      toast.error('Échec de la mise à jour');
-    }
-  };
 
   const handleDownloadJustificatif = () => {
     if (!articleDetails?.justificatifFile) return;
@@ -444,24 +353,6 @@ const ArticleDetails: React.FC = () => {
               Télécharger
             </Button>
           )}
-
-          <Button
-            variant={isEditing ? 'secondary' : 'default'}
-            onClick={toggleEditMode}
-            className="flex items-center gap-2"
-          >
-            {isEditing ? (
-              <>
-                <X className="h-4 w-4" />
-                Annuler
-              </>
-            ) : (
-              <>
-                <Edit className="h-4 w-4" />
-                Modifier
-              </>
-            )}
-          </Button>
         </div>
       </div>
 
@@ -471,135 +362,95 @@ const ArticleDetails: React.FC = () => {
             <CardHeader>
               <CardTitle>Informations de base</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Titre</Label>
-                      <Input
-                        id="title"
-                        name="title"
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        readOnly={!isEditing}
-                        className={!isEditing ? 'bg-gray-100' : ''}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        readOnly={!isEditing}
-                        className={!isEditing ? 'bg-gray-100' : ''}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="reference">Référence</Label>
-                      <Input
-                        id="reference"
-                        name="reference"
-                        value={formData.reference}
-                        onChange={handleInputChange}
-                        readOnly={!isEditing}
-                        className={!isEditing ? 'bg-gray-100' : ''}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="notes">Notes</Label>
-                      <Textarea
-                        id="notes"
-                        name="notes"
-                        value={formData.notes}
-                        onChange={handleInputChange}
-                        readOnly={!isEditing}
-                        className={!isEditing ? 'bg-gray-100' : ''}
-                      />
-                    </div>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Titre</Label>
+                    <Input
+                      id="title"
+                      value={articleDetails.title || ''}
+                      readOnly
+                      className="bg-gray-100"
+                    />
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="unitPrice">Prix unitaire</Label>
-                      <Input
-                        id="unitPrice"
-                        name="unitPrice"
-                        type="number"
-                        value={formData.unitPrice}
-                        onChange={handleInputChange}
-                        readOnly={!isEditing}
-                        className={!isEditing ? 'bg-gray-100' : ''}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="quantityInStock">Quantité en stock</Label>
-                      <Input
-                        id="quantityInStock"
-                        name="quantityInStock"
-                        type="number"
-                        value={formData.quantityInStock}
-                        onChange={handleInputChange}
-                        readOnly={!isEditing}
-                        className={!isEditing ? 'bg-gray-100' : ''}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="version">Version</Label>
-                      <Input
-                        id="version"
-                        name="version"
-                        type="number"
-                        value={formData.version}
-                        onChange={handleInputChange}
-                        readOnly={true}
-                        className="bg-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="status">Statut</Label>
-                      {isEditing ? (
-                        <select
-                          id="status"
-                          name="status"
-                          value={formData.status}
-                          onChange={handleStatusChange}
-                          className="w-full p-2 border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          {statusOptions.map(option => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <div className="px-4 py-2 rounded-full bg-gray-100 inline-flex items-center">
-                          <span className="h-2 w-2 rounded-full mr-2" style={{
-                            backgroundColor: 
-                              formData.status === 'draft' ? '#6b7280' :
-                              formData.status === 'active' ? '#10b981' :
-                              formData.status === 'inactive' ? '#ef4444' :
-                              formData.status === 'archived' ? '#8b5cf6' :
-                              formData.status === 'out_of_stock' ? '#f59e0b' :
-                              formData.status === 'pending_review' ? '#3b82f6' :
-                              '#9ca3af'
-                          }}></span>
-                          {statusOptions.find(opt => opt.value === formData.status)?.label || formData.status}
-                        </div>
-                      )}
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={articleDetails.description || ''}
+                      readOnly
+                      className="bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="reference">Référence</Label>
+                    <Input
+                      id="reference"
+                      value={articleDetails.reference}
+                      readOnly
+                      className="bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={articleDetails.notes || ''}
+                      readOnly
+                      className="bg-gray-100"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="unitPrice">Prix unitaire</Label>
+                    <Input
+                      id="unitPrice"
+                      type="number"
+                      value={articleDetails.unitPrice}
+                      readOnly
+                      className="bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="quantityInStock">Quantité en stock</Label>
+                    <Input
+                      id="quantityInStock"
+                      type="number"
+                      value={articleDetails.quantityInStock}
+                      readOnly
+                      className="bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="version">Version</Label>
+                    <Input
+                      id="version"
+                      type="number"
+                      value={articleDetails.version || 1}
+                      readOnly
+                      className="bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Statut</Label>
+                    <div className="px-4 py-2 rounded-full bg-gray-100 inline-flex items-center">
+                      <span className="h-2 w-2 rounded-full mr-2" style={{
+                        backgroundColor: 
+                          articleDetails.status === 'draft' ? '#6b7280' :
+                          articleDetails.status === 'active' ? '#10b981' :
+                          articleDetails.status === 'inactive' ? '#ef4444' :
+                          articleDetails.status === 'archived' ? '#8b5cf6' :
+                          articleDetails.status === 'out_of_stock' ? '#f59e0b' :
+                          articleDetails.status === 'pending_review' ? '#3b82f6' :
+                          '#9ca3af'
+                      }}></span>
+                      {statusOptions.find(opt => opt.value === articleDetails.status)?.label || articleDetails.status}
                     </div>
                   </div>
                 </div>
-                {isEditing && (
-                  <div className="flex justify-end">
-                    <Button type="submit" className="flex items-center gap-2">
-                      <Save className="h-4 w-4" />
-                      Enregistrer
-                    </Button>
-                  </div>
-                )}
-              </form>
+              </div>
             </CardContent>
           </Card>
 
