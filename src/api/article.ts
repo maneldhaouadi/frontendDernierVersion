@@ -771,6 +771,38 @@ const restoreArticle = async (id: number): Promise<ResponseArticleDto> => {
   }
 };
 
+const checkAvailability = async (
+  id: number,
+  quantity: number
+): Promise<{
+    available: boolean;
+    availableQuantity: number;
+    message?: string;
+  }> => {
+  try {
+    const response = await axios.get(`/public/article/${id}/check-availability?quantity=${quantity}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la vérification de la disponibilité:", error);
+    throw new Error("Impossible de vérifier la disponibilité de l'article.");
+  }
+}
+
+const updateArticleStock = async (
+  id: number,
+  quantityChange: number
+): Promise<Article> => {
+  try {
+    const response = await axios.put<Article>(`/public/article/${id}/update-stock`, {
+      quantityChange
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du stock:", error);
+    throw new Error("Impossible de mettre à jour le stock de l'article.");
+  }
+};
+
 
 
 
@@ -805,6 +837,7 @@ export const article = {
   getSuspiciousArticles,
   getPriceTrends,
   getStockHealth,
+<<<<<<< HEAD
   getTopOutOfStockRisk,
   searchArticlesByTitle,
   getStockValueEvolution,
@@ -823,4 +856,9 @@ export const article = {
   findArchivedArticles,
   restoreArticle,
   hardDelete
+=======
+  findOneByReference,
+  checkAvailability,
+  updateArticleStock,
+>>>>>>> ce6bc78 (DernierVersionFrront)
 };

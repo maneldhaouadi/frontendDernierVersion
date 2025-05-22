@@ -32,7 +32,7 @@ export const ExpensePaymentInvoiceItem: React.FC<ExpensePaymentInvoiceItemProps>
   const digitAfterComma = invoiceCurrency?.digitAfterComma || 2;
   const isSameCurrency = invoiceCurrency?.id === currency?.id;
 
-  const createDinero = (amount: number, currencyCode: string = 'USD'): Dinero => {
+  const createDinero = (amount: number): Dinero => {
     return dinero({
       amount: createDineroAmountFromFloatWithDynamicCurrency(
         Math.max(0, amount),
@@ -43,35 +43,21 @@ export const ExpensePaymentInvoiceItem: React.FC<ExpensePaymentInvoiceItemProps>
   };
 
   // Calcul des montants de base
-  const total = React.useMemo(() => {
-    return createDinero(
-      invoiceEntry.expenseInvoice?.total || 0,
-      invoiceCurrency?.code || 'USD'
-    );
-  }, [invoiceEntry.expenseInvoice?.total, invoiceCurrency?.code, digitAfterComma]);
-
-  const amountPaid = React.useMemo(() => {
-    return createDinero(
-      invoiceEntry.expenseInvoice?.amountPaid || 0,
-      invoiceCurrency?.code || 'USD'
-    );
-  }, [invoiceEntry.expenseInvoice?.amountPaid, invoiceCurrency?.code, digitAfterComma]);
-
-  const taxWithholdingAmount = React.useMemo(() => {
-    return createDinero(
-      invoiceEntry.expenseInvoice?.taxWithholdingAmount || 0,
-      invoiceCurrency?.code || 'USD'
-    );
-  }, [invoiceEntry.expenseInvoice?.taxWithholdingAmount, invoiceCurrency?.code, digitAfterComma]);
+  const [total, amountPaid, taxWithholdingAmount] = React.useMemo(() => {
+    return [
+      createDinero(invoiceEntry.expenseInvoice?.total || 0),
+      createDinero(invoiceEntry.expenseInvoice?.amountPaid || 0),
+      createDinero(invoiceEntry.expenseInvoice?.taxWithholdingAmount || 0)
+    ];
+  }, [invoiceEntry.expenseInvoice, digitAfterComma]);
 
   const remainingAmount = React.useMemo(() => {
     return total.subtract(amountPaid).subtract(taxWithholdingAmount);
   }, [total, amountPaid, taxWithholdingAmount]);
 
-  // Modifiez les calculs pour une conversion précise
-const effectiveExchangeRate = Math.max(0.0001, 
-  invoiceEntry.exchangeRate || paymentConvertionRate || 1
-);
+  const effectiveExchangeRate = Math.max(0.0001, 
+    invoiceEntry.exchangeRate || paymentConvertionRate || 1
+  );
 
 // Nouveau calcul du montant maximum autorisé
 const maxAllowedAmount = React.useMemo(() => {
@@ -163,7 +149,13 @@ const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rate = parseFloat(rawValue);
     if (isNaN(rate) || rate <= 0) return;
     
-    onChange({ ...invoiceEntry, exchangeRate: parseFloat(rate.toFixed(4)) });
+    const newRate = parseFloat(rate.toFixed(6));
+    onChange({ 
+      ...invoiceEntry, 
+      exchangeRate: newRate,
+      // Recalcul du montant original avec le nouveau taux: montant_paiement / nouveau_taux
+      originalAmount: invoiceEntry.amount ? parseFloat((invoiceEntry.amount / newRate).toFixed(digitAfterComma)) : undefined
+    });
   };
 
   return (
@@ -204,19 +196,14 @@ const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           type="number" 
           step="0.0001"
           min="0.0001"
-          value={typeof invoiceEntry.exchangeRate === 'number' 
-            ? invoiceEntry.exchangeRate.toFixed(4) 
-            : (typeof paymentConvertionRate === 'number' 
-              ? paymentConvertionRate.toFixed(4) 
-              : '')
-          }
-          onChange={handleExchangeRateChange}
-          disabled={isSameCurrency}
+value={typeof exchangeRateValue === 'number' ? exchangeRateValue.toFixed(4) : ''}
+         onChange={handleExchangeRateChange}
+          disabled={isSameCurrency || disabled}
           className="h-8 text-sm"
         />
         {!isSameCurrency && currency && (
           <Label className="text-xs text-muted-foreground">
-            1 {currency.code} = {effectiveExchangeRate.toFixed(4)} {invoiceCurrency?.code || 'USD'}
+            1 {invoiceCurrency?.code || 'USD'} = {effectiveExchangeRate.toFixed(4)} {currency?.code || 'DEV'}
           </Label>
         )}
       </div>
@@ -229,14 +216,15 @@ const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         <Input 
           type="number"
           onChange={handleAmountPaidChange}
-          value={invoiceEntry.amount?.toFixed(currency?.digitAfterComma || 2) ?? ''}
+          value={invoiceEntry.amount?.toFixed(digitAfterComma) ?? ''}
           step="0.01"
           min="0"
-          max={maxAllowedAmount.toFixed(currency?.digitAfterComma || 2)}
+          max={maxAllowedAmount.toFixed(digitAfterComma)}
+          disabled={disabled}
           className="h-8 text-sm"
         />
         <Label className="text-xs text-muted-foreground">
-          Max: {maxAllowedAmount.toFixed(currency?.digitAfterComma || 2)} {currency?.code || 'DEV'}
+          Max: {maxAllowedAmount.toFixed(digitAfterComma)} {currency?.code || 'DEV'}
         </Label>
       </div>
 

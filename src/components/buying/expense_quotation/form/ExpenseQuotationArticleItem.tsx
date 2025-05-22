@@ -19,6 +19,7 @@ import { UneditableInput } from '@/components/ui/uneditable/uneditable-input';
 import { api } from '@/api';
 import { Checkbox } from '@/components/ui/checkbox'; // Importez le composant Checkbox
 import { ExpenseInvoiceTaxEntries } from '../../expense_invoice/form/ExpenseInvoiceTaxEntries';
+import { QuotationTaxEntries } from './ExpenseQuotationTaxEntries';
 
 interface ExpenseQuotationArticleItemProps {
   className?: string;
@@ -364,7 +365,7 @@ export const ExpenseQuotationArticleItem: React.FC<ExpenseQuotationArticleItemPr
         {/* Taxes */}
         <div className="my-auto">
           <Label className="block my-3">{tInvoicing('article.attributes.taxes')}</Label>
-          <ExpenseInvoiceTaxEntries
+          <QuotationTaxEntries
             article={article}
             taxes={taxes}
             selectedTaxIds={selectedTaxIds}

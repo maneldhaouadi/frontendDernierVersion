@@ -134,10 +134,6 @@ const findChoices = async (
 
 
 
-
-
-
-
 const findOne = async (
   id: number,
   relations: string[] = [
@@ -411,6 +407,18 @@ const deletePdfFile = async (quotationId: number): Promise<void> => {
   }
 };
 
+const getAvailableStatuses = async (): Promise<{ value: string; label: string }[]> => {
+  try {
+    const response = await axios.get<{ value: string; label: string }[]>(
+      `public/expensquotation/statuses`  // Correction de l'URL ici
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching available statuses:', error);
+    return []; // Retourne un tableau vide en cas d'erreur
+  }
+};
+
 const updateInvoiceStatusIfExpired = async (quotationId: number): Promise<ExpenseQuotation> => {
   try {
     const response = await axios.put<ExpenseQuotation>(
@@ -436,5 +444,13 @@ export const expense_quotation = {
   remove,
   validate,
   deletePdfFile,
+<<<<<<< HEAD
   updateInvoiceStatusIfExpired
+=======
+  updateInvoiceStatusIfExpired,
+  exportQuotationPdf,
+  checkSequentialNumber,
+  getAvailableStatuses // <-- Nouvelle méthode ajoutée ici
+
+>>>>>>> ce6bc78 (DernierVersionFrront)
 };

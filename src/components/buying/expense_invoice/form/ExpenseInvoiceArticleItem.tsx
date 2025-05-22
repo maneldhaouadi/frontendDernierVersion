@@ -63,7 +63,105 @@ export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps>
       }
     });
   };
+<<<<<<< HEAD
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+=======
+
+// Ajoutez cette fonction pour générer une référence automatique
+// Modifiez la fonction generateReference comme ceci :
+const generateReference = async () => {
+  let generatedReference = '';
+  let referenceExists = true;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  // Génère une référence unique
+  while (referenceExists && attempts < maxAttempts) {
+    const timestamp = Date.now().toString().slice(-6);
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    generatedReference = `REF-${timestamp}-${randomNum}`;
+
+    try {
+      const response = await api.article.findOneByReference(generatedReference);
+      referenceExists = !!response;
+      attempts++;
+    } catch (error) {
+      referenceExists = false; // En cas d'erreur, on considère que la référence est disponible
+    }
+  }
+
+  if (referenceExists) {
+    toast.error(tInvoicing('article.errors.generation_failed'));
+    return;
+  }
+
+  onChange({
+    ...article,
+    reference: generatedReference,
+    article: {
+      ...(article.article || {
+        id: 0,
+        title: '',
+        description: '',
+        quantityInStock: 0,
+        status: 'draft',
+        version: 0,
+        unitPrice: 0,
+        notes: '',
+        isDeletionRestricted: false
+      }),
+      reference: generatedReference
+    }
+  });
+};
+
+const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const updatedArticle = {
+    ...article,
+    article: {
+      ...(article.article || {
+        id: 0, // Toujours fournir un ID par défaut
+        title: '',
+        description: '',
+        reference: '',
+        quantityInStock: 0,
+        status: 'draft',
+        version: 0,
+        unitPrice: 0,
+        notes: '',
+        isDeletionRestricted: false
+      }),
+      title: e.target.value,
+      version: (article.article?.version || 0) + 1
+    },
+    updatedAt: new Date().toISOString()
+  };
+  onChange(updatedArticle);
+};
+
+  const handleSelectArticle = async (value: string) => {
+    if (value === 'disabled') return;
+    
+    const selectedArticle = articles.find((art) => art.id === parseInt(value));
+    if (selectedArticle) {
+      setAvailableQuantity(selectedArticle.quantityInStock);
+      
+      const unitPrice = Math.round(Number(selectedArticle.unitPrice)) || 0;
+      
+      onChange({
+        ...article,
+        article: {
+          ...selectedArticle, // Conserve toutes les propriétés de l'article
+          unitPrice: unitPrice // Met à jour le prix unitaire
+        },
+        quantity: Math.min(article.quantity || 1, selectedArticle.quantityInStock || 1),
+        unit_price: unitPrice
+      });
+    }
+  };
+
+  const handleArticleUpdate = (field: keyof Article, value: any) => {
+>>>>>>> ce6bc78 (DernierVersionFrront)
     if (!article.article) {
       throw new Error("Article object is required");
     }
@@ -85,15 +183,72 @@ export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps>
       ...article,
       article: {
         ...article.article,
+<<<<<<< HEAD
         description: e.target.value
       }
     });
   };
 
+=======
+        [field]: value
+      }
+    });
+  };
+
+  const checkIfArticleExists = async (reference: string): Promise<boolean> => {
+    if (!reference) return false;
+    
+    try {
+      const response = await api.article.findOneByReference(reference);
+      return !!response; // Retourne true si l'article existe
+    } catch (error) {
+      console.error('Error checking article reference', error);
+      return false;
+    }
+  };
+  
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const updatedArticle = {
+    ...article,
+    article: {
+      ...(article.article || {
+        id: 0, // Toujours fournir un ID par défaut
+        title: '',
+        description: '',
+        reference: '',
+        quantityInStock: 0,
+        status: 'draft',
+        version: 0,
+        unitPrice: 0,
+        notes: '',
+        isDeletionRestricted: false
+      }),
+      description: e.target.value,
+      version: (article.article?.version || 0) + 1
+    },
+    updatedAt: new Date().toISOString()
+  };
+  onChange(updatedArticle);
+};
+>>>>>>> ce6bc78 (DernierVersionFrront)
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const quantity = e.target.value;
     const regex = new RegExp(`^\\d*(\\.\\d{0,${3}})?$`);
     if (quantity.match(regex)) {
+<<<<<<< HEAD
+=======
+      const quantityNum = parseFloat(quantity);
+      
+      // Vérifier si la quantité demandée est disponible
+      if (availableQuantity !== null && quantityNum > availableQuantity) {
+        toast.error(tInvoicing('quantité insuffisante', {
+          available: availableQuantity,
+          requested: quantityNum
+        }));
+        return;
+      }
+      
+>>>>>>> ce6bc78 (DernierVersionFrront)
       onChange({
         ...article,
         quantity: parseFloat(quantity)
@@ -175,6 +330,7 @@ export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps>
       <div className="w-9/12">
         <div className="flex flex-row gap-2 my-1">
           {/* Title */}
+<<<<<<< HEAD
           <div className="w-3/5">
            <Label className="mx-1">{tInvoicing('article.attributes.title')}</Label>
             {edit ? (
@@ -187,6 +343,115 @@ export const ExpenseInvoiceArticleItem: React.FC<ExpenseInvoiceArticleItemProps>
               <UneditableInput value={article.article?.title} />
             )}
           </div>
+=======
+          {/* Dans la partie "Title" du JSX, modifiez comme suit : */}
+<div className="w-3/5">
+  <Label className="mx-1">{tInvoicing('article.attributes.title')}</Label>
+  {edit ? (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="use-existing-article"
+          checked={useExistingArticle}
+          onCheckedChange={(checked) => setUseExistingArticle(!!checked)}
+        />
+        <Label htmlFor="use-existing-article">
+          {tInvoicing('Article Existant')}
+        </Label>
+      </div>
+      {useExistingArticle ? (
+        <Select onValueChange={handleSelectArticle}>
+          <SelectTrigger>
+            <SelectValue placeholder={tInvoicing('Select an article')} />
+          </SelectTrigger>
+          <SelectContent>
+  <div className="p-2">
+    <Input
+      placeholder={tInvoicing('Search an article...')}
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+    />
+  </div>
+  {loading ? (
+  <SelectItem value="loading" disabled>
+    {tInvoicing('Loading...')}
+  </SelectItem>
+) : articles.length > 0 ? (
+  articles
+    .filter(article => 
+      article?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (article.reference && article.reference.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .map((art) => (
+      <SelectItem 
+        key={art.id} 
+        value={art.id.toString()}
+        disabled={art.quantityInStock <= 0}
+        className={art.quantityInStock <= 0 ? 'opacity-50 cursor-not-allowed' : ''}
+      >
+        <div className="flex justify-between items-center">
+          <span>
+            {art.title} {art.reference ? `(${art.reference})` : ''}
+          </span>
+          <span className="text-xs text-muted-foreground ml-2">
+            {art.quantityInStock <= 0 ? 
+              tInvoicing('out_of_stock') : 
+              `${art.quantityInStock} ${tInvoicing('available')}`
+            }
+          </span>
+        </div>
+      </SelectItem>
+    ))
+) : (
+  <SelectItem value="no-articles" disabled>
+    {tInvoicing('No articles available')}
+  </SelectItem>
+)}
+</SelectContent>
+</Select>
+) : (
+<>
+  <Input
+    placeholder={tInvoicing('Enter a title')}
+    value={article.article?.title || ''}
+    onChange={handleTitleChange}
+  />
+  
+  {/* Champ référence corrigé */}
+  <div className="flex gap-2 mt-2">
+  <div className="flex-1">
+    <Input
+      placeholder={tInvoicing('reference')}
+      value={article.reference || ''}
+      onChange={handleReferenceChange}
+      pattern="^REF-\d{6}-\d{3}$"
+      title={tInvoicing('article.errors.invalid_reference_format')}
+    />
+  </div>
+  <Button 
+    type="button"
+    variant="outline"
+    onClick={generateReference}
+    className="whitespace-nowrap"
+    disabled={!!article.article?.id}
+  >
+    {tInvoicing('generate_reference')}
+  </Button>
+</div>
+</>
+)}
+</div>
+) : (
+<div className="flex flex-col gap-2">
+  <UneditableInput value={article.article?.title || ''} />
+  <UneditableInput 
+    value={article.reference || tInvoicing('no_reference')}
+    placeholder={tInvoicing('no_reference')}
+  />
+</div>
+)}
+</div>
+>>>>>>> ce6bc78 (DernierVersionFrront)
           {/* Quantity */}
           <div className="w-1/5">
             <Label className="mx-1">{tInvoicing('article.attributes.quantity')}</Label>

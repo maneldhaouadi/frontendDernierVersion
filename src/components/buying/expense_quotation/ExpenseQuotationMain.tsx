@@ -161,6 +161,7 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
         getErrorMessage('invoicing', error, tInvoicing('quotation.action_duplicate_failure'))
       );
     }
+<<<<<<< HEAD
 });
 
   //Invoice quotation
@@ -177,6 +178,10 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
       toast.error(message);
     }
   });
+=======
+  });
+  
+>>>>>>> ce6bc78 (DernierVersionFrront)
 
   const isPending =
     isFetchPending ||
@@ -226,6 +231,7 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
   }}
   isDuplicationPending={isDuplicationPending}
 />
+<<<<<<< HEAD
       <ExpenseQuotationInvoiceDialog
         id={quotationManager?.id || 0}
         status={quotationManager?.status}
@@ -237,6 +243,15 @@ export const ExpenseQuotationMain: React.FC<ExpenseQuotationMainProps> = ({ clas
         }}
         onClose={() => setInvoiceDialog(false)}
       />
+=======
+      <ExpenseQuotationDownloadDialog
+  id={quotationManager?.id || 0}
+  open={downloadDialog} // Doit être true quand on clique
+  onDownload={handleDownload}
+  isDownloadPending={isDownloadPending}
+  onClose={() => setDownloadDialog(false)}
+/>
+>>>>>>> ce6bc78 (DernierVersionFrront)
       <ExpenseQuotationActionsContext.Provider value={context}>
         <Card className={className}>
           <CardHeader>
