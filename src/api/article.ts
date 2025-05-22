@@ -18,7 +18,6 @@ interface ArticleExtractedData {
   description?: string;
   quantityInStock?: number;
   unitPrice: number;
-  status?: string;
   notes?: string;
 }
 
@@ -37,7 +36,14 @@ interface OcrResponse {
     context: string[];
   }>;
 }
-
+interface OcrResponseData {
+  reference?: { value?: string; confidence?: number };
+  designation?: { value?: string; confidence?: number }; // Correspond à title
+  description?: { value?: string; confidence?: number };
+  price?: { value?: number | string; confidence?: number }; // Correspond à unitPrice
+  quantity?: { value?: number | string; confidence?: number }; // Correspond à quantityInStock
+  notes?: { value?: string; confidence?: number };
+}
 
 interface PageDto<T> {
   data: T[];
@@ -452,123 +458,84 @@ const searchCategories = async (query: string): Promise<string[]> => {
     return [];
   }
 };
+
+
+// Déclaration de la fonction utilitaire en dehors de la méthode principale
+function formatProductReference(rawRef: string): string {
+  if (!rawRef) return 'REF-TEMP';
+
+  // Nettoyage et standardisation
+  const cleaned = rawRef
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '')
+    .replace(/^REF-/, 'PROD-'); // Conversion REF- en PROD-
+
+  // Validation du format
+  if (/^PROD-\d{4}-\d{3,}$/.test(cleaned)) return cleaned;
+  if (/^\d{4}-\d{3,}$/.test(cleaned)) return `PROD-${cleaned}`;
+  
+  return 'REF-TEMP';
+}
+
 const extractFromImage = async (file: File): Promise<ArticleExtractedData> => {
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const response = await axios.post<OcrResponse>(
-      '/ocr/extract',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        params: {
-          strict: false, // Passé à false pour accepter des résultats partiels
-          debug: true,
-        },
-        timeout: 30000,
-        validateStatus: (status) => status < 500,
-      },
-    );
+    const response = await axios.post<OcrResponse>('/ocr/process', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      params: { strict: false, debug: true },
+      timeout: 30000
+    });
 
-    // Gestion des erreurs HTTP
-    if (response.status >= 400) {
-      const errorData = response.data;
-      throw new Error(
-        errorData.message ||
-        `Server returned status ${response.status}: ${JSON.stringify(errorData)}`,
-      );
+    // Gestion des erreurs
+    if (!response.data?.success || response.status >= 400) {
+      throw new Error(response.data?.message || 'Échec du traitement OCR');
     }
 
-    // Validation de la structure de réponse
-    if (!response.data || typeof response.data !== 'object') {
-      throw new Error('Invalid response format from OCR service');
-    }
+    // Fonction utilitaire pour extraire et normaliser les valeurs (déclarée comme expression de fonction)
+    const extractValue = <T>(
+      source: any, 
+      fieldName: keyof OcrResponseData,
+      defaultValue: T,
+      isNumber = false
+    ): T => {
+      const fieldData = source?.[fieldName];
+      if (!fieldData?.value) return defaultValue;
 
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'OCR processing failed');
-    }
-
-    // Normalisation des données
-    const normalizeString = (value: any): string => {
-      if (typeof value === 'string') return value.trim();
-      if (value !== undefined && value !== null) return value.toString().trim();
-      return '';
-    };
-
-    const normalizeNumber = (value: any, defaultValue: number = 0): number => {
-      if (typeof value === 'number') return value;
-      if (typeof value === 'string') {
-        // Supprime les espaces et convertit les virgules en points
-        const cleaned = value.replace(/\s/g, '').replace(/,/g, '.');
-        const parsed = parseFloat(cleaned);
-        return isNaN(parsed) ? defaultValue : parsed;
+      if (isNumber) {
+        const numValue = typeof fieldData.value === 'string'
+          ? parseFloat(fieldData.value.replace(',', '.').replace(/\s/g, ''))
+          : Number(fieldData.value);
+        return (isNaN(numValue) ? defaultValue : Math.max(0, numValue)) as T;
       }
-      return defaultValue;
+
+      return String(fieldData.value).trim() as T || defaultValue;
     };
 
-    // Construction de l'objet final avec valeurs par défaut
-    const processedData: ArticleExtractedData = {
-      reference: normalizeString(response.data.data.reference || 'REF-TEMP').replace(/[^a-zA-Z0-9-]/g, ''),
-      title: normalizeString(response.data.data.title || 'Titre non détecté'),
-      description: response.data.data.description ? normalizeString(response.data.data.description) : undefined,
-      unitPrice: normalizeNumber(response.data.data.unitPrice, 0),
-      quantityInStock: response.data.data.quantityInStock !== undefined ? 
-        normalizeNumber(response.data.data.quantityInStock, 0) : 
-        0,
-      status: response.data.data.status ? 
-        normalizeString(response.data.data.status) : 
-        'draft',
-      notes: response.data.data.notes ? normalizeString(response.data.data.notes) : undefined,
+    // Extraction et transformation des données
+    const ocrData = response.data.data || {};
+    const result: ArticleExtractedData = {
+      reference: formatProductReference(extractValue(ocrData, 'reference', '')),
+      title: extractValue(ocrData, 'designation', 'Titre non détecté'),
+      description: extractValue(ocrData, 'description', undefined),
+      unitPrice: extractValue(ocrData, 'price', 0, true),
+      quantityInStock: extractValue(ocrData, 'quantity', 0, true),
+      notes: extractValue(ocrData, 'notes', undefined)
     };
 
-    // Validation des champs critiques avec valeurs par défaut
-    if (!processedData.reference || processedData.reference === 'REF-TEMP') {
-      console.warn('Reference not detected, using temporary value');
-    }
+    return result;
 
-    if (processedData.title === 'Titre non détecté') {
-      console.warn('Title not detected, using default value');
-    }
-
-    if (processedData.unitPrice <= 0) {
-      console.warn('Invalid unit price detected, using 0');
-      processedData.unitPrice = 0;
-    }
-
-    // Ajout des corrections OCR si disponibles
-    if (response.data.corrections) {
-      console.log('OCR corrections applied:', response.data.corrections);
-    }
-
-    return processedData;
-  } catch (error: unknown) {
-    console.error('OCR processing error:', error);
-
-    // Création d'un objet par défaut en cas d'erreur
-    const defaultData: ArticleExtractedData = {
+  } catch (error) {
+    console.error('Erreur OCR:', error);
+    return {
       reference: 'REF-TEMP',
       title: 'Titre non détecté',
       unitPrice: 0,
-      quantityInStock: 0,
-      status: 'draft'
+      quantityInStock: 0
     };
-
-    if (error instanceof Error) {
-      if (error.message.includes('missing')) {
-        // Si l'erreur concerne des champs manquants, on retourne les valeurs par défaut
-        console.warn('Missing fields detected, returning default values');
-        return defaultData;
-      }
-      throw new Error(`OCR processing failed: ${error.message}`);
-    } 
-    
-    throw new Error('Unknown error occurred during OCR processing');
   }
 };
-
 
 const getSimpleStats = async (): Promise<ArticleStats> => {
   try {

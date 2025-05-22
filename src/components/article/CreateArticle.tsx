@@ -30,6 +30,8 @@ import { PackagePlus, ImageIcon, FileTextIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 
+type FormTab = 'form' | 'review';
+
 const CreateArticlePage = () => {
   const { t } = useTranslation('article');
   const router = useRouter();
@@ -50,7 +52,7 @@ const CreateArticlePage = () => {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState<ArticleExtractedData | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('form');
+  const [activeTab, setActiveTab] = useState<FormTab>('form');
 
   // Set breadcrumb routes
   useEffect(() => {
@@ -61,12 +63,9 @@ const CreateArticlePage = () => {
     ]);
   }, [t, setRoutes]);
 
-  // Format reference number with REF- prefix
-  const handleReferenceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    
+  const formatReference = (value: string): string => {
     if (value.length < 4 && !value.startsWith('REF-')) {
-      return;
+      return 'REF-';
     }
     
     const baseValue = value.startsWith('REF-') ? value : `REF-${value}`;
@@ -78,31 +77,31 @@ const CreateArticlePage = () => {
     if (cleanValue.length > 0) {
       formattedValue += cleanValue.substring(0, 6);
       if (cleanValue.length > 6) {
-        formattedValue += '-' + cleanValue.substring(6, 9);
+        formattedValue += `-${cleanValue.substring(6, 9)}`;
       }
     }
     
-    setFormData(prev => ({
-      ...prev,
-      reference: formattedValue
-    }));
+    return formattedValue;
+  };
+
+  const handleReferenceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatReference(e.target.value);
+    setFormData(prev => ({ ...prev, reference: formattedValue }));
   }, []);
 
-  // Handle form field changes
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       setFormData(prev => ({
         ...prev,
         [name]: ['unitPrice', 'quantityInStock'].includes(name) 
-          ? Number(value) 
+          ? Number(value) || 0 
           : value
       }));
     },
     []
   );
 
-  // Submit form data
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -112,7 +111,7 @@ const CreateArticlePage = () => {
       const formDataToSend = {
         ...formData,
         reference: numericReference,
-        justificatifFile: justificatifFile || undefined
+        ...(justificatifFile && { justificatifFile })
       };
 
       const result = await api.article.create(formDataToSend);
@@ -128,7 +127,6 @@ const CreateArticlePage = () => {
     }
   };
 
-  // Reset form to initial state
   const handleReset = useCallback(() => {
     setFormData({
       title: '',
@@ -145,15 +143,13 @@ const CreateArticlePage = () => {
     setActiveTab('form');
   }, []);
 
-  // Extract data from file (image or PDF)
-  const handleExtractFromFile = useCallback(async (file: File, isPdf: boolean = false) => {
+  const handleExtractFromFile = useCallback(async (file: File, isPdf = false) => {
     setOcrLoading(true);
     setOcrError(null);
     
     try {
       const result = await api.article.extractFromImage(file);
       
-      // Format reference to include REF- prefix if not already present
       const formattedReference = result.reference 
         ? `REF-${result.reference.replace(/^REF-/, '')}`
         : formData.reference;
@@ -185,7 +181,6 @@ const CreateArticlePage = () => {
     }
   }, [formData.reference, t]);
 
-  // Apply OCR results to form
   const applyOcrResult = useCallback(() => {
     if (!ocrResult) return;
     
@@ -206,20 +201,10 @@ const CreateArticlePage = () => {
     toast.success(t('Informations appliquées avec succès'));
   }, [ocrResult, t]);
 
-  // File input handlers
-  const handleImageUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(
+    (type: 'image' | 'pdf') => (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files?.[0]) {
-        handleExtractFromFile(e.target.files[0], false);
-      }
-    },
-    [handleExtractFromFile]
-  );
-
-  const handlePdfUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.[0]) {
-        handleExtractFromFile(e.target.files[0], true);
+        handleExtractFromFile(e.target.files[0], type === 'pdf');
       }
     },
     [handleExtractFromFile]
@@ -264,7 +249,7 @@ const CreateArticlePage = () => {
                 id="image-upload"
                 type="file"
                 accept="image/*"
-                onChange={handleImageUpload}
+                onChange={handleFileUpload('image')}
                 className="hidden"
               />
             </Button>
@@ -286,7 +271,7 @@ const CreateArticlePage = () => {
                 id="pdf-upload"
                 type="file"
                 accept="application/pdf"
-                onChange={handlePdfUpload}
+                onChange={handleFileUpload('pdf')}
                 className="hidden"
               />
             </Button>
@@ -301,218 +286,23 @@ const CreateArticlePage = () => {
           <form onSubmit={handleSubmit} className="flex flex-col h-full">
             <TabsContent value="form" className="flex-1">
               <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-8">
-                  <div className="space-y-6">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {t('Informations générales')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="title">{t('Titre')}</Label>
-                          <Input
-                            id="title"
-                            name="title"
-                            value={formData.title}
-                            onChange={handleChange}
-                            placeholder={t('Nom de l\'article')}
-                            className="text-sm h-9"
-                            required
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="description">{t('Description')}</Label>
-                          <Textarea
-                            id="description"
-                            name="description"
-                            value={formData.description}
-                            onChange={handleChange}
-                            rows={4}
-                            placeholder={t('Description détaillée de l\'article')}
-                            className="text-sm"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="reference">{t('Référence')}</Label>
-                          <Input
-                            id="reference"
-                            name="reference"
-                            value={formData.reference}
-                            onChange={handleReferenceChange}
-                            placeholder="REF-123456-789"
-                            className="text-sm h-9"
-                            required
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {t('Format: REF-123456-789')}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="status">{t('Statut')}</Label>
-                          <Select
-                            name="status"
-                            value={formData.status}
-                            onValueChange={(value) => setFormData({...formData, status: value})}
-                          >
-                            <SelectTrigger className="text-sm h-9">
-                              <SelectValue placeholder={t('Sélectionner un statut')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="draft">{t('Brouillon')}</SelectItem>
-                              <SelectItem value="active">{t('Actif')}</SelectItem>
-                              <SelectItem value="inactive">{t('Inactif')}</SelectItem>
-                              <SelectItem value="archived">{t('Archivé')}</SelectItem>
-                              <SelectItem value="out_of_stock">{t('En rupture')}</SelectItem>
-                              <SelectItem value="pending_review">{t('En revue')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {t('Tarification et stock')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <Label htmlFor="unitPrice">{t('Prix unitaire')}</Label>
-                        <Input
-                          id="unitPrice"
-                          name="unitPrice"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={formData.unitPrice}
-                          onChange={handleChange}
-                          placeholder={t('Prix en euros')}
-                          className="text-sm h-9"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="quantityInStock">{t('Quantité en stock')}</Label>
-                        <Input
-                          id="quantityInStock"
-                          name="quantityInStock"
-                          type="number"
-                          min="0"
-                          value={formData.quantityInStock}
-                          onChange={handleChange}
-                          placeholder={t('Nombre disponible')}
-                          className="text-sm h-9"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {t('Informations complémentaires')}
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="notes">{t('Notes internes')}</Label>
-                        <Textarea
-                          id="notes"
-                          name="notes"
-                          value={formData.notes}
-                          onChange={handleChange}
-                          rows={3}
-                          placeholder={t('Informations supplémentaires pour votre équipe')}
-                          className="text-sm"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label>{t('Justificatif')}</Label>
-                        <FileUploader
-                          accept={{
-                            'image/*': [],
-                            'application/pdf': [],
-                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [],
-                            'application/msword': [],
-                          }}
-                          maxFileCount={1}
-                          value={justificatifFile ? [justificatifFile] : []}
-                          onValueChange={(files) => {
-                            setJustificatifFile(files.length > 0 ? files[0] : null);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <ArticleForm 
+                  formData={formData} 
+                  onChange={handleChange}
+                  onReferenceChange={handleReferenceChange}
+                  justificatifFile={justificatifFile}
+                  setJustificatifFile={setJustificatifFile}
+                />
               </ScrollArea>
             </TabsContent>
 
             <TabsContent value="review" className="flex-1">
               <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {t('Résultats de l\'extraction OCR')}
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <Label>{t('Titre extrait')}</Label>
-                          <div className="p-3 border rounded-md bg-gray-50 text-sm">
-                            {ocrResult?.title || t('Aucun titre détecté')}
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <Label>{t('Description extraite')}</Label>
-                          <div className="p-3 border rounded-md bg-gray-50 text-sm min-h-[100px]">
-                            {ocrResult?.description || t('Aucune description détectée')}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <Label>{t('Référence extraite')}</Label>
-                          <div className="p-3 border rounded-md bg-gray-50 text-sm">
-                            {ocrResult?.reference || t('Aucune référence détectée')}
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <Label>{t('Prix unitaire extrait')}</Label>
-                          <div className="p-3 border rounded-md bg-gray-50 text-sm">
-                            {ocrResult?.unitPrice ? `${ocrResult.unitPrice.toFixed(2)} €` : t('Aucun prix détecté')}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-end gap-3 mt-6">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setActiveTab('form')}
-                        className="h-8 px-4 text-sm"
-                      >
-                        {t('Ignorer les résultats')}
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={applyOcrResult}
-                        className="h-8 px-4 text-sm"
-                      >
-                        {t('Appliquer les modifications')}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <OcrReview 
+                  ocrResult={ocrResult} 
+                  onApply={applyOcrResult}
+                  onCancel={() => setActiveTab('form')}
+                />
               </ScrollArea>
             </TabsContent>
 
@@ -544,6 +334,264 @@ const CreateArticlePage = () => {
         </Tabs>
       </CardContent>
     </Card>
+  );
+};
+
+// Sous-composants pour une meilleure organisation
+const ArticleForm = ({
+  formData,
+  onChange,
+  onReferenceChange,
+  justificatifFile,
+  setJustificatifFile
+}: {
+  formData: CreateArticleDto;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onReferenceChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  justificatifFile: File | null;
+  setJustificatifFile: (file: File | null) => void;
+}) => {
+  const { t } = useTranslation('article');
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          {t('Informations générales')}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="title">{t('Titre')}</Label>
+              <Input
+                id="title"
+                name="title"
+                value={formData.title}
+                onChange={onChange}
+                placeholder={t('Nom de l\'article')}
+                className="text-sm h-9"
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="description">{t('Description')}</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={onChange}
+                rows={4}
+                placeholder={t('Description détaillée de l\'article')}
+                className="text-sm"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="reference">{t('Référence')}</Label>
+              <Input
+                id="reference"
+                name="reference"
+                value={formData.reference}
+                onChange={onReferenceChange}
+                placeholder="REF-123456-789"
+                className="text-sm h-9"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('Format: REF-123456-789')}
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="status">{t('Statut')}</Label>
+              <Select
+                name="status"
+                value={formData.status}
+                onValueChange={(value) => onChange({ 
+                  target: { name: 'status', value } 
+                } as React.ChangeEvent<HTMLInputElement>)}
+              >
+                <SelectTrigger className="text-sm h-9">
+                  <SelectValue placeholder={t('Sélectionner un statut')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">{t('Brouillon')}</SelectItem>
+                  <SelectItem value="active">{t('Actif')}</SelectItem>
+                  <SelectItem value="inactive">{t('Inactif')}</SelectItem>
+                  <SelectItem value="archived">{t('Archivé')}</SelectItem>
+                  <SelectItem value="out_of_stock">{t('En rupture')}</SelectItem>
+                  <SelectItem value="pending_review">{t('En revue')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          {t('Tarification et stock')}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="unitPrice">{t('Prix unitaire')}</Label>
+            <Input
+              id="unitPrice"
+              name="unitPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.unitPrice}
+              onChange={onChange}
+              placeholder={t('Prix en euros')}
+              className="text-sm h-9"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="quantityInStock">{t('Quantité en stock')}</Label>
+            <Input
+              id="quantityInStock"
+              name="quantityInStock"
+              type="number"
+              min="0"
+              value={formData.quantityInStock}
+              onChange={onChange}
+              placeholder={t('Nombre disponible')}
+              className="text-sm h-9"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          {t('Informations complémentaires')}
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="notes">{t('Notes internes')}</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={onChange}
+              rows={3}
+              placeholder={t('Informations supplémentaires pour votre équipe')}
+              className="text-sm"
+            />
+          </div>
+          
+          <div>
+            <Label>{t('Justificatif')}</Label>
+            <FileUploader
+              accept={{
+                'image/*': [],
+                'application/pdf': [],
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [],
+                'application/msword': [],
+              }}
+              maxFileCount={1}
+              value={justificatifFile ? [justificatifFile] : []}
+              onValueChange={(files) => {
+                setJustificatifFile(files.length > 0 ? files[0] : null);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OcrReview = ({
+  ocrResult,
+  onApply,
+  onCancel
+}: {
+  ocrResult: ArticleExtractedData | null;
+  onApply: () => void;
+  onCancel: () => void;
+}) => {
+  const { t } = useTranslation('article');
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          {t('Résultats de l\'extraction OCR')}
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <Label>{t('Titre extrait')}</Label>
+              <div className="p-3 border rounded-md bg-gray-50 text-sm">
+                {ocrResult?.title || t('Aucun titre détecté')}
+              </div>
+            </div>
+            
+            <div>
+              <Label>{t('Description extraite')}</Label>
+              <div className="p-3 border rounded-md bg-gray-50 text-sm min-h-[100px]">
+                {ocrResult?.description || t('Aucune description détectée')}
+              </div>
+            </div>
+            
+            <div>
+              <Label>{t('Notes extraites')}</Label>
+              <div className="p-3 border rounded-md bg-gray-50 text-sm min-h-[60px]">
+                {ocrResult?.notes || t('Aucune note détectée')}
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <Label>{t('Référence extraite')}</Label>
+              <div className="p-3 border rounded-md bg-gray-50 text-sm">
+                {ocrResult?.reference || t('Aucune référence détectée')}
+              </div>
+            </div>
+            
+            <div>
+              <Label>{t('Prix unitaire extrait')}</Label>
+              <div className="p-3 border rounded-md bg-gray-50 text-sm">
+                {ocrResult?.unitPrice ? `${ocrResult.unitPrice.toFixed(2)} €` : t('Aucun prix détecté')}
+              </div>
+            </div>
+            
+            <div>
+              <Label>{t('Quantité extraite')}</Label>
+              <div className="p-3 border rounded-md bg-gray-50 text-sm">
+                {ocrResult?.quantityInStock || t('Aucune quantité détectée')}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-3 mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="h-8 px-4 text-sm"
+          >
+            {t('Ignorer les résultats')}
+          </Button>
+          <Button
+            type="button"
+            onClick={onApply}
+            className="h-8 px-4 text-sm"
+          >
+            {t('Appliquer les modifications')}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
 
